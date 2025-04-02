@@ -34,7 +34,6 @@ class AuthService {
 
   public async logout(): Promise<void> {
     try {
-      await apiService.post("/auth/logout", {});
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
@@ -60,7 +59,7 @@ class AuthService {
 
   public async validateSession(): Promise<any> {
     try {
-      const response = await apiService.post<User>("/auth/verify-token");
+      const response = await apiService.post<User>("/auth/verify-token", {});
 
       return response;
     } catch (error) {
@@ -84,9 +83,9 @@ class AuthService {
 
   private setSession(response: AuthResponse): void {
     localStorage.setItem(this.tokenKey, response.token);
-    if (response.refreshToken) {
-      localStorage.setItem(this.refreshTokenKey, response.refreshToken);
-    }
+
+    localStorage.setItem(this.refreshTokenKey, response.token);
+
     localStorage.setItem(this.userKey, JSON.stringify(response.user));
   }
 

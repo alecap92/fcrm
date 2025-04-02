@@ -38,18 +38,6 @@ export default function CreateContactModal({
     notes: "",
   });
 
-  const [newTag, setNewTag] = useState("");
-
-  const handleAddTag = () => {
-    if (newTag && !formData.tags.includes(newTag)) {
-      setFormData({
-        ...formData,
-        tags: formData.tags ? `${formData.tags},${newTag}` : newTag,
-      });
-      setNewTag("");
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(formData);
@@ -90,7 +78,7 @@ export default function CreateContactModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                First Name
+                First Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -146,7 +134,7 @@ export default function CreateContactModal({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Mobile
+              Mobile <span className="text-red-500">*</span>
             </label>
             <input
               type="tel"
@@ -164,7 +152,7 @@ export default function CreateContactModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Company Type
+                Company Type <span className="text-red-500">*</span>
               </label>
               <select
                 required
@@ -296,26 +284,13 @@ export default function CreateContactModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Country
+                Position
               </label>
               <input
                 type="text"
-                value={formData.country}
+                value={formData.position}
                 onChange={(e) =>
-                  setFormData({ ...formData, country: e.target.value })
-                }
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Postal Code
-              </label>
-              <input
-                type="text"
-                value={formData.postalCode}
-                onChange={(e) =>
-                  setFormData({ ...formData, postalCode: e.target.value })
+                  setFormData({ ...formData, position: e.target.value })
                 }
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
               />

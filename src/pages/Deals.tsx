@@ -78,7 +78,7 @@ export function Deals() {
       try {
         const response = await dealsService.getDeals(pipelineId);
         const statuses = await dealsService.getStatuses(pipelineId);
-        console.log(response, statuses);
+
         setColumns(statuses.data || []);
         setDeals(response.data || []);
       } catch (error) {

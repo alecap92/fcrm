@@ -122,10 +122,23 @@ export function ContactsDirectory() {
   };
 
   const handleCreateContact = async (contactData: any) => {
-    // Handle contact creation logic here
-    console.log("New contact:", contactData);
-
     try {
+      setIsLoading(true);
+      if (
+        !contactData.firstName ||
+        !contactData.companyType ||
+        !contactData.mobile
+      ) {
+        toast.show({
+          title: "Error",
+          description: "Faltan campos obligatorios",
+          type: "error",
+        });
+        return;
+      }
+
+      console.log("Contact data:", contactData.firstName);
+
       await contactsService.createContact(contactData);
       toast.show({
         title: "Success",
@@ -133,6 +146,7 @@ export function ContactsDirectory() {
         type: "success",
       });
       setShowCreateModal(false);
+
       loadContacts();
     } catch (err) {
       toast.show({
@@ -141,7 +155,7 @@ export function ContactsDirectory() {
         type: "error",
       });
     } finally {
-      setShowCreateModal(false);
+      setIsLoading(false);
     }
   };
 

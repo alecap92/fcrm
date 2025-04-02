@@ -1,42 +1,38 @@
-import { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Search, 
+import { useState, useEffect } from "react";
+import {
+  Plus,
+  Search,
   Filter,
   Grid,
   List as ListIcon,
-  Tag as TagIcon,
   Package,
   Archive,
   Edit2,
   Trash2,
   MoreVertical,
-  ChevronDown,
   X,
-  Check,
   ChevronLeft,
   ChevronRight,
-  Loader2
-} from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { useProductStore } from '../store/productStore';
-import { format } from 'date-fns';
-import { ProductForm } from '../components/products/ProductForm';
-import type { Product } from '../types/product';
-import productsService from '../services/productsService';
-import { useToast } from '../components/ui/toast';
+  Loader2,
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import { format } from "date-fns";
+import { ProductForm } from "../components/products/ProductForm";
+import type { Product } from "../types/product";
+import productsService from "../services/productsService";
+import { useToast } from "../components/ui/toast";
 import { useDebouncer } from "../hooks/useDebbouncer";
 
 export function Products() {
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
   const [showProductForm, setShowProductForm] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | undefined>(
+    undefined
+  );
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,16 +45,19 @@ export function Products() {
   const loadProducts = async () => {
     try {
       setIsLoading(true);
-      const response = await productsService.getProducts(currentPage, itemsPerPage);
-      setProducts(response.products || []);
-      setTotalPages(response.totalPages || 1);
-      setTotalProducts(response.totalProducts || 0);
+      const response = await productsService.getProducts(
+        currentPage,
+        itemsPerPage
+      );
+      setProducts(response.data.products || []);
+      setTotalPages(response.data.totalPages || 1);
+      setTotalProducts(response.data.totalProducts || 0);
     } catch (error) {
-      console.error('Error loading products:', error);
+      console.error("Error loading products:", error);
       toast.show({
-        title: 'Error',
-        description: 'Failed to load products',
-        type: 'error'
+        title: "Error",
+        description: "Failed to load products",
+        type: "error",
       });
     } finally {
       setIsLoading(false);
@@ -69,15 +68,15 @@ export function Products() {
     try {
       setIsLoading(true);
       const response = await productsService.searchProducts(debouncedSearch);
-      setProducts(response.products || []);
-      setTotalPages(response.totalPages || 1);
-      setTotalProducts(response.totalProducts || 0);
+      setProducts(response.data.products || []);
+      setTotalPages(response.data.totalPages || 1);
+      setTotalProducts(response.data.totalProducts || 0);
     } catch (error) {
-      console.error('Error searching products:', error);
+      console.error("Error searching products:", error);
       toast.show({
-        title: 'Error',
-        description: 'Failed to search products',
-        type: 'error'
+        title: "Error",
+        description: "Failed to search products",
+        type: "error",
       });
     } finally {
       setIsLoading(false);
@@ -99,18 +98,18 @@ export function Products() {
   const handleDeleteProduct = async (productId: string) => {
     try {
       await productsService.deleteProduct(productId);
-      setProducts(products.filter(p => p._id !== productId));
+      setProducts(products.filter((p) => p._id !== productId));
       toast.show({
-        title: 'Success',
-        description: 'Product deleted successfully',
-        type: 'success'
+        title: "Success",
+        description: "Product deleted successfully",
+        type: "success",
       });
     } catch (error) {
-      console.error('Error deleting product:', error);
+      console.error("Error deleting product:", error);
       toast.show({
-        title: 'Error',
-        description: 'Failed to delete product',
-        type: 'error'
+        title: "Error",
+        description: "Failed to delete product",
+        type: "error",
       });
     }
     setShowDeleteDialog(false);
@@ -122,41 +121,46 @@ export function Products() {
       const response = await productsService.createProduct(productData);
       setProducts([...products, response]);
       setShowProductForm(false);
-      setEditingProduct(null);
+      setEditingProduct(undefined);
       toast.show({
-        title: 'Success',
-        description: 'Product created successfully',
-        type: 'success'
+        title: "Success",
+        description: "Product created successfully",
+        type: "success",
       });
     } catch (error) {
-      console.error('Error creating product:', error);
+      console.error("Error creating product:", error);
       toast.show({
-        title: 'Error',
-        description: 'Failed to create product',
-        type: 'error'
+        title: "Error",
+        description: "Failed to create product",
+        type: "error",
       });
     }
   };
 
   const handleUpdateProduct = async (productData: any) => {
     if (!editingProduct) return;
-    
+
     try {
-      const response = await productsService.updateProduct(editingProduct._id, productData);
-      setProducts(products.map(p => p._id === editingProduct._id ? response : p));
+      const response = await productsService.updateProduct(
+        editingProduct._id,
+        productData
+      );
+      setProducts(
+        products.map((p) => (p._id === editingProduct._id ? response : p))
+      );
       setShowProductForm(false);
-      setEditingProduct(null);
+      setEditingProduct(undefined);
       toast.show({
-        title: 'Success',
-        description: 'Product updated successfully',
-        type: 'success'
+        title: "Success",
+        description: "Product updated successfully",
+        type: "success",
       });
     } catch (error) {
-      console.error('Error updating product:', error);
+      console.error("Error updating product:", error);
       toast.show({
-        title: 'Error',
-        description: 'Failed to update product',
-        type: 'error'
+        title: "Error",
+        description: "Failed to update product",
+        type: "error",
       });
     }
   };
@@ -182,7 +186,9 @@ export function Products() {
         <div className="p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Productos</h1>
+              <h1 className="text-2xl font-semibold text-gray-900">
+                Productos
+              </h1>
               <p className="mt-1 text-sm text-gray-500">
                 {totalProducts} productos en total
               </p>
@@ -190,24 +196,34 @@ export function Products() {
             <div className="flex items-center gap-2">
               <div className="bg-gray-100 rounded-lg p-1 flex items-center">
                 <button
-                  className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-white shadow' : 'hover:bg-white/50'}`}
-                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded ${
+                    viewMode === "grid"
+                      ? "bg-white shadow"
+                      : "hover:bg-white/50"
+                  }`}
+                  onClick={() => setViewMode("grid")}
                   title="Vista Cuadrícula"
                 >
                   <Grid className="w-4 h-4" />
                 </button>
                 <button
-                  className={`p-1.5 rounded ${viewMode === 'list' ? 'bg-white shadow' : 'hover:bg-white/50'}`}
-                  onClick={() => setViewMode('list')}
+                  className={`p-1.5 rounded ${
+                    viewMode === "list"
+                      ? "bg-white shadow"
+                      : "hover:bg-white/50"
+                  }`}
+                  onClick={() => setViewMode("list")}
                   title="Vista Lista"
                 >
                   <ListIcon className="w-4 h-4" />
                 </button>
               </div>
-              <Button onClick={() => {
-                setEditingProduct(null);
-                setShowProductForm(true);
-              }}>
+              <Button
+                onClick={() => {
+                  setEditingProduct(undefined);
+                  setShowProductForm(true);
+                }}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Nuevo Producto
               </Button>
@@ -225,7 +241,7 @@ export function Products() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button 
+            <Button
               variant={showFilters ? "default" : "outline"}
               onClick={() => setShowFilters(!showFilters)}
             >
@@ -265,10 +281,13 @@ export function Products() {
           <div className="flex justify-center items-center h-64">
             <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
-        ) : viewMode === 'grid' ? (
+        ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredProducts.map((product) => (
-              <div key={product._id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+              <div
+                key={product._id}
+                className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow"
+              >
                 <div className="aspect-square relative">
                   {product.imageUrl ? (
                     <img
@@ -282,14 +301,20 @@ export function Products() {
                     </div>
                   )}
                   <div className="absolute top-2 right-2">
-                    <Button variant="ghost" size="sm" className="bg-white/90 hover:bg-white">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="bg-white/90 hover:bg-white"
+                    >
                       <MoreVertical className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
                 <div className="p-4">
                   <h3 className="font-medium text-gray-900">{product.name}</h3>
-                  <p className="text-sm text-gray-500 mt-1">{product.description}</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {product.description}
+                  </p>
                   <div className="mt-2 flex items-baseline gap-2">
                     <span className="text-lg font-semibold text-gray-900">
                       ${product.unitPrice.toFixed(2)}
@@ -297,8 +322,8 @@ export function Products() {
                   </div>
                   <div className="mt-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleEditProduct(product)}
                       >
@@ -380,12 +405,12 @@ export function Products() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {format(new Date(product.updatedAt), 'dd/MM/yyyy HH:mm')}
+                      {format(new Date(product.updatedAt), "dd/MM/yyyy HH:mm")}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => handleEditProduct(product)}
                         >
@@ -431,8 +456,10 @@ export function Products() {
               <option value={50}>50 por página</option>
             </select>
             <span className="text-sm text-gray-500">
-              Mostrando {Math.min((currentPage - 1) * itemsPerPage + 1, totalProducts)} a{' '}
-              {Math.min(currentPage * itemsPerPage, totalProducts)} de {totalProducts} productos
+              Mostrando{" "}
+              {Math.min((currentPage - 1) * itemsPerPage + 1, totalProducts)} a{" "}
+              {Math.min(currentPage * itemsPerPage, totalProducts)} de{" "}
+              {totalProducts} productos
             </span>
           </div>
 
@@ -447,17 +474,19 @@ export function Products() {
               Anterior
             </Button>
             <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? "default" : "outline"}
-                  size="sm"
-                  className="min-w-[2.5rem]"
-                  onClick={() => handlePageChange(page)}
-                >
-                  {page}
-                </Button>
-              ))}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? "default" : "outline"}
+                    size="sm"
+                    className="min-w-[2.5rem]"
+                    onClick={() => handlePageChange(page)}
+                  >
+                    {page}
+                  </Button>
+                )
+              )}
             </div>
             <Button
               variant="outline"
@@ -480,7 +509,8 @@ export function Products() {
               Eliminar Producto
             </h3>
             <p className="text-gray-500 mb-4">
-              ¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer.
+              ¿Estás seguro de que quieres eliminar este producto? Esta acción
+              no se puede deshacer.
             </p>
             <div className="flex justify-end gap-3">
               <Button
@@ -508,14 +538,14 @@ export function Products() {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
-                {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
+                {editingProduct ? "Editar Producto" : "Nuevo Producto"}
               </h3>
               <ProductForm
                 product={editingProduct}
                 onSubmit={handleSubmit}
                 onCancel={() => {
                   setShowProductForm(false);
-                  setEditingProduct(null);
+                  setEditingProduct(undefined);
                 }}
               />
             </div>

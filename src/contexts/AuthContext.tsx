@@ -42,14 +42,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       purchases: {},
       quotations: {},
       whatsapp: {},
-      invoiceConfig: {
-        resolution: 0,
-        from: 0,
-        to: 0,
+      invoiceSettings: {
+        type_document_id: 0,
         prefix: "",
-        type_document_id: 9,
+        resolution: 0,
         resolution_date: "",
         technical_key: "",
+        from: 0,
+        to: 0,
         generated_to_date: 0,
         date_from: "",
         date_to: "",
@@ -152,7 +152,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await authService.logout();
       setUser(null);
       resetSettings();
       navigate("/login", { replace: true });
