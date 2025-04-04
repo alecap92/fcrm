@@ -345,8 +345,8 @@ export function ContactDetails() {
                 <div className="flex items-center space-x-3">
                   <PhoneCall className="h-5 w-5 text-gray-400" />
                   <div>
-                    <p className="text-sm text-gray-500">Phone</p>
-                    <p className="text-gray-700">{contactDetails.phone}</p>
+                    <p className="text-sm text-gray-500">Celular</p>
+                    <p className="text-gray-700">{contactDetails.mobile}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -377,9 +377,9 @@ export function ContactDetails() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
                       <p className="text-sm font-medium text-gray-500">
-                        Mobile Phone
+                        Telefono
                       </p>
-                      <p className="mt-1">{contactDetails.mobile}</p>
+                      <p className="mt-1">{contactDetails.phone}</p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-500">

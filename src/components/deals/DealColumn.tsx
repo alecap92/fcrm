@@ -3,8 +3,9 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { SortableDealCard } from "./SortableDealCard";
+
 import type { Deal } from "../../types/deal";
+import { DraggableDealCard } from "./DraggableDealCard";
 
 interface DealStage {
   _id: string;
@@ -16,28 +17,39 @@ interface DealColumnProps {
   column: DealStage;
   deals: Deal[];
   onDealClick: (deal: Deal) => void;
+  onEditDeal?: (deal: Deal) => void;
+  onViewDeal?: (deal: Deal) => void;
 }
 
-export function DealColumn({ column, deals, onDealClick }: DealColumnProps) {
+export function DealColumn({
+  column,
+  deals,
+  onEditDeal,
+  onDealClick,
+}: DealColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column._id,
     data: { type: "column" },
   });
 
-  // Ejemplo de sumatoria de montos en la columna
   const totalValue = deals.reduce((sum, deal) => sum + deal.amount, 0);
+
+  const columnStyle: React.CSSProperties = {
+    transition: "transform 0.2s ease",
+  };
 
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col h-full min-w-[320px] max-w-[320px] rounded-lg transition-all
+      className={`
+        flex flex-col h-full min-w-[320px] max-w-[320px] rounded-lg transition-all
         ${
           isOver
             ? "bg-blue-50 border-blue-300 border-2 scale-105"
             : "bg-gray-50"
         }
       `}
-      style={{ transition: "transform 0.2s ease" }}
+      style={columnStyle}
     >
       {/* Encabezado de la columna */}
       <div className="p-3 bg-white rounded-t-lg border-b">
@@ -61,19 +73,20 @@ export function DealColumn({ column, deals, onDealClick }: DealColumnProps) {
       {/* Contenido (tarjetas) */}
       <div className="flex-1 overflow-y-auto p-2 space-y-2">
         <SortableContext
-          items={deals.map((deal) => deal._id)}
+          items={deals.map((deal) => deal._id as string)}
           strategy={verticalListSortingStrategy}
         >
           {deals.map((deal) => (
-            <SortableDealCard
+            <DraggableDealCard
               key={deal._id}
               deal={deal}
-              onClick={onDealClick}
+              onDealClick={onDealClick}
+              onEdit={onEditDeal}
             />
           ))}
         </SortableContext>
 
-        {/* Zona final o “placeholder” cuando la columna está vacía */}
+        {/* Zona final o "placeholder" cuando la columna está vacía */}
         <div
           className={`
             h-20 rounded-lg flex items-center justify-center transition-all 

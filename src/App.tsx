@@ -28,8 +28,16 @@ import { Templates } from "./pages/Templates";
 import { ContactDetails } from "./pages/ContactDetails";
 import { Invoices } from "./pages/Invoices";
 import { CreateInvoice } from "./pages/CreateInvoice";
+import { useAuthStore } from "./store/authStore";
 
 function App() {
+  console.log("App - Rendering", {
+    localStorageToken: localStorage.getItem("auth_token")
+      ? "exists"
+      : "missing",
+    localStorageUser: localStorage.getItem("auth_user") ? "exists" : "missing",
+    zustandAuth: useAuthStore.getState().isAuthenticated,
+  });
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
@@ -46,11 +54,20 @@ function App() {
                 <Route path="/contacts" element={<ContactsDirectory />} />
                 <Route path="/contacts/:id" element={<ContactDetails />} />
                 <Route path="/contacts/lists" element={<ContactLists />} />
-                <Route path="/contacts/lists/new" element={<CreateContactList />} />
-                <Route path="/contacts/lists/:id" element={<CreateContactList />} />
+                <Route
+                  path="/contacts/lists/new"
+                  element={<CreateContactList />}
+                />
+                <Route
+                  path="/contacts/lists/:id"
+                  element={<CreateContactList />}
+                />
                 <Route path="/whatsapp" element={<WhatsApp />} />
                 <Route path="/mass-whatsapp" element={<WhatsAppMass />} />
-                <Route path="/mass-whatsapp/new" element={<WhatsAppMassNew />} />
+                <Route
+                  path="/mass-whatsapp/new"
+                  element={<WhatsAppMassNew />}
+                />
                 <Route path="/mass-email" element={<EmailMass />} />
                 <Route path="/mass-email/new" element={<EmailMassNew />} />
                 <Route path="/deals" element={<Deals />} />

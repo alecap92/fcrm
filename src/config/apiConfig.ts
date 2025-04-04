@@ -3,7 +3,9 @@ import axios, {
   AxiosInstance,
   AxiosRequestConfig,
   AxiosResponse,
+  InternalAxiosRequestConfig,
 } from "axios";
+import { authService } from "./authConfig";
 
 interface ApiError {
   message: string;
@@ -16,6 +18,7 @@ class ApiService {
   private api: AxiosInstance;
   private retryCount = 3;
   private retryDelay = 1000;
+  private isValidatingSession = false;
 
   private constructor() {
     this.api = axios.create({
@@ -39,10 +42,11 @@ class ApiService {
   private setupInterceptors(): void {
     // Request interceptor
     this.api.interceptors.request.use(
-      (config) => {
-        // Get token from storage
-        const token = localStorage.getItem("auth_token");
+      (config: InternalAxiosRequestConfig) => {
+        // Get token from auth service instead of directly from localStorage
+        const token = authService.getToken();
         if (token) {
+          config.headers = config.headers || {};
           config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
@@ -52,27 +56,76 @@ class ApiService {
       }
     );
 
-    // Response interceptor
+    // Response interceptor with auth handling
     this.api.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        const config = error.config;
+        const originalConfig = error.config as any;
 
-        if (!config || !config.retry) {
-          config!.retry = 0;
+        // Special handling for 401 Unauthorized errors
+        if (error.response?.status === 401 && !originalConfig?._retry) {
+          // Only attempt to refresh session once
+          originalConfig._retry = true;
+
+          // Avoid multiple simultaneous validation attempts
+          if (!this.isValidatingSession) {
+            this.isValidatingSession = true;
+
+            try {
+              console.log("Trying to validate session after 401 error");
+              // Attempt to validate the session with the server
+              await authService.validateSession();
+
+              // Get the fresh token
+              const newToken = authService.getToken();
+              if (!newToken) {
+                throw new Error("Failed to get new token");
+              }
+
+              // Update the header and retry the request
+              originalConfig.headers.Authorization = `Bearer ${newToken}`;
+              return this.api(originalConfig);
+            } catch (refreshError) {
+              console.error(
+                "Session validation failed after 401:",
+                refreshError
+              );
+              // Notify all tabs about the logout
+              window.dispatchEvent(new Event("auth:logout"));
+              return Promise.reject(this.handleError(error));
+            } finally {
+              this.isValidatingSession = false;
+            }
+          } else {
+            // If we're already validating the session, just reject
+            return Promise.reject(this.handleError(error));
+          }
         }
 
-        if (config!.retry >= this.retryCount) {
-          return Promise.reject(this.handleError(error));
+        // Handle retries for network errors or 5xx server errors
+        if (
+          (error.code === "ECONNABORTED" ||
+            error.code === "ETIMEDOUT" ||
+            (error.response?.status && error.response.status >= 500)) &&
+          !originalConfig?._retry
+        ) {
+          originalConfig._retry = 0;
         }
 
-        config!.retry += 1;
-        const delay = new Promise((resolve) =>
-          setTimeout(resolve, this.retryDelay * config!.retry)
-        );
-        await delay;
+        if (
+          originalConfig?._retry !== undefined &&
+          typeof originalConfig._retry === "number" &&
+          originalConfig._retry < this.retryCount
+        ) {
+          originalConfig._retry++;
+          const delay = new Promise((resolve) =>
+            setTimeout(resolve, this.retryDelay * originalConfig._retry)
+          );
+          await delay;
+          return this.api(originalConfig);
+        }
 
-        return this.api(config!);
+        return Promise.reject(this.handleError(error));
       }
     );
   }
@@ -112,7 +165,7 @@ class ApiService {
     }
   }
 
-  public async post<T>(url: string, data: object): Promise<T> {
+  public async post<T>(url: string, data: object = {}): Promise<T> {
     try {
       const response: AxiosResponse<T> = await this.api.post(url, data);
       return response.data;
@@ -121,7 +174,7 @@ class ApiService {
     }
   }
 
-  public async put<T>(url: string, data: object): Promise<T> {
+  public async put<T>(url: string, data: object = {}): Promise<T> {
     try {
       const response: AxiosResponse<T> = await this.api.put(url, data);
       return response.data;
@@ -135,6 +188,15 @@ class ApiService {
       const response: AxiosResponse<T> = await this.api.delete(url, {
         data: body, // El body debe ir dentro de un objeto config con la propiedad 'data'
       });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error as AxiosError);
+    }
+  }
+
+  public async patch<T>(url: string, data: object = {}): Promise<T> {
+    try {
+      const response: AxiosResponse<T> = await this.api.patch(url, data);
       return response.data;
     } catch (error) {
       throw this.handleError(error as AxiosError);

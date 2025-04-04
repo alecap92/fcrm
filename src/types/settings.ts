@@ -37,7 +37,7 @@ export interface IOrganizationSettings {
   googleMaps: any;
   masiveEmails: any;
   purchases: any;
-  quotations: any;
+  quotations: QuotationConfig;
   whatsapp: any;
   invoiceSettings: InvoiceConfig;
 }
@@ -91,8 +91,8 @@ export interface InvoiceConfig {
 
 export interface QuotationConfig {
   quotationNumber: string;
-  paymentTerms: string;
-  shippingTerms: string;
+  paymentTerms: [string];
+  shippingTerms: [string];
   notes: string;
   bgImage: string;
   footerText: string;

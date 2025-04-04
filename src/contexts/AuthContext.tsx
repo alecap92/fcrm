@@ -1,6 +1,13 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { authService } from "../config/authConfig";
+import { useAuthStore } from "../store/authStore"; // Importar Zustand store
 import { useSettingsStore } from "../store/settingsStore";
 import { useToast } from "../components/ui/toast";
 import type { User, LoginCredentials } from "../types/auth";
@@ -18,7 +25,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any | null>(authService.getUser());
+  // Usar el estado de Zustand
+  const zustandAuth = useAuthStore();
+
+  // Inicializar el estado desde la fuente más confiable (priorizar Zustand)
+  const [user, setUser] = useState<User | null>(
+    zustandAuth.user || authService.getUser()
+  );
   const [organization, setOrganization] = useState<Organization>({
     contactProperties: [],
     employees: [],
@@ -40,7 +53,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       googleMaps: {},
       masiveEmails: {},
       purchases: {},
-      quotations: {},
+      quotations: {
+        quotationNumber: "",
+        paymentTerms: [""],
+        shippingTerms: [""],
+        notes: "",
+        bgImage: "",
+        footerText: "",
+      },
       whatsapp: {},
       invoiceSettings: {
         type_document_id: 0,
@@ -60,62 +80,158 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updatedAt: "",
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState<number | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
   const { resetSettings } = useSettingsStore();
 
+  // Sincronizar el estado interno con Zustand cuando cambie
   useEffect(() => {
-    validateSession();
-    setupTokenRefresh();
-    setupStorageSync();
-  }, []);
+    setUser(zustandAuth.user);
+  }, [zustandAuth.user]);
+  // Modificar la función validateSession en AuthContext.tsx
+  const validateSession = useCallback(async () => {
+    console.log("AuthContext - validateSession start", {
+      isLoading,
+      hasUser: !!user,
+    });
 
-  const validateSession = async () => {
     try {
-      console.log("validando sesion");
+      console.log("Validando sesión...");
       setIsLoading(true);
-      const res = await authService.validateSession();
 
+      // Verificar el estado del store de Zustand antes de hacer petición API
+      const storeState = useAuthStore.getState();
+      console.log("AuthContext - Zustand state before validation", {
+        isAuthenticated: storeState.isAuthenticated,
+        hasUser: !!storeState.user,
+        hasToken: !!storeState.token,
+      });
+
+      const res = await authService.validateSession();
+      console.log("AuthContext - validateSession success", {
+        hasResponseUser: !!res.user,
+        hasResponseOrg: !!res.organization,
+      });
+
+      // Actualizar el estado local (AuthContext)
       setUser(res.user);
-      setOrganization(res.organization);
-    } catch (error) {
+      if (res.organization) {
+        setOrganization(res.organization);
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error("Session validation error:", error);
+
+      // Verificar si es un error de competencia (session already in progress)
+      if (error.message && error.message.includes("already in progress")) {
+        console.log(
+          "AuthContext - Concurrent validation error, not logging out"
+        );
+
+        // No hacer nada en caso de validaciones concurrentes
+        // Si hay datos de autenticación válidos, mantenerlos
+        if (useAuthStore.getState().isAuthenticated) {
+          console.log(
+            "AuthContext - We have valid auth data, ignoring concurrent error"
+          );
+          return true;
+        }
+      }
+
+      // Log estado actual antes de limpiar (solo para errores reales)
+      console.log("AuthContext - validateSession error, current state", {
+        localStorageToken: localStorage.getItem("auth_token")
+          ? "exists"
+          : "missing",
+        localStorageUser: localStorage.getItem("auth_user")
+          ? "exists"
+          : "missing",
+        zustandAuth: useAuthStore.getState().isAuthenticated,
+        path: location.pathname,
+      });
+
+      // Solo limpiar estado y redirigir para errores reales de autenticación
       setUser(null);
       resetSettings();
       if (location.pathname !== "/login") {
+        console.log(
+          "AuthContext - redirecting to login after validation error"
+        );
         navigate("/login", { state: { from: location.pathname } });
       }
+      return false;
     } finally {
       setIsLoading(false);
+      console.log("AuthContext - validateSession complete", {
+        isLoading: false,
+        hasUser: !!user,
+      });
     }
-  };
+  }, [location.pathname, navigate, resetSettings]);
+  // Inicialización
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const isValid = await validateSession();
+
+      if (isValid) {
+        setupTokenRefresh();
+      }
+    };
+
+    initializeAuth();
+    setupStorageSync();
+
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  }, [validateSession]);
 
   const setupTokenRefresh = () => {
-    const REFRESH_INTERVAL = 25 * 60 * 1000; // 25 minutes
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
+
+    // Verificar token cada 12 horas
+    const REFRESH_INTERVAL = 12 * 60 * 60 * 1000;
     const interval = setInterval(async () => {
       try {
-        await authService.refreshToken();
+        if (user) {
+          console.log("Verificando token...");
+          await authService.validateSession();
+        }
       } catch (error) {
-        console.error("Token refresh failed:", error);
+        console.error("Token validation failed:", error);
         await logout();
       }
     }, REFRESH_INTERVAL);
 
+    setRefreshInterval(interval);
     return () => clearInterval(interval);
   };
 
   const setupStorageSync = () => {
+    // Sincronización entre pestañas
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "auth_user") {
-        const newUser = e.newValue ? JSON.parse(e.newValue) : null;
-        setUser(newUser);
-        if (!newUser) {
-          resetSettings();
-          navigate("/login");
+        const newUserStr = e.newValue;
+        const newUser = newUserStr ? JSON.parse(newUserStr) : null;
+
+        if (JSON.stringify(user) !== newUserStr) {
+          setUser(newUser);
+          if (!newUser) {
+            resetSettings();
+            navigate("/login");
+          }
         }
       }
     };
 
+    // Manejo del evento de logout global
     const handleLogout = () => {
       setUser(null);
       resetSettings();
@@ -133,10 +249,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (credentials: LoginCredentials) => {
     try {
+      setIsLoading(true);
       const response = await authService.login(credentials);
 
+      // Los cambios en user y token ya deberían estar hechos por AuthService
+      // sólo actualizamos el organization en el contexto
       setUser(response.user);
-      setOrganization(response.organization);
+      if (response.organization) {
+        setOrganization(response.organization);
+      }
+
+      setupTokenRefresh();
 
       const from = location.state?.from || "/";
       navigate(from);
@@ -147,24 +270,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         type: "error",
       });
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const logout = async () => {
     try {
+      setIsLoading(true);
+      await authService.logout();
+
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+        setRefreshInterval(null);
+      }
+
       setUser(null);
       resetSettings();
       navigate("/login", { replace: true });
     } catch (error) {
       console.error("Logout error:", error);
-      // Still clear the session and redirect even if the API call fails
       setUser(null);
       resetSettings();
       navigate("/login", { replace: true });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

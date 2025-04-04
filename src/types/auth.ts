@@ -32,6 +32,7 @@ export interface LoginCredentials {
 }
 
 export interface AuthResponse {
+  expiresIn?: number;
   user: User;
   token: string;
   refreshToken?: string;

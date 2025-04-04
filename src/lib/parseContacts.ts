@@ -22,11 +22,13 @@ export const normalizeContact = (rawContact: any): Contact => {
     idNumber: propertyMap.idNumber || "",
     email: propertyMap.email || "", // si lo tienes en algún momento
     address: {
-      street: "",
+      street: propertyMap.address || "",
       city: propertyMap.city || "",
-      state: "",
-      country: "",
+      state: propertyMap.state || "",
+      country: propertyMap.country || "",
     },
     taxId: propertyMap.idNumber || "",
+    position: propertyMap.position || "",
+    website: propertyMap.website || "",
   };
 };

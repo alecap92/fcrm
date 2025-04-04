@@ -1,112 +1,320 @@
-import { Button } from './ui/button';
+import React, { useState } from "react";
+import { useWorkflowStore } from "../store/workflow";
 import {
-  Mail,
-  MessageSquare,
-  Globe,
-  GitBranch,
-  UserPlus,
+  Search,
   Zap,
-  Calendar,
-  CheckSquare,
-  Bot,
-  Building,
-  Tag,
+  MessageSquare,
   Clock,
-  FileText,
-  RefreshCw
-} from 'lucide-react';
-import { useWorkflowStore } from '../store/workflow';
+  BarChart2,
+  Mail,
+  Activity,
+  Filter,
+  RefreshCw,
+  Loader2,
+} from "lucide-react";
+import { Input } from "./ui/input";
 
-const nodeTypes = [
-  // Triggers
-  { type: 'deal_trigger', label: 'Deal Stage Change', icon: Building, color: 'bg-blue-500', category: 'Triggers' },
-  { type: 'webhook_trigger', label: 'WordPress Form', icon: Globe, color: 'bg-blue-500', category: 'Triggers' },
-  { type: 'contact_trigger', label: 'Contact Created', icon: UserPlus, color: 'bg-blue-500', category: 'Triggers' },
-  { type: 'task_trigger', label: 'Task Completed', icon: CheckSquare, color: 'bg-blue-500', category: 'Triggers' },
-  { type: 'date_trigger', label: 'Date (Cron)', icon: Calendar, color: 'bg-blue-500', category: 'Triggers' },
-  
-  // Handlers
-  { type: 'chatgpt', label: 'ChatGPT', icon: Bot, color: 'bg-purple-500', category: 'Handlers' },
-  { type: 'email', label: 'Send Email', icon: Mail, color: 'bg-green-500', category: 'Handlers' },
-  { type: 'webhook', label: 'Webhook', icon: Globe, color: 'bg-orange-500', category: 'Handlers' },
-  { type: 'create_deal', label: 'Create Deal', icon: Building, color: 'bg-indigo-500', category: 'Handlers' },
-  { type: 'http', label: 'HTTP Request', icon: Globe, color: 'bg-purple-500', category: 'Handlers' },
-  { type: 'condition', label: 'Condition', icon: GitBranch, color: 'bg-yellow-500', category: 'Handlers' },
-  { type: 'create_quote', label: 'Create Quote', icon: FileText, color: 'bg-pink-500', category: 'Handlers' },
-  { type: 'field_value', label: 'Field Value Changed', icon: RefreshCw, color: 'bg-cyan-500', category: 'Handlers' },
-  { type: 'tag', label: 'Tag Management', icon: Tag, color: 'bg-red-500', category: 'Handlers' },
-  { type: 'datetime', label: 'Date/Time Action', icon: Clock, color: 'bg-teal-500', category: 'Handlers' },
-];
+interface NodeItemProps {
+  type: string;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  category: string;
+}
 
-export const Sidebar = () => {
-  const { nodes, isEditMode } = useWorkflowStore();
-  const hasTrigger = nodes.some(node => node.type?.includes('trigger'));
+// Mapeo de íconos por tipo de nodo
+const getNodeIcon = (type: string) => {
+  switch (type) {
+    case "trigger":
+    case "deals_trigger":
+    case "contacts_trigger":
+    case "tasks_trigger":
+      return <Zap className="w-4 h-4" />;
+    case "webhook":
+    case "http_request":
+      return <Activity className="w-4 h-4" />;
+    case "condition":
+      return <Filter className="w-4 h-4" />;
+    case "email":
+    case "send_email":
+      return <Mail className="w-4 h-4" />;
+    case "whatsapp":
+    case "send_whatsapp":
+      return <MessageSquare className="w-4 h-4" />;
+    case "delay":
+      return <Clock className="w-4 h-4" />;
+    case "transform":
+      return <RefreshCw className="w-4 h-4" />;
+    default:
+      return <BarChart2 className="w-4 h-4" />;
+  }
+};
 
+const NodeItem: React.FC<NodeItemProps> = ({
+  type,
+  label,
+  description,
+  icon,
+  category,
+}) => {
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
-    if (!isEditMode) return;
-    if (nodeType.includes('trigger') && hasTrigger) return;
-    if (!nodeType.includes('trigger') && !hasTrigger) return;
-    
-    event.dataTransfer.setData('application/reactflow', nodeType);
-    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData("application/reactflow", nodeType);
+    event.dataTransfer.effectAllowed = "move";
   };
 
-  const groupedNodes = nodeTypes.reduce((acc, node) => {
-    if (!acc[node.category]) {
-      acc[node.category] = [];
+  const getCategoryColor = (category: string) => {
+    switch (category.toLowerCase()) {
+      case "trigger":
+        return "bg-violet-100 text-violet-800";
+      case "action":
+        return "bg-emerald-100 text-emerald-800";
+      case "condition":
+        return "bg-amber-100 text-amber-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
-    acc[node.category].push(node);
-    return acc;
-  }, {} as Record<string, typeof nodeTypes>);
+  };
 
   return (
-    <div className="w-80 bg-white border-r p-4 overflow-y-auto">
-      {!hasTrigger && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-          <p className="text-sm text-blue-700">Start by adding a trigger to your workflow</p>
+    <div
+      className="border rounded-md p-3 mb-2 cursor-grab hover:shadow-md transition-shadow bg-white"
+      onDragStart={(e) => onDragStart(e, type)}
+      draggable
+    >
+      <div className="flex items-start mb-1">
+        <div className="p-1.5 rounded mr-2 bg-gray-100">{icon}</div>
+        <div>
+          <div className="font-medium">{label}</div>
+          <div className="text-xs text-gray-500 mt-0.5">{description}</div>
         </div>
-      )}
-      {hasTrigger && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-100 rounded-lg">
-          <p className="text-sm text-green-700">Now add handlers to process your trigger</p>
-        </div>
-      )}
-      {Object.entries(groupedNodes).map(([category, nodes]) => (
-        <div key={category} className="mb-6">
-          <h2 className="text-lg font-semibold mb-3">{category}</h2>
-          <div className="grid grid-cols-2 gap-2">
-            {nodes.map(({ type, label, icon: Icon, color }) => {
-              const isTrigger = type.includes('trigger');
-              const isDisabled = (isTrigger && hasTrigger) || (!isTrigger && !hasTrigger);
+      </div>
+      <div className="mt-2">
+        <span
+          className={`text-xs px-2 py-0.5 rounded-full ${getCategoryColor(
+            category
+          )}`}
+        >
+          {category}
+        </span>
+      </div>
+    </div>
+  );
+};
 
-              return (
-                <div
-                  key={type}
-                  draggable={!isDisabled && isEditMode}
-                  onDragStart={(e) => onDragStart(e, type)}
-                  className={`
-                    group relative rounded-lg border border-gray-200 bg-white p-2
-                    ${isDisabled || !isEditMode ? 'cursor-not-allowed opacity-50' : 'cursor-move hover:border-primary hover:shadow-sm'}
-                    transition-all duration-200 ease-in-out
-                  `}
-                >
-                  <div className="flex flex-col items-center text-center gap-2">
-                    <div className={`${color} p-2 rounded-lg`}>
-                      <Icon className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="text-sm font-medium line-clamp-2">
-                      {label}
-                    </span>
-                  </div>
-                  {!isDisabled && isEditMode && (
-                    <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 rounded-lg transition-opacity" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
+export const Sidebar = () => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState<string>("all");
+
+  const {
+    availableNodeTypes,
+    isLoadingNodeTypes,
+    availableModules,
+    isLoadingModules,
+  } = useWorkflowStore();
+
+  // Convertir tipos de nodos de la API al formato que necesitamos para mostrar
+  const getNodeItems = (): NodeItemProps[] => {
+    // Si aún estamos cargando, mostrar algunos nodos estándar
+    if (isLoadingNodeTypes || availableNodeTypes.length === 0) {
+      // Nodos predeterminados mientras cargamos
+      return [
+        {
+          type: "deals_trigger",
+          label: "Deal Trigger",
+          description: "Start when deal status changes",
+          icon: getNodeIcon("deals_trigger"),
+          category: "Trigger",
+        },
+        {
+          type: "webhook",
+          label: "HTTP Request",
+          description: "Make HTTP request to external service",
+          icon: getNodeIcon("webhook"),
+          category: "Action",
+        },
+        {
+          type: "condition",
+          label: "Condition",
+          description: "Branch workflow based on conditions",
+          icon: getNodeIcon("condition"),
+          category: "Condition",
+        },
+        {
+          type: "email",
+          label: "Send Email",
+          description: "Send email notification",
+          icon: getNodeIcon("email"),
+          category: "Action",
+        },
+        {
+          type: "whatsapp",
+          label: "Send WhatsApp",
+          description: "Send WhatsApp message",
+          icon: getNodeIcon("whatsapp"),
+          category: "Action",
+        },
+        {
+          type: "delay",
+          label: "Delay",
+          description: "Wait for specified time",
+          icon: getNodeIcon("delay"),
+          category: "Action",
+        },
+        {
+          type: "transform",
+          label: "Transform Data",
+          description: "Modify data between steps",
+          icon: getNodeIcon("transform"),
+          category: "Action",
+        },
+      ];
+    }
+
+    // Convertir desde los tipos de nodos de la API
+    return availableNodeTypes.map((nodeType) => ({
+      type: nodeType.type,
+      label: nodeType.label,
+      description: nodeType.description,
+      icon: getNodeIcon(nodeType.type),
+      category: nodeType.category,
+    }));
+  };
+
+  // Obtener módulos y eventos para nodos tipo trigger
+  const getTriggerNodes = (): NodeItemProps[] => {
+    if (isLoadingModules || availableModules.length === 0) {
+      return [];
+    }
+
+    return availableModules.map((moduleEvent) => ({
+      type: `${moduleEvent.module}_trigger`,
+      label: `${moduleEvent.module}: ${moduleEvent.event}`,
+      description: moduleEvent.description,
+      icon: getNodeIcon("trigger"),
+      category: "Trigger",
+    }));
+  };
+
+  // Combinar todos los nodos
+  const allNodes = [...getNodeItems(), ...getTriggerNodes()];
+
+  // Filtrar nodos según búsqueda y categoría
+  const filteredNodes = allNodes.filter((node) => {
+    const matchesSearch =
+      node.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      node.description.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesFilter =
+      filter === "all" || node.category.toLowerCase() === filter.toLowerCase();
+
+    return matchesSearch && matchesFilter;
+  });
+
+  // Agrupar nodos por categoría
+  const groupedNodes: Record<string, NodeItemProps[]> = filteredNodes.reduce(
+    (acc, node) => {
+      const category = node.category;
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(node);
+      return acc;
+    },
+    {} as Record<string, NodeItemProps[]>
+  );
+
+  // Orden de las categorías
+  const categoryOrder = ["Trigger", "Condition", "Action"];
+  const sortedCategories = Object.keys(groupedNodes).sort(
+    (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b)
+  );
+
+  return (
+    <div className="w-64 border-r bg-gray-50 flex flex-col h-full">
+      <div className="p-4 border-b bg-white">
+        <h2 className="font-semibold mb-4">Available Nodes</h2>
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-2.5 top-2.5 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="Search nodes..."
+            className="pl-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
-      ))}
+        <div className="flex mt-3 space-x-2">
+          <button
+            className={`text-xs px-2 py-1 rounded-full ${
+              filter === "all" ? "bg-gray-200" : "bg-gray-100"
+            }`}
+            onClick={() => setFilter("all")}
+          >
+            All
+          </button>
+          <button
+            className={`text-xs px-2 py-1 rounded-full ${
+              filter === "trigger"
+                ? "bg-violet-200 text-violet-800"
+                : "bg-violet-50 text-violet-600"
+            }`}
+            onClick={() => setFilter("trigger")}
+          >
+            Triggers
+          </button>
+          <button
+            className={`text-xs px-2 py-1 rounded-full ${
+              filter === "action"
+                ? "bg-emerald-200 text-emerald-800"
+                : "bg-emerald-50 text-emerald-600"
+            }`}
+            onClick={() => setFilter("action")}
+          >
+            Actions
+          </button>
+          <button
+            className={`text-xs px-2 py-1 rounded-full ${
+              filter === "condition"
+                ? "bg-amber-200 text-amber-800"
+                : "bg-amber-50 text-amber-600"
+            }`}
+            onClick={() => setFilter("condition")}
+          >
+            Conditions
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4">
+        {isLoadingNodeTypes || isLoadingModules ? (
+          <div className="flex flex-col items-center justify-center h-32">
+            <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-2" />
+            <p className="text-sm text-gray-500">Loading available nodes...</p>
+          </div>
+        ) : filteredNodes.length === 0 ? (
+          <div className="text-center text-gray-500 mt-8">
+            No nodes found matching your search
+          </div>
+        ) : (
+          sortedCategories.map((category) => (
+            <div key={category} className="mb-6">
+              <h3 className="text-sm font-semibold mb-2 text-gray-600">
+                {category}
+              </h3>
+              {groupedNodes[category].map((node, index) => (
+                <NodeItem
+                  key={`${node.type}-${index}`}
+                  type={node.type}
+                  label={node.label}
+                  description={node.description}
+                  icon={node.icon}
+                  category={node.category}
+                />
+              ))}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 };

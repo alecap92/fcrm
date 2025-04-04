@@ -20,7 +20,7 @@ import { DealCard } from "../components/deals/DealCard";
 import { dealsService } from "../services/dealsService";
 
 // Importamos los tipos que asumo tienes en tu proyecto
-import type { Deal, DealStage } from "../types/deal";
+import type { Deal } from "../types/deal";
 
 interface DealFormData {
   name: string;
@@ -29,25 +29,6 @@ interface DealFormData {
   contact: { id: string };
   stage: string;
   fields: Array<{ field: any; value: string }>;
-}
-
-// Función para reordenar deals en la misma columna (arreglo local).
-function reorderDealsInSameColumn(
-  deals: Deal[],
-  activeId: string,
-  overId: string
-): Deal[] {
-  // Clonamos el array
-  const updated = [...deals];
-  // Buscamos los índices de los dos deals
-  const oldIndex = updated.findIndex((d) => d._id === activeId);
-  const newIndex = updated.findIndex((d) => d._id === overId);
-  if (oldIndex === -1 || newIndex === -1) return deals; // Por seguridad
-  // Extraemos el deal movido
-  const [moved] = updated.splice(oldIndex, 1);
-  // Insertamos el deal en la nueva posición
-  updated.splice(newIndex, 0, moved);
-  return updated;
 }
 
 export function Deals() {
@@ -103,7 +84,6 @@ export function Deals() {
     const { active, over } = event;
     setActiveDeal(null);
 
-    // Si no hay destino o el destino es el mismo item, no hacemos nada
     if (!over || over.id === active.id) return;
 
     const draggedDeal = deals.find((deal) => deal._id === active.id);
@@ -112,16 +92,11 @@ export function Deals() {
     if (!draggedDeal) return;
 
     // Si arrastramos sobre otra "columna"
-    // 1) Si `overDeal` existe, la columna la sacamos de overDeal.status._id
-    // 2) Si `overDeal` no existe, es probable que `over.id` sea la columna
     const targetColumn = columns.find((col) => col._id === over.id);
 
     if (targetColumn) {
       // Significa que se soltó directamente sobre la columna
-      // (no sobre una card). Si la columna es la misma, no hacemos nada.
-      if (draggedDeal.status._id === targetColumn._id) return;
-
-      // Actualizamos en backend
+      // Aquí puedes actualizar el estado del deal en el backend y en el estado local
       try {
         const updated = await dealsService.updateDealStatus(
           draggedDeal._id as string,
@@ -132,7 +107,6 @@ export function Deals() {
 
         if (!updated) throw new Error("No response");
 
-        // Actualizamos en local
         setDeals((current) =>
           current.map((deal) =>
             deal._id === draggedDeal._id
@@ -155,50 +129,36 @@ export function Deals() {
       }
     } else if (overDeal) {
       // Significa que se soltó sobre otro DealCard
-      // Revisamos si la columna de destino es distinta
-      const fromColumnId = draggedDeal.status._id;
-      const toColumnId = overDeal.status._id;
+      // Aquí puedes actualizar el estado del deal en el backend y en el estado local
+      try {
+        const updated = await dealsService.updateDealStatus(
+          draggedDeal._id as string,
+          {
+            status: overDeal.status._id,
+          }
+        );
 
-      // Si la columna es la misma => reordenamos localmente
-      if (fromColumnId === toColumnId) {
-        setDeals((prevDeals) =>
-          reorderDealsInSameColumn(
-            prevDeals,
-            active.id as string,
-            over.id as string
+        if (!updated) throw new Error("No response");
+
+        setDeals((current) =>
+          current.map((deal) =>
+            deal._id === draggedDeal._id
+              ? { ...deal, status: overDeal.status }
+              : deal
           )
         );
-      } else {
-        // Distinta columna => actualizamos la BD y el estado local
-        try {
-          const updated = await dealsService.updateDealStatus(
-            draggedDeal._id as string,
-            {
-              status: toColumnId,
-            }
-          );
-          if (!updated) throw new Error("No response");
 
-          setDeals((current) =>
-            current.map((deal) =>
-              deal._id === draggedDeal._id
-                ? { ...deal, status: overDeal.status }
-                : deal
-            )
-          );
-
-          toast.show({
-            title: "Estado actualizado",
-            description: `El negocio se movió a "${overDeal.status.name}"`,
-            type: "success",
-          });
-        } catch {
-          toast.show({
-            title: "Error",
-            description: "No se pudo actualizar el negocio",
-            type: "error",
-          });
-        }
+        toast.show({
+          title: "Estado actualizado",
+          description: `El negocio se movió a "${overDeal.status.name}"`,
+          type: "success",
+        });
+      } catch {
+        toast.show({
+          title: "Error",
+          description: "No se pudo actualizar el negocio",
+          type: "error",
+        });
       }
     }
   };

@@ -19,23 +19,32 @@ export function SortableDealCard({
 }: SortableDealCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({
-      id: deal._id,
+      id: deal._id as string,
       data: { type: "deal", deal },
     });
 
-  // Generamos el estilo para la animación del desplazamiento
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
-  // Retornamos un contenedor que wrappea la DealCard
-  // y hereda los atributos necesarios (attributes, listeners)
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (
+      !(
+        e.target instanceof HTMLButtonElement ||
+        e.target instanceof HTMLHeadingElement
+      )
+    ) {
+      onClick(deal);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      onClick={() => onClick?.(deal)}
+      className="touch-none cursor-grab active:cursor-grabbing relative z-0"
+      onClick={handleClick}
       {...attributes}
       {...listeners}
     >

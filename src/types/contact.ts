@@ -33,6 +33,7 @@ export interface Contact {
   taxId: string;
   mobile?: string;
   idType?: string;
+  website?: string;
 }
 
 export interface ContactFilters {

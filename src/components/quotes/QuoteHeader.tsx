@@ -2,19 +2,19 @@ import { Building2 } from "lucide-react";
 import { format } from "date-fns";
 import type { Organization } from "../../types/settings";
 
-interface InvoiceHeaderProps {
+interface QuoteHeaderProps {
   organization: Organization;
-  invoiceNumber: string;
+  quoteNumber: string;
   date: string;
   dueDate: string;
 }
 
-export function InvoiceHeader({
+export function QuoteHeader({
   organization,
-  invoiceNumber,
+  quoteNumber,
   date,
   dueDate,
-}: InvoiceHeaderProps) {
+}: QuoteHeaderProps) {
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
       <div className="flex justify-between items-start">
@@ -43,7 +43,7 @@ export function InvoiceHeader({
         {/* Invoice Details */}
         <div className="text-right">
           <div className="text-2xl font-bold text-gray-900 mb-2">
-            {invoiceNumber}
+            {quoteNumber || "Sin número"}
           </div>
           <div className="text-gray-600">
             <p>Fecha: {format(new Date(date), "dd/MM/yyyy")}</p>

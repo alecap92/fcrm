@@ -8,9 +8,6 @@ import type { Contact } from "../types/contact";
 import { useAuth } from "../contexts/AuthContext";
 import quotesService from "../services/quotesService";
 import { useToast } from "../components/ui/toast";
-import { InvoiceHeader } from "../components/invoices/InvoiceHeader";
-import { InvoiceItems } from "../components/invoices/InvoiceItems";
-import { InvoiceNotes } from "../components/invoices/InvoiceNotes";
 import { CustomerInfo } from "../components/invoices/CustomerInfo";
 import { InvoiceDates } from "../components/invoices/InvoiceDates";
 import { InvoiceSummary } from "../components/invoices/InvoiceSummary";
@@ -18,21 +15,51 @@ import { ContactSelectionModal } from "../components/invoices/ContactSelectionMo
 import { QuoteItems } from "../components/quotes/QuoteItems";
 import { QuotesNotes } from "../components/quotes/QuotesNotes";
 import { useLoading } from "../contexts/LoadingContext";
+import { QuoteHeader } from "../components/quotes/QuoteHeader";
 
-interface QuoteEditorProps {
-  initialQuote?: Quote;
-}
-
-export function QuoteEditor({ initialQuote }: QuoteEditorProps) {
-  const navigate = useNavigate();
+export function QuoteEditor() {
   const { organization } = useAuth();
-  const toast = useToast();
+  console.log("organization", organization.settings.quotations.quotationNumber);
+  const [quote, setQuote] = useState<Quote>({
+    quotationNumber: organization.settings.quotations.quotationNumber,
+    expirationDate: format(
+      new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      "yyyy-MM-dd"
+    ),
+    name: "",
+    status: "draft",
+    contact: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      id: "",
+      taxId: "",
+      createdAt: "",
+      updatedAt: "",
+    },
+    items: [],
+    subtotal: 0,
+    discount: 0,
+    taxes: 0,
+    total: 0,
+    observaciones: organization.settings.quotations.notes || "",
+    paymentTerms: organization.settings.quotations.paymentTerms[0] || "",
+    shippingTerms: organization.settings.quotations.shippingTerms[0] || "",
+    creationDate: format(new Date(), "yyyy-MM-dd"),
+    lastModified: format(new Date(), "yyyy-MM-dd"),
+    optionalItems: [],
+    userId: "",
+  });
+
   const { showLoading, hideLoading } = useLoading();
   const [showContactModal, setShowContactModal] = useState(false);
   const id = useParams().id;
+  const toast = useToast();
+  const navigate = useNavigate();
 
   const getQuote = async () => {
     if (id) {
+      console.log(id, "HAY ID");
       try {
         showLoading("Cargando cotización...");
         const quote = await quotesService.getQuoteById(id);
@@ -54,38 +81,14 @@ export function QuoteEditor({ initialQuote }: QuoteEditorProps) {
     getQuote();
   }, [id]);
 
-  const [quote, setQuote] = useState<Quote>(
-    initialQuote || {
-      quotationNumber: organization.settings.quotations.quotationNumber,
-      expirationDate: format(
-        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        "yyyy-MM-dd"
-      ),
-      name: "",
-      status: "draft",
-      contact: {
-        firstName: "",
-        lastName: "",
-        email: "",
-        id: "",
-        taxId: "",
-        createdAt: "",
-        updatedAt: "",
-      },
-      items: [],
-      subtotal: 0,
-      discount: 0,
-      taxes: 0,
-      total: 0,
-      observaciones: organization.settings.quotations.notes || "",
-      paymentTerms: organization.settings.quotations.paymentTerms[0] || "",
-      shippingTerms: organization.settings.quotations.shippingTerms[0] || "",
-      creationDate: format(new Date(), "yyyy-MM-dd"),
-      lastModified: format(new Date(), "yyyy-MM-dd"),
-      optionalItems: [],
-      userId: "",
+  useEffect(() => {
+    if (organization.settings.quotations.quotationNumber) {
+      setQuote((prev) => ({
+        ...prev,
+        quotationNumber: organization.settings.quotations.quotationNumber,
+      }));
     }
-  );
+  }, [organization.settings.quotations.quotationNumber]);
 
   const handleSelectContact = (contact: Contact) => {
     setQuote((prev) => ({
@@ -196,6 +199,7 @@ export function QuoteEditor({ initialQuote }: QuoteEditorProps) {
 
   const handleSave = async () => {
     try {
+      console.log("Saving quote", quote);
       const { contact } = quote;
 
       if (!contact || !contact.firstName) {
@@ -207,8 +211,6 @@ export function QuoteEditor({ initialQuote }: QuoteEditorProps) {
         });
         return;
       }
-
-      showLoading(initialQuote ? "Actualizando cotización..." : "Creando cotización...");
 
       const quoteData = {
         ...quote,
@@ -233,21 +235,21 @@ export function QuoteEditor({ initialQuote }: QuoteEditorProps) {
         observaciones: organization.settings.quotations.notes || "",
       };
 
-      if (initialQuote) {
-        await quotesService.updateQuote(initialQuote._id as string, quoteData);
-        toast.show({
-          title: "Actualizada",
-          description: "Cotización actualizada correctamente",
-          type: "success",
-        });
-      } else {
-        await quotesService.createQuote(quoteData as Quote);
-        toast.show({
-          title: "Creada",
-          description: "Cotización creada correctamente",
-          type: "success",
-        });
-      }
+      // if (initialQuote) {
+      //   await quotesService.updateQuote(initialQuote._id as string, quoteData);
+      //   toast.show({
+      //     title: "Actualizada",
+      //     description: "Cotización actualizada correctamente",
+      //     type: "success",
+      //   });
+      // } else {
+      //   await quotesService.createQuote(quoteData as Quote);
+      //   toast.show({
+      //     title: "Creada",
+      //     description: "Cotización creada correctamente",
+      //     type: "success",
+      //   });
+      // }
 
       navigate("/quotes");
     } catch (error: any) {
@@ -281,9 +283,9 @@ export function QuoteEditor({ initialQuote }: QuoteEditorProps) {
           </div>
 
           <div className="max-w-4xl mx-auto">
-            <InvoiceHeader
+            <QuoteHeader
               organization={organization}
-              invoiceNumber={quote.quotationNumber!}
+              quoteNumber={quote.quotationNumber}
               date={quote.creationDate!}
               dueDate={quote.expirationDate!}
             />
@@ -300,7 +302,7 @@ export function QuoteEditor({ initialQuote }: QuoteEditorProps) {
 
                 <QuotesNotes
                   observaciones={quote.observaciones}
-                  terms={quote.paymentTerms}
+                  terms={quote.paymentTerms[0]}
                   shippingTerms={quote.shippingTerms}
                   onNotesChange={(observaciones) =>
                     setQuote((prev) => ({ ...prev, observaciones }))
@@ -356,7 +358,7 @@ export function QuoteEditor({ initialQuote }: QuoteEditorProps) {
                   </Button>
                   <Button className="flex-1" onClick={handleSave}>
                     <Save className="w-4 h-4 mr-2" />
-                    {initialQuote ? "Actualizar" : "Crear"}
+                    Crear
                   </Button>
                 </div>
               </div>

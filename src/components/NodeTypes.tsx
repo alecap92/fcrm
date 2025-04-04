@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { Handle, Position } from 'reactflow';
-import { 
-  Mail, 
-  MessageSquare, 
-  Globe, 
-  GitBranch, 
-  UserPlus, 
+import { useState, useEffect } from "react";
+import { Handle, Position } from "reactflow";
+import {
+  Mail,
+  MessageSquare,
+  Globe,
+  GitBranch,
+  UserPlus,
   Zap,
   Calendar,
   CheckSquare,
@@ -17,35 +17,49 @@ import {
   RefreshCw,
   Trash2,
   Copy,
-  Settings
-} from 'lucide-react';
-import { NodeEditor } from './NodeEditor';
-import { useWorkflowStore } from '../store/workflow';
+  Settings,
+} from "lucide-react";
+import { NodeEditor } from "./NodeEditor";
+import { useWorkflowStore } from "../store/workflow";
 
-const baseNodeStyle = 'relative px-4 py-2 rounded-lg shadow-lg border min-w-[180px] cursor-pointer group';
+const baseNodeStyle =
+  "relative px-4 py-2 rounded-lg shadow-lg border min-w-[180px] cursor-pointer group";
 
-const NodeActions = ({ onDelete, onDuplicate, onEdit }: { 
+const NodeActions = ({
+  onDelete,
+  onDuplicate,
+  onEdit,
+}: {
   onDelete: () => void;
   onDuplicate: () => void;
   onEdit: () => void;
 }) => (
   <div className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 -mt-8 bg-white rounded-md shadow-lg p-1">
     <button
-      onClick={(e) => { e.stopPropagation(); onEdit(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onEdit();
+      }}
       className="p-1 hover:bg-gray-100 rounded"
       title="Edit"
     >
       <Settings className="w-4 h-4 text-gray-600" />
     </button>
     <button
-      onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onDuplicate();
+      }}
       className="p-1 hover:bg-gray-100 rounded"
       title="Duplicate"
     >
       <Copy className="w-4 h-4 text-gray-600" />
     </button>
     <button
-      onClick={(e) => { e.stopPropagation(); onDelete(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onDelete();
+      }}
       className="p-1 hover:bg-gray-100 rounded"
       title="Delete"
     >
@@ -54,7 +68,17 @@ const NodeActions = ({ onDelete, onDuplicate, onEdit }: {
   </div>
 );
 
-const NodeWrapper = ({ children, type, data, id }: { children: React.ReactNode, type: string, data: any, id: string }) => {
+const NodeWrapper = ({
+  children,
+  type,
+  data,
+  id,
+}: {
+  children: React.ReactNode;
+  type: string;
+  data: any;
+  id: string;
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const { deleteNode, duplicateNode } = useWorkflowStore();
 
@@ -89,34 +113,34 @@ const NodeWrapper = ({ children, type, data, id }: { children: React.ReactNode, 
 };
 
 // Trigger Nodes
-const DealTriggerNode = ({ id, data }: { id: string, data: any }) => (
-  <NodeWrapper type="deal_trigger" data={data} id={id}>
+const DealTriggerNode = ({ id, data }: { id: string; data: any }) => (
+  <NodeWrapper type="deals_trigger" data={data} id={id}>
     <Handle type="source" position={Position.Bottom} />
     <div className="flex items-center gap-2">
       <Building className="w-4 h-4" />
       <div>
         <p className="font-semibold">Deal Stage Change</p>
-        <p className="text-sm">{data.stage || 'When deal stage changes...'}</p>
+        <p className="text-sm">{data.stage || "When deal stage changes..."}</p>
       </div>
     </div>
   </NodeWrapper>
 );
 
-const WebhookTriggerNode = ({ id, data }: { id: string, data: any }) => (
+const WebhookTriggerNode = ({ id, data }: { id: string; data: any }) => (
   <NodeWrapper type="webhook_trigger" data={data} id={id}>
     <Handle type="source" position={Position.Bottom} />
     <div className="flex items-center gap-2">
       <Globe className="w-4 h-4" />
       <div>
         <p className="font-semibold">WordPress Form</p>
-        <p className="text-sm">{data.webhook || 'When form submitted...'}</p>
+        <p className="text-sm">{data.webhook || "When form submitted..."}</p>
       </div>
     </div>
   </NodeWrapper>
 );
 
-const ContactTriggerNode = ({ id, data }: { id: string, data: any }) => (
-  <NodeWrapper type="contact_trigger" data={data} id={id}>
+const ContactTriggerNode = ({ id, data }: { id: string; data: any }) => (
+  <NodeWrapper type="contacts_trigger" data={data} id={id}>
     <Handle type="source" position={Position.Bottom} />
     <div className="flex items-center gap-2">
       <UserPlus className="w-4 h-4" />
@@ -128,8 +152,8 @@ const ContactTriggerNode = ({ id, data }: { id: string, data: any }) => (
   </NodeWrapper>
 );
 
-const TaskTriggerNode = ({ id, data }: { id: string, data: any }) => (
-  <NodeWrapper type="task_trigger" data={data} id={id}>
+const TaskTriggerNode = ({ id, data }: { id: string; data: any }) => (
+  <NodeWrapper type="tasks_trigger" data={data} id={id}>
     <Handle type="source" position={Position.Bottom} />
     <div className="flex items-center gap-2">
       <CheckSquare className="w-4 h-4" />
@@ -141,21 +165,21 @@ const TaskTriggerNode = ({ id, data }: { id: string, data: any }) => (
   </NodeWrapper>
 );
 
-const DateTriggerNode = ({ id, data }: { id: string, data: any }) => (
+const DateTriggerNode = ({ id, data }: { id: string; data: any }) => (
   <NodeWrapper type="date_trigger" data={data} id={id}>
     <Handle type="source" position={Position.Bottom} />
     <div className="flex items-center gap-2">
       <Calendar className="w-4 h-4" />
       <div>
         <p className="font-semibold">Date Trigger</p>
-        <p className="text-sm">{data.cron || 'On schedule...'}</p>
+        <p className="text-sm">{data.cron || "On schedule..."}</p>
       </div>
     </div>
   </NodeWrapper>
 );
 
 // Handler Nodes
-const ChatGPTNode = ({ id, data }: { id: string, data: any }) => (
+const ChatGPTNode = ({ id, data }: { id: string; data: any }) => (
   <NodeWrapper type="chatgpt" data={data} id={id}>
     <Handle type="target" position={Position.Top} />
     <Handle type="source" position={Position.Bottom} />
@@ -163,27 +187,43 @@ const ChatGPTNode = ({ id, data }: { id: string, data: any }) => (
       <Bot className="w-4 h-4" />
       <div>
         <p className="font-semibold">ChatGPT</p>
-        <p className="text-sm">{data.prompt || 'Process with AI...'}</p>
+        <p className="text-sm">{data.prompt || "Process with AI..."}</p>
       </div>
     </div>
   </NodeWrapper>
 );
 
-const EmailNode = ({ id, data }: { id: string, data: any }) => (
-  <NodeWrapper type="email" data={data} id={id}>
-    <Handle type="target" position={Position.Top} />
-    <Handle type="source" position={Position.Bottom} />
-    <div className="flex items-center gap-2">
-      <Mail className="w-4 h-4" />
-      <div>
-        <p className="font-semibold">Send Email</p>
-        <p className="text-sm">{data.recipient || 'To: ...'}</p>
-      </div>
-    </div>
-  </NodeWrapper>
-);
+const EmailNode = ({ id, data }: { id: string; data: any }) => {
+  const { updateNode } = useWorkflowStore();
 
-const WebhookNode = ({ id, data }: { id: string, data: any }) => (
+  // Asegurarnos de que los campos requeridos estén configurados
+  useEffect(() => {
+    // Si algún campo requerido falta, actualizar el nodo con valores predeterminados
+    if (!data.to || !data.subject || !data.emailBody) {
+      updateNode(id, {
+        to: data.to || data.recipient || "{{contact.email}}",
+        subject: data.subject || "Notification",
+        emailBody: data.emailBody || "<p>Default email content</p>",
+      });
+    }
+  }, [id, data, updateNode]);
+
+  return (
+    <NodeWrapper type="email" data={data} id={id}>
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Bottom} />
+      <div className="flex items-center gap-2">
+        <Mail className="w-4 h-4" />
+        <div>
+          <p className="font-semibold">Send Email</p>
+          <p className="text-sm">To: {data.to || data.recipient || "..."}</p>
+        </div>
+      </div>
+    </NodeWrapper>
+  );
+};
+
+const WebhookNode = ({ id, data }: { id: string; data: any }) => (
   <NodeWrapper type="webhook" data={data} id={id}>
     <Handle type="target" position={Position.Top} />
     <Handle type="source" position={Position.Bottom} />
@@ -191,13 +231,13 @@ const WebhookNode = ({ id, data }: { id: string, data: any }) => (
       <Globe className="w-4 h-4" />
       <div>
         <p className="font-semibold">Webhook</p>
-        <p className="text-sm">{data.url || 'Send webhook...'}</p>
+        <p className="text-sm">{data.url || "Send webhook..."}</p>
       </div>
     </div>
   </NodeWrapper>
 );
 
-const CreateDealNode = ({ id, data }: { id: string, data: any }) => (
+const CreateDealNode = ({ id, data }: { id: string; data: any }) => (
   <NodeWrapper type="create_deal" data={data} id={id}>
     <Handle type="target" position={Position.Top} />
     <Handle type="source" position={Position.Bottom} />
@@ -211,7 +251,7 @@ const CreateDealNode = ({ id, data }: { id: string, data: any }) => (
   </NodeWrapper>
 );
 
-const HttpNode = ({ id, data }: { id: string, data: any }) => (
+const HttpNode = ({ id, data }: { id: string; data: any }) => (
   <NodeWrapper type="http" data={data} id={id}>
     <Handle type="target" position={Position.Top} />
     <Handle type="source" position={Position.Bottom} />
@@ -219,13 +259,13 @@ const HttpNode = ({ id, data }: { id: string, data: any }) => (
       <Globe className="w-4 h-4" />
       <div>
         <p className="font-semibold">HTTP Request</p>
-        <p className="text-sm">{data.url || 'Make request...'}</p>
+        <p className="text-sm">{data.url || "Make request..."}</p>
       </div>
     </div>
   </NodeWrapper>
 );
 
-const ConditionNode = ({ id, data }: { id: string, data: any }) => (
+const ConditionNode = ({ id, data }: { id: string; data: any }) => (
   <NodeWrapper type="condition" data={data} id={id}>
     <Handle type="target" position={Position.Top} />
     <Handle type="source" position={Position.Bottom} id="true" />
@@ -234,13 +274,13 @@ const ConditionNode = ({ id, data }: { id: string, data: any }) => (
       <GitBranch className="w-4 h-4" />
       <div>
         <p className="font-semibold">Condition</p>
-        <p className="text-sm">{data.condition || 'If...'}</p>
+        <p className="text-sm">{data.condition || "If..."}</p>
       </div>
     </div>
   </NodeWrapper>
 );
 
-const CreateQuoteNode = ({ id, data }: { id: string, data: any }) => (
+const CreateQuoteNode = ({ id, data }: { id: string; data: any }) => (
   <NodeWrapper type="create_quote" data={data} id={id}>
     <Handle type="target" position={Position.Top} />
     <Handle type="source" position={Position.Bottom} />
@@ -254,7 +294,7 @@ const CreateQuoteNode = ({ id, data }: { id: string, data: any }) => (
   </NodeWrapper>
 );
 
-const FieldValueNode = ({ id, data }: { id: string, data: any }) => (
+const FieldValueNode = ({ id, data }: { id: string; data: any }) => (
   <NodeWrapper type="field_value" data={data} id={id}>
     <Handle type="target" position={Position.Top} />
     <Handle type="source" position={Position.Bottom} />
@@ -262,13 +302,13 @@ const FieldValueNode = ({ id, data }: { id: string, data: any }) => (
       <RefreshCw className="w-4 h-4" />
       <div>
         <p className="font-semibold">Field Value Changed</p>
-        <p className="text-sm">{data.field || 'Update field...'}</p>
+        <p className="text-sm">{data.field || "Update field..."}</p>
       </div>
     </div>
   </NodeWrapper>
 );
 
-const TagNode = ({ id, data }: { id: string, data: any }) => (
+const TagNode = ({ id, data }: { id: string; data: any }) => (
   <NodeWrapper type="tag" data={data} id={id}>
     <Handle type="target" position={Position.Top} />
     <Handle type="source" position={Position.Bottom} />
@@ -276,13 +316,13 @@ const TagNode = ({ id, data }: { id: string, data: any }) => (
       <Tag className="w-4 h-4" />
       <div>
         <p className="font-semibold">Tag Management</p>
-        <p className="text-sm">{data.action || 'Manage tags...'}</p>
+        <p className="text-sm">{data.action || "Manage tags..."}</p>
       </div>
     </div>
   </NodeWrapper>
 );
 
-const DateTimeNode = ({ id, data }: { id: string, data: any }) => (
+const DateTimeNode = ({ id, data }: { id: string; data: any }) => (
   <NodeWrapper type="datetime" data={data} id={id}>
     <Handle type="target" position={Position.Top} />
     <Handle type="source" position={Position.Bottom} />
@@ -290,31 +330,127 @@ const DateTimeNode = ({ id, data }: { id: string, data: any }) => (
       <Clock className="w-4 h-4" />
       <div>
         <p className="font-semibold">Date/Time Action</p>
-        <p className="text-sm">{data.action || 'Process date/time...'}</p>
+        <p className="text-sm">{data.action || "Process date/time..."}</p>
       </div>
     </div>
   </NodeWrapper>
 );
 
+// Nodos adicionales para manejar otros tipos
+const WhatsappNode = ({ id, data }: { id: string; data: any }) => {
+  const { updateNode } = useWorkflowStore();
+
+  // Asegurarnos de que los campos requeridos estén configurados
+  useEffect(() => {
+    if (!data.to || !data.message) {
+      updateNode(id, {
+        to: data.to || "{{contact.phone}}",
+        message: data.message || "Default WhatsApp message",
+      });
+    }
+  }, [id, data, updateNode]);
+
+  return (
+    <NodeWrapper type="whatsapp" data={data} id={id}>
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Bottom} />
+      <div className="flex items-center gap-2">
+        <MessageSquare className="w-4 h-4" />
+        <div>
+          <p className="font-semibold">Send WhatsApp</p>
+          <p className="text-sm">To: {data.to || "..."}</p>
+        </div>
+      </div>
+    </NodeWrapper>
+  );
+};
+
+const DelayNode = ({ id, data }: { id: string; data: any }) => {
+  const { updateNode } = useWorkflowStore();
+
+  useEffect(() => {
+    if (!data.delayType || !data.duration) {
+      updateNode(id, {
+        delayType: data.delayType || "minutes",
+        duration: data.duration || 5,
+        businessHours: data.businessHours || false,
+      });
+    }
+  }, [id, data, updateNode]);
+
+  return (
+    <NodeWrapper type="delay" data={data} id={id}>
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Bottom} />
+      <div className="flex items-center gap-2">
+        <Clock className="w-4 h-4" />
+        <div>
+          <p className="font-semibold">Delay</p>
+          <p className="text-sm">
+            {data.duration || "5"} {data.delayType || "minutes"}
+          </p>
+        </div>
+      </div>
+    </NodeWrapper>
+  );
+};
+
+const TransformNode = ({ id, data }: { id: string; data: any }) => {
+  const { updateNode } = useWorkflowStore();
+
+  useEffect(() => {
+    if (!data.transformations) {
+      updateNode(id, {
+        transformations: data.transformations || [],
+      });
+    }
+  }, [id, data, updateNode]);
+
+  return (
+    <NodeWrapper type="transform" data={data} id={id}>
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Bottom} />
+      <div className="flex items-center gap-2">
+        <RefreshCw className="w-4 h-4" />
+        <div>
+          <p className="font-semibold">Transform Data</p>
+          <p className="text-sm">Modify data...</p>
+        </div>
+      </div>
+    </NodeWrapper>
+  );
+};
+
 export const nodeTypes = {
-  // Triggers
-  deal_trigger: DealTriggerNode,
+  // Triggers - adaptados a los nombres que usa el backend/sidebar
+  deals_trigger: DealTriggerNode,
+  deal_trigger: DealTriggerNode, // Alias para compatibilidad
   webhook_trigger: WebhookTriggerNode,
-  contact_trigger: ContactTriggerNode,
-  task_trigger: TaskTriggerNode,
+  contacts_trigger: ContactTriggerNode,
+  contact_trigger: ContactTriggerNode, // Alias para compatibilidad
+  tasks_trigger: TaskTriggerNode,
+  task_trigger: TaskTriggerNode, // Alias para compatibilidad
   date_trigger: DateTriggerNode,
-  
+
   // Handlers
   chatgpt: ChatGPTNode,
   email: EmailNode,
+  send_email: EmailNode, // Alias para compatibilidad con el backend
   webhook: WebhookNode,
+  http_request: WebhookNode, // Alias para compatibilidad con el backend
   create_deal: CreateDealNode,
   http: HttpNode,
   condition: ConditionNode,
   create_quote: CreateQuoteNode,
   field_value: FieldValueNode,
   tag: TagNode,
-  datetime: DateTimeNode
+  datetime: DateTimeNode,
+
+  // Nodos adicionales
+  whatsapp: WhatsappNode,
+  send_whatsapp: WhatsappNode, // Alias para compatibilidad con el backend
+  delay: DelayNode,
+  transform: TransformNode,
 };
 
 // Add the missing edgeTypes export

@@ -63,31 +63,41 @@ export function QuotesNotes({
           <label className="block text-sm font-medium text-gray-700">
             Términos de pago
           </label>
-          <textarea
+          <select
             value={localTerms}
             onChange={(e) => {
               setLocalTerms(e.target.value);
               onPaymentTermsChange(e.target.value);
             }}
-            rows={3}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
-            placeholder="Términos y condiciones de la factura..."
-          />
+          >
+            <option value="">Seleccionar</option>
+            {organization?.settings.quotations.paymentTerms.map((term) => (
+              <option key={term} value={term}>
+                {term}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Términos de envío
           </label>
-          <textarea
+          <select
             value={localShippingTerms}
             onChange={(e) => {
               setLocalShippingTerms(e.target.value);
               onShippingTermsChange(e.target.value);
             }}
-            rows={3}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
-            placeholder="Términos y condiciones de envío..."
-          />
+          >
+            <option value="">Seleccionar</option>
+            {organization?.settings.quotations.shippingTerms.map((term) => (
+              <option key={term} value={term}>
+                {term}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     </div>
