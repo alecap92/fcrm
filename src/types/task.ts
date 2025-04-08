@@ -1,5 +1,5 @@
 export interface Task {
-  id: string;
+  _id: string;
   title: string;
   description: string;
   projectId: string;
@@ -18,7 +18,7 @@ export interface Task {
   }[];
   tags: string[];
   createdAt: string;
-  responsableId: string;
+  responsibleId: string;
 }
 
 export interface Project {

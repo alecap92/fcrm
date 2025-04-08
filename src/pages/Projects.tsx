@@ -11,6 +11,7 @@ import { TaskList } from "../components/projects/TaskList";
 import { AddProjectModal } from "../components/projects/AddProjectModal";
 import { AddTaskModal } from "../components/projects/AddTaskModal";
 import { DeleteTaskModal } from "../components/projects/DeleteTaskModal";
+import { useToast } from "../components/ui/toast";
 
 export function Projects() {
   const {
@@ -49,6 +50,8 @@ export function Projects() {
   const [showTaskMenu, setShowTaskMenu] = useState<string | null>(null);
   const [initialTaskStatus, setInitialTaskStatus] = useState("todo");
 
+  const toast = useToast();
+
   // Filter tasks based on selected project and search term
   const filteredTasks = tasks.filter(
     (task) =>
@@ -75,6 +78,12 @@ export function Projects() {
       deleteTask(taskToDelete).then(() => {
         setTaskToDelete(null);
         setShowTaskMenu(null);
+
+        toast.show({
+          title: "Tarea eliminada",
+          description: "La tarea se ha eliminado correctamente.",
+          type: "success",
+        });
       });
     }
   };
@@ -156,7 +165,10 @@ export function Projects() {
     <div className="flex-1 p-6">
       <div className="flex gap-6">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex-shrink-0 w-80 flex flex-col bg-gray-100 rounded-lg">
+          <div
+            key={i}
+            className="flex-shrink-0 w-80 flex flex-col bg-gray-100 rounded-lg"
+          >
             <div className="p-3">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
@@ -169,7 +181,10 @@ export function Projects() {
             </div>
             <div className="flex-1 p-2 space-y-2">
               {[1, 2, 3].map((j) => (
-                <div key={j} className="bg-white rounded-lg shadow-sm border p-4 animate-pulse">
+                <div
+                  key={j}
+                  className="bg-white rounded-lg shadow-sm border p-4 animate-pulse"
+                >
                   <div className="h-5 w-3/4 bg-gray-200 rounded mb-2"></div>
                   <div className="h-4 w-full bg-gray-200 rounded mb-4"></div>
                   <div className="flex justify-between items-center">

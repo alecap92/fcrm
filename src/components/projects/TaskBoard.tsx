@@ -51,7 +51,7 @@ export function TaskBoard({
 
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
-    const task = tasks.find((t) => t.id === active.id);
+    const task = tasks.find((t) => t._id === active.id);
     if (task) setActiveTask(task);
   };
 
@@ -59,11 +59,11 @@ export function TaskBoard({
     const { active, over } = event;
 
     if (over) {
-      const task = tasks.find((t) => t.id === active.id);
+      const task = tasks.find((t) => t._id === active.id);
       const newStatus = over.id as Task["status"];
 
       if (task && task.status !== newStatus) {
-        moveTask(task.id, newStatus);
+        moveTask(task._id, newStatus);
       }
     }
     setActiveTask(null);
@@ -88,7 +88,7 @@ export function TaskBoard({
                   key={column.id}
                   column={column}
                   tasks={columnTasks}
-                  activeTaskId={activeTask?.id || null}
+                  activeTaskId={activeTask?._id || null}
                   onAddTask={onAddTask}
                   onTaskMenuToggle={onTaskMenuToggle}
                   showTaskMenu={showTaskMenu}

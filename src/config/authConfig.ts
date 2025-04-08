@@ -36,7 +36,6 @@ class AuthService {
           token,
           isAuthenticated: true,
         });
-        console.log("Zustand state synchronized from localStorage");
       } catch (error) {
         console.error("Error parsing user from localStorage:", error);
       }
@@ -74,15 +73,7 @@ class AuthService {
   }
 
   public async validateSession(): Promise<any> {
-    console.log("AuthService - validateSession start", {
-      inProgress: this.sessionValidationInProgress,
-      hasToken: !!this.getToken(),
-    });
-
     if (this.sessionValidationInProgress) {
-      console.log(
-        "AuthService - Rejecting: session validation already in progress"
-      );
       // Verificar si hay datos de autenticación válidos
       const zustandState = useAuthStore.getState();
 
@@ -92,9 +83,6 @@ class AuthService {
         zustandState.user &&
         zustandState.token
       ) {
-        console.log(
-          "AuthService - Returning cached auth data instead of error"
-        );
         return {
           user: zustandState.user,
           token: zustandState.token,
@@ -107,36 +95,23 @@ class AuthService {
     }
 
     this.sessionValidationInProgress = true;
-    console.log("AuthService - sessionValidationInProgress set to true");
 
     try {
       const token = this.getToken();
       if (!token) {
-        console.log("AuthService - No token available");
         throw new Error("No token available");
       }
 
       const tokenExpiry = this.getTokenExpiry();
       const now = new Date().getTime();
       if (tokenExpiry && now > tokenExpiry) {
-        console.log("Token has expired locally, attempting refresh");
         return await this.refreshToken();
       }
 
-      console.log("AuthService - Calling API verify-token");
       const response = await apiService.post<AuthResponse>(
         "/auth/verify-token",
         {}
       );
-
-      console.log("AuthService - API response received", {
-        hasUser: !!(
-          response &&
-          typeof response === "object" &&
-          "user" in response &&
-          response.user
-        ),
-      });
 
       if (
         response &&
@@ -146,24 +121,17 @@ class AuthService {
       ) {
         // Actualizar localStorage
         localStorage.setItem(this.userKey, JSON.stringify(response.user));
-        console.log("AuthService - Updated localStorage with user");
 
         // Actualizar Zustand si el usuario ha cambiado
         const currentUser = useAuthStore.getState().user;
         if (JSON.stringify(currentUser) !== JSON.stringify(response.user)) {
-          console.log("AuthService - Updating Zustand user");
           useAuthStore.setState({ user: response.user });
         }
       }
 
       return response;
     } catch (error) {
-      console.error("AuthService - Session validation error:", error);
-
       try {
-        console.log(
-          "AuthService - Attempting token refresh after validation error"
-        );
         return await this.refreshToken();
       } catch (refreshError) {
         console.error("AuthService - Refresh also failed:", refreshError);
@@ -172,7 +140,6 @@ class AuthService {
       }
     } finally {
       this.sessionValidationInProgress = false;
-      console.log("AuthService - sessionValidationInProgress set to false");
     }
   }
 

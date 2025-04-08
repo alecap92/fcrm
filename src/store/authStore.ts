@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { User } from "../types/auth";
+import { Organization } from "../types/settings";
 
 interface AuthState {
   user: User | null;
@@ -9,6 +10,8 @@ interface AuthState {
   setAuth: (user: User, token: string) => void;
   updateUser: (userData: Partial<User>) => void;
   logout: () => void;
+  organization: Organization | null;
+  setOrganization: (organization: Organization) => void;
 }
 
 // Crear un storage personalizado que se sincronice con localStorage
@@ -81,6 +84,8 @@ export const useAuthStore = create<AuthState>()(
           user: state.user ? { ...state.user, ...userData } : null,
         })),
       logout: () => set({ user: null, token: null, isAuthenticated: false }),
+      organization: null,
+      setOrganization: (organization) => set({ organization }),
     }),
     {
       name: "auth-storage",

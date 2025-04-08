@@ -28,17 +28,9 @@ import { Templates } from "./pages/Templates";
 import { ContactDetails } from "./pages/ContactDetails";
 import { Invoices } from "./pages/Invoices";
 import { CreateInvoice } from "./pages/CreateInvoice";
-import { useAuthStore } from "./store/authStore";
 import InvoiceConfiguration from "./pages/InvoiceConfiguration";
 
 function App() {
-  console.log("App - Rendering", {
-    localStorageToken: localStorage.getItem("auth_token")
-      ? "exists"
-      : "missing",
-    localStorageUser: localStorage.getItem("auth_user") ? "exists" : "missing",
-    zustandAuth: useAuthStore.getState().isAuthenticated,
-  });
   return (
     <Routes>
       <Route path="/login" element={<Login />} />

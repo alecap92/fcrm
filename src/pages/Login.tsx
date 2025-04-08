@@ -1,14 +1,21 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Building2, Mail, Lock, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { useAuth } from '../contexts/AuthContext';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  Building2,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import { useAuth } from "../contexts/AuthContext";
 
 export function Login() {
-  const navigate = useNavigate();
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,13 +27,13 @@ export function Login() {
     setIsLoading(true);
 
     try {
-      await login({ 
-        email, 
+      await login({
+        email,
         password,
-        rememberMe 
+        rememberMe,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
+      setError(err instanceof Error ? err.message : "Error al iniciar sesión");
     } finally {
       setIsLoading(false);
     }
@@ -44,7 +51,7 @@ export function Login() {
           Iniciar sesión
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          ¿No tienes una cuenta?{' '}
+          ¿No tienes una cuenta?{" "}
           <Link
             to="/register"
             className="font-medium text-action hover:text-action-hover"
@@ -111,7 +118,7 @@ export function Login() {
                 <input
                   id="password"
                   name="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
                   value={password}
@@ -174,7 +181,7 @@ export function Login() {
                     Iniciando sesión...
                   </>
                 ) : (
-                  'Iniciar sesión'
+                  "Iniciar sesión"
                 )}
               </Button>
             </div>

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Task, Column } from "../types/task";
 import projectsService from "../services/projectsService";
+import { useToast } from "../components/ui/toast";
 
 // Definición actualizada de Project basada en el uso actual
 export interface Project {
@@ -61,7 +62,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   projects: [],
   columns: [
-     {
+    {
       id: "No Iniciado",
       title: "No Iniciado",
       color: "#6B7280",
@@ -106,7 +107,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   moveTask: (taskId, newStatus) =>
     set((state) => ({
       tasks: state.tasks.map((task) =>
-        task.id === taskId ? { ...task, status: newStatus } : task
+        task._id === taskId ? { ...task, status: newStatus } : task
       ),
     })),
 
@@ -245,7 +246,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       // Asumiendo que projectsService tiene un método getTaskById
       const response = await projectsService.getTaskById(id);
       set((state) => {
-        const exists = state.tasks.some((task) => task.id === id);
+        const exists = state.tasks.some((task) => task._id === id);
         if (!exists) {
           return {
             tasks: [...state.tasks, response.data.data],
@@ -288,7 +289,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const response = await projectsService.updateTask(id, taskData);
       set((state) => ({
         tasks: state.tasks.map((task) =>
-          task.id === id ? response.data.data : task
+          task._id === id ? response.data.data : task
         ),
         isLoadingTasks: false,
       }));
@@ -306,9 +307,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     try {
       // Asumiendo que projectsService tiene un método deleteTask
       await projectsService.deleteTask(id);
+
       set((state) => ({
-        tasks: state.tasks.filter((task) => task.id !== id),
-        activeTask: state.activeTask?.id === id ? null : state.activeTask,
+        tasks: state.tasks.filter((task) => task._id !== id),
+        activeTask: state.activeTask?._id === id ? null : state.activeTask,
         isLoadingTasks: false,
       }));
     } catch (error) {

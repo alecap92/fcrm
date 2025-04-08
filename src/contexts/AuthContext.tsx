@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
   const [organization, setOrganization] = useState<Organization>({
     contactProperties: [],
-    employees: [],
+    employees: [{ _id: "2" }] as any,
     idType: "",
     address: {
       address: "",
@@ -79,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     createdAt: "",
     updatedAt: "",
   });
+
   const [isLoading, setIsLoading] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState<number | null>(null);
   const navigate = useNavigate();
@@ -92,33 +93,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [zustandAuth.user]);
   // Modificar la función validateSession en AuthContext.tsx
   const validateSession = useCallback(async () => {
-    console.log("AuthContext - validateSession start", {
-      isLoading,
-      hasUser: !!user,
-    });
-
     try {
-      console.log("Validando sesión...");
       setIsLoading(true);
 
       // Verificar el estado del store de Zustand antes de hacer petición API
-      const storeState = useAuthStore.getState();
-      console.log("AuthContext - Zustand state before validation", {
-        isAuthenticated: storeState.isAuthenticated,
-        hasUser: !!storeState.user,
-        hasToken: !!storeState.token,
-      });
 
       const res = await authService.validateSession();
-      console.log("AuthContext - validateSession success", {
-        hasResponseUser: !!res.user,
-        hasResponseOrg: !!res.organization,
-      });
 
       // Actualizar el estado local (AuthContext)
       setUser(res.user);
       if (res.organization) {
-        setOrganization(res.organization);
+        setOrganization({
+          ...res.organization,
+          employees: res.organization.employees || [],
+        });
       }
 
       return true;
@@ -127,48 +115,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Verificar si es un error de competencia (session already in progress)
       if (error.message && error.message.includes("already in progress")) {
-        console.log(
-          "AuthContext - Concurrent validation error, not logging out"
-        );
-
         // No hacer nada en caso de validaciones concurrentes
         // Si hay datos de autenticación válidos, mantenerlos
         if (useAuthStore.getState().isAuthenticated) {
-          console.log(
-            "AuthContext - We have valid auth data, ignoring concurrent error"
-          );
           return true;
         }
       }
 
       // Log estado actual antes de limpiar (solo para errores reales)
-      console.log("AuthContext - validateSession error, current state", {
-        localStorageToken: localStorage.getItem("auth_token")
-          ? "exists"
-          : "missing",
-        localStorageUser: localStorage.getItem("auth_user")
-          ? "exists"
-          : "missing",
-        zustandAuth: useAuthStore.getState().isAuthenticated,
-        path: location.pathname,
-      });
 
       // Solo limpiar estado y redirigir para errores reales de autenticación
       setUser(null);
       resetSettings();
       if (location.pathname !== "/login") {
-        console.log(
-          "AuthContext - redirecting to login after validation error"
-        );
         navigate("/login", { state: { from: location.pathname } });
       }
       return false;
     } finally {
       setIsLoading(false);
-      console.log("AuthContext - validateSession complete", {
-        isLoading: false,
-        hasUser: !!user,
-      });
     }
   }, [location.pathname, navigate, resetSettings]);
   // Inicialización
@@ -252,11 +216,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       const response = await authService.login(credentials);
 
+      console.log("Login response:", response);
+
       // Los cambios en user y token ya deberían estar hechos por AuthService
       // sólo actualizamos el organization en el contexto
+
+      console.log(response.organization.employees, "EMPLOYEES");
       setUser(response.user);
       if (response.organization) {
-        setOrganization(response.organization);
+        setOrganization({
+          ...response.organization,
+          employees: response.organization.employees || [],
+        });
       }
 
       setupTokenRefresh();

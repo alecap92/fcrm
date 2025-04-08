@@ -35,7 +35,7 @@ export function TaskList({ tasks, onDeleteTask }: TaskListProps) {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {tasks?.map((task) => (
-              <tr key={task.id} className="hover:bg-gray-50">
+              <tr key={task._id} className="hover:bg-gray-50">
                 <td className="px-6 py-4">
                   <div className="flex items-center">
                     <div>
@@ -86,7 +86,7 @@ export function TaskList({ tasks, onDeleteTask }: TaskListProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onDeleteTask(task.id)}
+                    onClick={() => onDeleteTask(task._id)}
                   >
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </Button>

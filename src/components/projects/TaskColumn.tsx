@@ -92,18 +92,18 @@ export function TaskColumn({
       </div>
       <div className="flex-1 overflow-y-auto p-2">
         <SortableContext
-          items={tasks.map((task) => task.id)}
+          items={tasks.map((task) => task._id)}
           strategy={verticalListSortingStrategy}
         >
           <div className="space-y-2">
             {tasks.map((task) => (
               <TaskItem
-                key={task.id}
+                key={task._id}
                 task={task}
-                isActive={task.id === activeTaskId}
-                showMenu={task.id === showTaskMenu}
-                onMenuToggle={() => onTaskMenuToggle(task.id)}
-                onDelete={() => onDeleteTask(task.id)}
+                isActive={task._id === activeTaskId}
+                showMenu={task._id === showTaskMenu}
+                onMenuToggle={() => onTaskMenuToggle(task._id)}
+                onDelete={() => onDeleteTask(task._id)}
               />
             ))}
           </div>

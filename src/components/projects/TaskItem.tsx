@@ -29,7 +29,7 @@ export function TaskItem({
     transition,
     isDragging: dndIsDragging,
   } = useSortable({
-    id: task.id,
+    id: task._id,
     data: {
       type: "Task",
       task,

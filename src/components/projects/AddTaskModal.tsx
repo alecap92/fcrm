@@ -35,10 +35,11 @@ export function AddTaskModal({
     dueDate: format(new Date(), "yyyy-MM-dd"),
     assignees: [],
     tags: [],
-    responsableId: "",
+    responsibleId: "",
+    _id: "",
   });
 
-  console.log(organization)
+  console.log(organization);
 
   // Update the form when props change
   useEffect(() => {
@@ -61,40 +62,42 @@ export function AddTaskModal({
       dueDate: format(new Date(), "yyyy-MM-dd"),
       assignees: [],
       tags: [],
-      responsableId: "",
+      responsibleId: "",
+      _id: "",
     });
   };
 
   const handleResponsableChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedEmployeeId = e.target.value;
-    
+
     if (selectedEmployeeId) {
       const selectedEmployee = organization.employees.find(
         (employee) => employee._id === selectedEmployeeId
       );
-      
+
       if (selectedEmployee) {
         // Create an assignee object from the selected employee
         const assignee = {
           id: selectedEmployee._id,
           name: `${selectedEmployee.firstName} ${selectedEmployee.lastName}`,
-          avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+          avatar:
+            "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
         };
-        
-        // Update the task with the responsableId and add to assignees if not already there
+
+        // Update the task with the responsibleId and add to assignees if not already there
         setNewTask({
           ...newTask,
-          responsableId: selectedEmployeeId,
-          assignees: newTask.assignees.some(a => a.id === selectedEmployeeId) 
-            ? newTask.assignees 
-            : [...newTask.assignees, assignee]
+          responsibleId: selectedEmployeeId,
+          assignees: newTask.assignees.some((a) => a.id === selectedEmployeeId)
+            ? newTask.assignees
+            : [...newTask.assignees, assignee],
         });
       }
     } else {
-      // If no employee selected, clear the responsableId
+      // If no employee selected, clear the responsibleId
       setNewTask({
         ...newTask,
-        responsableId: "",
+        responsibleId: "",
       });
     }
   };
@@ -220,7 +223,7 @@ export function AddTaskModal({
               Responsable <span className="text-red-500">*</span>
             </label>
             <select
-              value={newTask.responsableId}
+              value={newTask.responsibleId}
               onChange={handleResponsableChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
               required
