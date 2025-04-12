@@ -1,19 +1,19 @@
 import { Plus, Trash2, Search } from "lucide-react";
 import { Button } from "../ui/button";
-import type { Invoice } from "../../types/invoice";
+import { InvoiceItem } from "../../types/invoice";
 import type { Product } from "../../types/product";
 import { ProductSelectionModal } from "./ProductSelectionModal";
 import { useState } from "react";
 
 interface InvoiceItemsProps {
-  items: Invoice["items"];
+  items: InvoiceItem[];
   onAddItem: () => void;
   onUpdateItemField: (
     index: number,
-    field: keyof Invoice["items"][0],
+    field: keyof InvoiceItem,
     value: string | number
   ) => void;
-  onReplaceItem: (index: number, item: Invoice["items"][0]) => void;
+  onReplaceItem: (index: number, item: InvoiceItem) => void;
   onRemoveItem: (index: number) => void;
 }
 
@@ -31,16 +31,20 @@ export function InvoiceItems({
     if (editingItemIndex !== null) {
       const existingItem = items[editingItemIndex];
       const quantity = existingItem.quantity || 1;
-      const subtotal = quantity * product.unitPrice;
-      const taxValue = product.taxes ? (subtotal * product.taxes) / 100 : 0;
+      const unitPrice = product.unitPrice;
+      const subtotal = quantity * unitPrice;
+      const taxRate = product.taxes || 19; // Valor por defecto 19%
+      const taxValue = (subtotal * taxRate) / 100;
 
-      const updatedItem = {
+      const updatedItem: InvoiceItem = {
         ...existingItem,
         name: product.name,
         description: product.description || "",
         unitPrice: product.unitPrice,
-        tax: taxValue,
-        total: subtotal + taxValue,
+        taxes: taxRate,
+        discount: existingItem.discount || 0,
+        total: subtotal - (existingItem.discount || 0) + taxValue,
+        imageUrl: product.imageUrl || "",
       };
 
       onReplaceItem(editingItemIndex, updatedItem);
@@ -99,12 +103,8 @@ export function InvoiceItems({
                       type="number"
                       min="1"
                       value={item.quantity}
-                      onChange={(e) =>
-                        onUpdateItemField(
-                          index,
-                          "quantity",
-                          Number(e.target.value)
-                        )
+                      onChange={(e) => 
+                        onUpdateItemField(index, "quantity", Number(e.target.value))
                       }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
                     />
@@ -122,12 +122,8 @@ export function InvoiceItems({
                         min="0"
                         step="0.01"
                         value={item.unitPrice}
-                        onChange={(e) =>
-                          onUpdateItemField(
-                            index,
-                            "unitPrice",
-                            Number(e.target.value)
-                          )
+                        onChange={(e) => 
+                          onUpdateItemField(index, "unitPrice", Number(e.target.value))
                         }
                         className="block w-full pl-7 rounded-md border-gray-300 focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
                       />
@@ -148,12 +144,8 @@ export function InvoiceItems({
                         min="0"
                         step="0.01"
                         value={item.discount}
-                        onChange={(e) =>
-                          onUpdateItemField(
-                            index,
-                            "discount",
-                            Number(e.target.value)
-                          )
+                        onChange={(e) => 
+                          onUpdateItemField(index, "discount", Number(e.target.value))
                         }
                         className="block w-full pl-7 rounded-md border-gray-300 focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
                       />
@@ -161,26 +153,22 @@ export function InvoiceItems({
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
-                      Impuesto
+                      Impuesto (%)
                     </label>
                     <div className="mt-1 relative rounded-md shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-gray-500 sm:text-sm">$</span>
-                      </div>
                       <input
                         type="number"
                         min="0"
                         step="0.01"
                         value={item.taxes}
-                        onChange={(e) =>
-                          onUpdateItemField(
-                            index,
-                            "taxes",
-                            Number(e.target.value)
-                          )
+                        onChange={(e) => 
+                          onUpdateItemField(index, "taxes", Number(e.target.value))
                         }
-                        className="block w-full pl-7 rounded-md border-gray-300 focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
+                        className="block w-full rounded-md border-gray-300 focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
                       />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <span className="text-gray-500 sm:text-sm">%</span>
+                      </div>
                     </div>
                   </div>
                 </div>

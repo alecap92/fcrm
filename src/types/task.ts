@@ -3,12 +3,7 @@ export interface Task {
   title: string;
   description: string;
   projectId: string;
-  status:
-    | "No Iniciado"
-    | "En Progreso"
-    | "Completado"
-    | "Atrasado"
-    | "Cancelado";
+  status: "No Iniciado" | "En Progreso" | "Revisión" | "Completado";
   priority: "Baja" | "Media" | "Alta";
   dueDate: string;
   assignees: {

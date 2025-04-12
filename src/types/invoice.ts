@@ -1,6 +1,6 @@
 import { Contact } from "./contact";
 
-interface InvoiceItem {
+export interface InvoiceItem {
   id: string;
   description: string;
   quantity: number;
@@ -12,28 +12,94 @@ interface InvoiceItem {
   imageUrl: string;
 }
 
-export interface Invoice {
+type EmailCCItem = {
+  email: string;
+}
+
+type Customer = {
+  identification_number: number;
+  dv: any;
+  name: string;
+  phone: string;
+  address: string;
+  email: string;
+  merchant_registration: string;
+  type_document_identification_id: number;
+  type_organization_id: number;
+  type_liability_id: number;
+  municipality_id: number;
+  type_regime_id: number;
+}
+
+type PaymentForm = {
+  payment_form_id: number;
+  payment_method_id: number;
+  payment_due_date: string;
+  duration_measure: string;
+}
+
+type LegalMonetaryTotals = {
+  line_extension_amount: string;
+  tax_exclusive_amount: string;
+  tax_inclusive_amount: string;
+  payable_amount: string;
+}
+
+type TaxTotal = {
+  tax_id: number;
+  tax_amount: string;
+  percent: string;
+  taxable_amount: string;
+}
+
+type InvoiceLine = {
+  unit_measure_id: number;
+  invoiced_quantity: string;
+  line_extension_amount: string;
+  free_of_charge_indicator: boolean;
+  tax_totals: TaxTotal[];
+  description: string;
+  notes: string;
+  code: string;
+  type_item_identification_id: number;
+  price_amount: string;
+  base_quantity: string;
+}
+
+export type Invoice = {
   _id: string;
-  number: string;
-  date: string;
-  dueDate: string;
-  status: "draft" | "sent" | "paid" | "overdue" | "cancelled";
-  customer: Contact;
-  items: InvoiceItem[];
-  subtotal: number;
-  discount: number;
-  tax: number;
-  total: number;
-  notes?: string;
-  terms?: string;
-  paymentMethod?: string;
-  createdAt: string;
-  updatedAt: string;
+  number: number; // get from database
+  type_document_id: number; // hardcoded
+  date: string; //get from invoice
+  time: string;  //get from invoice
+  resolution_number: string; // get from configurationInvoice.
+  prefix: string; // get from configurationInvoice.
+  notes: string; // get from configurationInvoice.
+  disable_confirmation_text: boolean; // hardcoded
+  establishment_name: string;  // get from configurationInvoice.
+  establishment_address: string;  // get from configurationInvoice.
+  establishment_phone: string; // get from configurationInvoice.
+  establishment_municipality: number; // get from configurationInvoice.
+  establishment_email: string; // get from configurationInvoice.
+  sendmail: boolean; // hardcoded
+  sendmailtome: boolean; // hardcoded
+  send_customer_credentials: boolean; // hardcoded
+  annexes: any[]; // hardcoded
+  html_header: string; // get from configurationInvoice.
+  html_buttons: string; // get from configurationInvoice.
+  html_footer: string; // get from configurationInvoice.
+  head_note: string; // get from configurationInvoice.
+  foot_note: string; // get from configurationInvoice.
+  customer: Customer;  // get from quotation
+  payment_form: PaymentForm; // get from configurationInvoice
+  legal_monetary_totals: LegalMonetaryTotals; 
+  tax_totals: TaxTotal[];
+  invoice_lines: InvoiceLine[];
 }
 
 export interface InvoiceFilter {
   search?: string;
-  status?: Invoice["status"][];
+  status?: Invoice[];
   dateRange?: {
     start: string;
     end: string;

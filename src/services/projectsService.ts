@@ -98,6 +98,7 @@ const getTasks = async (projectId?: string): Promise<any> => {
   try {
     const url = projectId ? `/tasks?projectId=${projectId}` : "/tasks";
     const response = await apiService.get<TaskListResponse>(url);
+    console.log(response, "tasks");
     return response;
   } catch (error) {
     console.error("Error fetching tasks:", error);

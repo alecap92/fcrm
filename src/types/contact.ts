@@ -34,6 +34,7 @@ export interface Contact {
   mobile?: string;
   idType?: string;
   website?: string;
+  dv?: string | undefined;  
 }
 
 export interface ContactFilters {
@@ -93,4 +94,5 @@ export interface IContactDetails {
   price: string;
   lifeCycle: string;
   source: string;
+  dv: string;
 }

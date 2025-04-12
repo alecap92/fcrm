@@ -36,6 +36,7 @@ export function Projects() {
     createProject,
     createTask,
     deleteTask,
+    deleteProject,
   } = useTaskStore();
 
   // UI state
@@ -48,7 +49,7 @@ export function Projects() {
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [showTaskMenu, setShowTaskMenu] = useState<string | null>(null);
-  const [initialTaskStatus, setInitialTaskStatus] = useState("todo");
+  const [initialTaskStatus, setInitialTaskStatus] = useState("No Iniciado");
 
   const toast = useToast();
 
@@ -97,6 +98,22 @@ export function Projects() {
       setInitialTaskStatus(status);
     }
     setShowAddTaskModal(true);
+  };
+
+  const handleDeleteProject = (projectId: string) => {
+    if (projectId) {
+      deleteProject(projectId).then(() => {
+        if (selectedProject === projectId) {
+          setSelectedProject(null);
+        }
+        
+        toast.show({
+          title: "Proyecto eliminado",
+          description: "El proyecto se ha eliminado correctamente.",
+          type: "success",
+        });
+      });
+    }
   };
 
   // Cargar proyectos al montar el componente
@@ -259,6 +276,7 @@ export function Projects() {
           selectedProject={selectedProject}
           setSelectedProject={setSelectedProject}
           onAddProject={() => setShowAddProjectModal(true)}
+          onDeleteProject={handleDeleteProject}
         />
       )}
 

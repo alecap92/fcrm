@@ -22,6 +22,8 @@ import {
   X,
   DollarSign,
   Zap,
+  Notebook,
+  NotebookPen,
 } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 import { useState, useEffect, useRef } from "react";
@@ -70,6 +72,7 @@ const menuItems: MenuItem[] = [
         href: "/invoices",
         icon: <FileText className="w-4 h-4" />,
       },
+      
       {
         label: "Oportunidades",
         href: "/deals",

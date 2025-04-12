@@ -1,4 +1,5 @@
 import type { Invoice } from "../../types/invoice";
+import { useEffect, useState } from "react";
 
 interface InvoiceNotesProps {
   notes?: string;
@@ -10,13 +11,13 @@ interface InvoiceNotesProps {
 }
 
 export function InvoiceNotes({
-  notes,
-  terms,
-  shippingTerms,
+  notes = "",
   onNotesChange,
-  onTermsChange,
-  onShippingTermsChange,
 }: InvoiceNotesProps) {
+ 
+
+  
+
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="p-4 border-b">
@@ -30,34 +31,13 @@ export function InvoiceNotes({
           <textarea
             value={notes}
             onChange={(e) => onNotesChange(e.target.value)}
-            rows={3}
+            rows={8}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
-            placeholder="Notas adicionales para el cliente..."
+            placeholder="Notas adicionales, términos de pago y términos de envío..."
           />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Términos de pago
-          </label>
-          <textarea
-            value={terms}
-            onChange={(e) => onTermsChange(e.target.value)}
-            rows={3}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
-            placeholder="Términos y condiciones de la factura..."
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Términos de envío
-          </label>
-          <textarea
-            value={shippingTerms}
-            onChange={(e) => onShippingTermsChange(e.target.value)}
-            rows={3}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
-            placeholder="Términos y condiciones de envío..."
-          />
+          <p className="mt-2 text-xs text-gray-500">
+            Puedes separar las secciones agregando "TÉRMINOS DE PAGO:" y "TÉRMINOS DE ENVÍO:" en líneas separadas.
+          </p>
         </div>
       </div>
     </div>

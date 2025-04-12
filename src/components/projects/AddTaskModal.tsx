@@ -31,7 +31,7 @@ export function AddTaskModal({
     description: "",
     projectId: selectedProject || "",
     status: initialStatus as any,
-    priority: "Media",
+    priority: "Baja",
     dueDate: format(new Date(), "yyyy-MM-dd"),
     assignees: [],
     tags: [],
@@ -39,7 +39,7 @@ export function AddTaskModal({
     _id: "",
   });
 
-  console.log(organization);
+
 
   // Update the form when props change
   useEffect(() => {
@@ -52,6 +52,8 @@ export function AddTaskModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    console.log(newTask, "newTask");
     onSubmit(newTask);
     setNewTask({
       title: "",
@@ -173,9 +175,11 @@ export function AddTaskModal({
                 }
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
               >
+                
                 {columns.map((column) => (
-                  <option key={column.id} value={column.id}>
+                  <option key={column.id} value={column.title}>
                     {column.title}
+                    
                   </option>
                 ))}
               </select>

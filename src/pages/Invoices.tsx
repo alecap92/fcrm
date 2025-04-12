@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Plus,
   Search,
@@ -8,57 +8,20 @@ import {
   Calendar,
   Building2,
   Mail,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Send,
-  FileText,
-  Trash2,
-  Edit2,
-  Phone,
   ChevronLeft,
   ChevronRight,
   Loader2,
+  FileDown,
+  FileCode,
+  CreditCard,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
-import type { Invoice } from "../types/invoice";
 import invoiceService from "../services/invoiceService";
 import { useToast } from "../components/ui/toast";
 import { useDebouncer } from "../hooks/useDebbouncer";
-import { useAuth } from "../contexts/AuthContext";
-import InvoiceConfiguration from "./InvoiceConfiguration";
 
-const getStatusColor = (status: Invoice["status"]) => {
-  switch (status) {
-    case "paid":
-      return "bg-green-100 text-green-800";
-    case "sent":
-      return "bg-blue-100 text-blue-800";
-    case "overdue":
-      return "bg-red-100 text-red-800";
-    case "cancelled":
-      return "bg-gray-100 text-gray-800";
-    default:
-      return "bg-yellow-100 text-yellow-800";
-  }
-};
-
-const getStatusIcon = (status: Invoice["status"]) => {
-  switch (status) {
-    case "paid":
-      return <CheckCircle2 className="w-4 h-4" />;
-    case "sent":
-      return <Send className="w-4 h-4" />;
-    case "overdue":
-      return <Clock className="w-4 h-4" />;
-    case "cancelled":
-      return <XCircle className="w-4 h-4" />;
-    default:
-      return <FileText className="w-4 h-4" />;
-  }
-};
 
 export function Invoices() {
   const navigate = useNavigate();
@@ -66,29 +29,45 @@ export function Invoices() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoices, setInvoices] = useState<any>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalInvoices, setTotalInvoices] = useState(0);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   const debouncedSearch = useDebouncer(searchTerm, 500);
-  const { organization } = useAuth();
+
 
   const loadInvoices = async () => {
     try {
       setIsLoading(true);
-      const response = await invoiceService.getInvoices(
+      const response:any = await invoiceService.getInvoices(
         currentPage,
         itemsPerPage
       );
-      console.log(response);
+
+
+
       // Ensure response data exists before updating state
-      if (response) {
-        setInvoices(response.invoices);
+      if (response && response.data) {
+        // Combinar todos los documentos de diferentes tipos en un solo array
+        const allDocuments = [];
+        for (const category of response.data.data) {
+          for (const doc of category.documents) {
+            // Añadir el tipo de documento a cada documento
+            allDocuments.push({
+              ...doc,
+              documentType: category.name
+            });
+          }
+        }
+        
+        setInvoices(allDocuments);
         setTotalPages(response.totalPages || 1);
-        setTotalInvoices(response.totalInvoices || 0);
+        setTotalInvoices(response.totalInvoices || allDocuments.length || 0);
       } else {
         setInvoices([]);
         setTotalPages(1);
@@ -149,9 +128,23 @@ export function Invoices() {
     }
   }, [debouncedSearch, currentPage, itemsPerPage]);
 
+  // Cerrar el menú cuando se hace clic fuera de él
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (openMenuId && menuRefs.current[openMenuId] && !menuRefs.current[openMenuId]?.contains(event.target as Node)) {
+        setOpenMenuId(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openMenuId]);
+
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedInvoices(invoices.map((invoice) => invoice._id));
+      setSelectedInvoices(invoices.map((invoice: any) => invoice._id || invoice.id));
     } else {
       setSelectedInvoices([]);
     }
@@ -165,112 +158,65 @@ export function Invoices() {
     );
   };
 
-  const handleDeleteInvoice = async (id: string) => {
+  
+
+  const getIsValid = (invoice: any) => {
     try {
-      await invoiceService.deleteInvoice(id);
-      toast.show({
-        title: "Success",
-        description: "Invoice deleted successfully",
-        type: "success",
-      });
-      loadInvoices();
+      if (invoice.response_dian) {
+        const responseDian = typeof invoice.response_dian === 'string' 
+          ? JSON.parse(invoice.response_dian) 
+          : invoice.response_dian;
+        
+        return responseDian?.Envelope?.Body?.SendBillSyncResponse?.SendBillSyncResult?.IsValid === "true" 
+          ? "Válido" 
+          : "No válido";
+      }
+      return "Pendiente";
     } catch (error) {
-      console.error("Error deleting invoice:", error);
-      toast.show({
-        title: "Error",
-        description: "Failed to delete invoice",
-        type: "error",
-      });
+      console.error("Error parsing response_dian:", error);
+      return "Error";
     }
   };
 
-  const handleBulkDelete = async () => {
-    try {
-      await invoiceService.bulkDeleteInvoices(selectedInvoices);
-      toast.show({
-        title: "Success",
-        description: "Selected invoices deleted successfully",
-        type: "success",
-      });
-      setSelectedInvoices([]);
-      loadInvoices();
-    } catch (error) {
-      console.error("Error deleting invoices:", error);
+  const toggleMenu = (id: string) => {
+    setOpenMenuId(openMenuId === id ? null : id);
+  };
+
+  const handleDownloadPDF = (invoice: any) => {
+    // Lógica para descargar PDF
+    if (invoice.pdf) {
+      const pdfUrl = `http://148.113.175.139/api/invoice/900694948/FES-${invoice.prefix}${invoice.number}.pdf`;
+      window.open(pdfUrl, '_blank');
+    } else {
       toast.show({
         title: "Error",
-        description: "Failed to delete selected invoices",
+        description: "PDF no disponible",
         type: "error",
       });
     }
+    setOpenMenuId(null);
   };
 
-  const handleMarkAsPaid = async (id: string) => {
-    try {
-      await invoiceService.markAsPaid(id, {
-        method: "bank_transfer",
-        date: new Date().toISOString(),
-        amount: invoices.find((inv) => inv._id === id)?.total || 0,
-      });
-      toast.show({
-        title: "Success",
-        description: "Invoice marked as paid",
-        type: "success",
-      });
-      loadInvoices();
-    } catch (error) {
-      console.error("Error marking invoice as paid:", error);
+  const handleDownloadXML = (invoice: any) => {
+    // Lógica para descargar XML
+    if (invoice.xml) {
+      const xmlUrl = `http://148.113.175.139/api/invoice/900694948/FES-${invoice.prefix}${invoice.number}.xml`;
+      window.open(xmlUrl, '_blank');
+    } else {
       toast.show({
         title: "Error",
-        description: "Failed to mark invoice as paid",
+        description: "XML no disponible",
         type: "error",
       });
     }
+    setOpenMenuId(null);
   };
 
-  const handleSendInvoice = async (id: string, email: string) => {
-    try {
-      await invoiceService.sendInvoice(id, {
-        to: email,
-        subject: "Your Invoice",
-        message: "Please find your invoice attached.",
-      });
-      toast.show({
-        title: "Success",
-        description: "Invoice sent successfully",
-        type: "success",
-      });
-    } catch (error) {
-      console.error("Error sending invoice:", error);
-      toast.show({
-        title: "Error",
-        description: "Failed to send invoice",
-        type: "error",
-      });
-    }
+  const handleCreateCreditNote = (invoice: any) => {
+    // Redirigir a la página para crear una nota de crédito
+    navigate(`/invoices/credit-note/new?reference=${invoice.id || invoice._id}`);
+    setOpenMenuId(null);
   };
-
-  const handleDownloadInvoice = async (id: string) => {
-    try {
-      await invoiceService.downloadInvoice(id);
-      toast.show({
-        title: "Success",
-        description: "Invoice downloaded successfully",
-        type: "success",
-      });
-    } catch (error) {
-      console.error("Error downloading invoice:", error);
-      toast.show({
-        title: "Error",
-        description: "Failed to download invoice",
-        type: "error",
-      });
-    }
-  };
-
-  if (!organization.settings.invoiceSettings) {
-    console.log("No invoice settings found, showing configuration");
-    return <InvoiceConfiguration />;
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -280,13 +226,17 @@ export function Invoices() {
             <div>
               <h1 className="text-2xl font-semibold text-gray-900">Facturas</h1>
               <p className="mt-1 text-sm text-gray-500">
-                {totalInvoices} facturas en total
+                {totalInvoices} documentos en total
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm">
                 <Download className="w-4 h-4 mr-2" />
                 Exportar
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate("/notas-credito")}>
+                <CreditCard className="w-4 h-4 mr-2" />
+                Notas de Crédito
               </Button>
               <Button onClick={() => navigate("/invoices/new")}>
                 <Plus className="w-4 h-4 mr-2" />
@@ -366,10 +316,13 @@ export function Invoices() {
                       type="checkbox"
                       className="rounded border-gray-300 text-action focus:ring-action"
                       checked={
-                        selectedInvoices.length === (invoices?.length || 0)
+                        selectedInvoices.length === (invoices?.length || 0) && invoices.length > 0
                       }
                       onChange={handleSelectAll}
                     />
+                  </th>
+                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tipo
                   </th>
                   <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Número
@@ -392,107 +345,119 @@ export function Invoices() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-4 text-center">
+                    <td colSpan={8} className="px-6 py-4 text-center">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                     </td>
                   </tr>
                 ) : !invoices?.length ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-6 py-4 text-center text-gray-500"
                     >
-                      No se encontraron facturas
+                      No se encontraron documentos
                     </td>
                   </tr>
                 ) : (
-                  invoices.map((invoice) => (
-                    <tr key={invoice._id} className="hover:bg-gray-50">
+                  invoices.map((invoice:any) => (
+                    <tr key={invoice.id || invoice._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <input
                           type="checkbox"
                           className="rounded border-gray-300 text-action focus:ring-action"
-                          checked={selectedInvoices.includes(invoice._id)}
-                          onChange={() => handleSelectInvoice(invoice._id)}
+                          checked={selectedInvoices.includes(invoice.id || invoice._id)}
+                          onChange={() => handleSelectInvoice(invoice.id || invoice._id)}
                         />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-medium text-gray-900">
-                          {invoice.number}
+                          {invoice.documentType || invoice.type_document?.name || "Factura"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-medium text-gray-900">
+                          {invoice.prefix}{invoice.number}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
                           <div className="flex items-center text-sm font-medium text-gray-900">
                             <Building2 className="w-4 h-4 mr-1 text-gray-400" />
-                            {invoice.customer.firstName}
+                            {invoice.client.name}
                           </div>
                           <div className="flex items-center text-sm text-gray-500">
                             <Mail className="w-4 h-4 mr-1" />
-                            {invoice.customer.email}
+                            {invoice.client.phone}
                           </div>
-                          {invoice.customer.phone && (
-                            <div className="flex items-center text-sm text-gray-500">
-                              <Phone className="w-4 h-4 mr-1" />
-                              {invoice.customer.phone}
-                            </div>
-                          )}
+                        
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col text-sm text-gray-500">
                           <div className="flex items-center">
                             <Calendar className="w-4 h-4 mr-1" />
-                            {format(new Date(invoice.date), "dd/MM/yyyy")}
+                            {format(new Date(invoice.created_at), "dd/MM/yyyy")}
                           </div>
-                          <span className="text-xs">
-                            Vence:{" "}
-                            {format(new Date(invoice.dueDate), "dd/MM/yyyy")}
-                          </span>
+                         
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-medium text-gray-900">
                           ${invoice.total.toLocaleString()}
                         </span>
-                        {invoice.discount > 0 && (
-                          <div className="text-xs text-green-600">
-                            -{invoice.discount.toLocaleString()} descuento
-                          </div>
-                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`
-                          inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium
-                          ${getStatusColor(invoice.status)}
-                        `}
-                        >
-                          {getStatusIcon(invoice.status)}
-                          {invoice.status.charAt(0).toUpperCase() +
-                            invoice.status.slice(1)}
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          getIsValid(invoice) === "Válido" 
+                            ? "bg-green-100 text-green-800" 
+                            : getIsValid(invoice) === "No válido" 
+                            ? "bg-red-100 text-red-800" 
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}>
+                          {getIsValid(invoice)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate(`/invoices/${invoice._id}`)}
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => handleDeleteInvoice(invoice._id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
+                        <div className="flex items-center justify-end gap-2 relative">
+                        
+                         
+                          <div className="relative" ref={el => menuRefs.current[invoice.id || invoice._id] = el}>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => toggleMenu(invoice.id || invoice._id)}
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                            
+                            {openMenuId === (invoice.id || invoice._id) && (
+                              <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-10 border">
+                                <div className="py-1">
+                                  <button
+                                    className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 flex items-center"
+                                    onClick={() => handleDownloadPDF(invoice)}
+                                  >
+                                    <FileDown className="w-4 h-4 mr-2" />
+                                    Descargar PDF
+                                  </button>
+                                  <button
+                                    className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 flex items-center"
+                                    onClick={() => handleDownloadXML(invoice)}
+                                  >
+                                    <FileCode className="w-4 h-4 mr-2" />
+                                    Descargar XML
+                                  </button>
+                                  <button
+                                    className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 flex items-center"
+                                    onClick={() => handleCreateCreditNote(invoice)}
+                                  >
+                                    <CreditCard className="w-4 h-4 mr-2" />
+                                    Crear Nota Crédito
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -522,7 +487,7 @@ export function Invoices() {
                 Mostrando{" "}
                 {Math.min((currentPage - 1) * itemsPerPage + 1, totalInvoices)}{" "}
                 a {Math.min(currentPage * itemsPerPage, totalInvoices)} de{" "}
-                {totalInvoices} facturas
+                {totalInvoices} documentos
               </span>
             </div>
 

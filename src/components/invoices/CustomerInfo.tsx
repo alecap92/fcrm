@@ -19,7 +19,8 @@ export function CustomerInfo({
         </h2>
       </div>
       <div className="p-4">
-        {customer?.id ? (
+
+        {customer?.phone ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -50,16 +51,8 @@ export function CustomerInfo({
                 Cambiar
               </Button>
             </div>
-            {customer.address && (
-              <div className="pt-4 border-t">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">
-                  Direccion: {customer.address.street}, {customer.address.city}
-                </h4>
-                <div className="text-sm text-gray-600 not-italic">
-                  Nit: {customer.taxId}
-                </div>
-              </div>
-            )}
+           
+           
           </div>
         ) : (
           <Button

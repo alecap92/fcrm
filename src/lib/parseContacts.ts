@@ -30,5 +30,6 @@ export const normalizeContact = (rawContact: any): Contact => {
     taxId: propertyMap.idNumber || "",
     position: propertyMap.position || "",
     website: propertyMap.website || "",
+    dv: propertyMap.dv || "",
   };
 };

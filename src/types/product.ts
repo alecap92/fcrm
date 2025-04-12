@@ -1,15 +1,17 @@
-export interface Product {
-  _id: string;
+export type Product = {
+  id: string;
+  _id?: string;
   name: string;
-  description?: string;
-  unitPrice: number;
-  imageUrl?: string;
+  description: string;
+  price_amount: string;
+  unitPrice?: number;
+  code: string;
+  type_item_identification_id: number;
   taxes?: number;
-  organizationId: string;
-  userId: string;
+  organizationId?: string;
   createdAt: string;
   updatedAt: string;
-}
+};
 
 export interface ProductCategory {
   id: string;
@@ -22,7 +24,7 @@ export interface ProductCategory {
 export interface ProductFilter {
   search?: string;
   categories?: string[];
-  status?: Product['status'][];
+  status?: any;
   priceRange?: {
     min: number;
     max: number;

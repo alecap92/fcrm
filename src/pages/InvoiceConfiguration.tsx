@@ -43,6 +43,8 @@ function InvoiceConfiguration() {
     mail_username: "",
     mail_password: "",
     mail_encryption: "tls",
+    verification_number: "0",
+    id_number: "",
   });
 
   const [verificationData, setVerificationData] = useState<VerificationData>({
@@ -67,14 +69,6 @@ function InvoiceConfiguration() {
     date_from: "2019-01-19",
     date_to: "2030-01-19",
   });
-
-  const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setConfig((prev) => ({
-      ...prev,
-      [name]: e.target.type === "number" ? Number(value) : value,
-    }));
-  };
 
   const handleVerificationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -120,83 +114,6 @@ function InvoiceConfiguration() {
 
   const handleTestInvoice = () => {
     console.log("test");
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (currentStep === 1) {
-        const configResponse = await fetch("YOUR_BACKEND_URL/config", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(config),
-        });
-
-        if (!configResponse.ok) {
-          throw new Error("Failed to save configuration");
-        }
-
-        setCurrentStep(2);
-      } else if (currentStep === 2) {
-        const verificationResponse = await fetch("YOUR_BACKEND_URL/verify", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(verificationData),
-        });
-
-        if (!verificationResponse.ok) {
-          throw new Error("Verification failed");
-        }
-
-        setCurrentStep(3);
-      } else if (currentStep === 3) {
-        if (!certificateData.certificate || !certificateData.password) {
-          alert("Please provide both certificate and password");
-          return;
-        }
-
-        const formData = new FormData();
-        formData.append("certificate", certificateData.certificate);
-        formData.append("password", certificateData.password);
-
-        const certificateResponse = await fetch(
-          "YOUR_BACKEND_URL/certificate",
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
-
-        if (!certificateResponse.ok) {
-          throw new Error("Certificate upload failed");
-        }
-
-        setCurrentStep(4);
-      } else if (currentStep === 4) {
-        const resolutionResponse = await fetch("YOUR_BACKEND_URL/resolution", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(resolutionData),
-        });
-
-        if (!resolutionResponse.ok) {
-          throw new Error("Failed to save resolution data");
-        }
-
-        setCurrentStep(5);
-      } else {
-        setIsModalOpen(false);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Operation failed. Please try again.");
-    }
   };
 
   const navigateStep = (step: number) => {
@@ -370,42 +287,30 @@ function InvoiceConfiguration() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {currentStep === 1 ? (
-            <ConfigStep config={config} onChange={handleConfigChange} />
-          ) : currentStep === 2 ? (
-            <VerificationStep
-              data={verificationData}
-              onChange={handleVerificationChange}
-            />
-          ) : currentStep === 3 ? (
-            <CertificateStep
-              data={certificateData}
-              onChange={handleCertificateChange}
-              fileInputRef={fileInputRef}
-            />
-          ) : currentStep === 4 ? (
-            <ResolutionStep
-              data={resolutionData}
-              onChange={handleResolutionChange}
-            />
-          ) : (
-            <TestStep onTest={handleTestInvoice} />
-          )}
+        {currentStep === 1 ? (
+          <ConfigStep />
+        ) : currentStep === 2 ? (
+          <VerificationStep />
+        ) : currentStep === 3 ? (
+          <CertificateStep />
+        ) : currentStep === 4 ? (
+          <ResolutionStep />
+        ) : (
+          <TestStep />
+        )}
 
-          <div className="flex justify-between mt-8">
-            {currentStep > 1 && (
-              <button
-                type="button"
-                onClick={() => setCurrentStep(currentStep - 1)}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Back
-              </button>
-            )}
-          </div>
-        </form>
+        <div className="flex justify-between mt-8">
+          {currentStep > 1 && (
+            <button
+              type="button"
+              onClick={() => setCurrentStep(currentStep - 1)}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Back
+            </button>
+          )}
+        </div>
       </Modal>
     </div>
   );

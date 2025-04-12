@@ -29,6 +29,7 @@ import { ContactDetails } from "./pages/ContactDetails";
 import { Invoices } from "./pages/Invoices";
 import { CreateInvoice } from "./pages/CreateInvoice";
 import InvoiceConfiguration from "./pages/InvoiceConfiguration";
+import { NotasCredito } from "./pages/CreateCreditNote";
 
 function App() {
   return (
@@ -83,6 +84,7 @@ function App() {
                   path="/invoices/settings"
                   element={<InvoiceConfiguration />}
                 />
+                <Route path="/notas-credito" element={<NotasCredito />} />
               </Routes>
             </>
           </PrivateRoute>

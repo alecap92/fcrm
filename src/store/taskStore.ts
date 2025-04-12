@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import type { Task, Column } from "../types/task";
 import projectsService from "../services/projectsService";
-import { useToast } from "../components/ui/toast";
 
 // Definición actualizada de Project basada en el uso actual
 export interface Project {
@@ -75,22 +74,16 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       description: "Tasks ready to be worked on",
     },
     {
-      id: "Completado",
-      title: "Completado",
-      color: "#10B981",
-      description: "Tasks currently being worked on",
-    },
-    {
-      id: "Atrasado",
-      title: "Atrasado",
+      id: "Revisión",
+      title: "Revisión",
       color: "#F59E0B",
       description: "Tasks ready for review",
     },
     {
-      id: "Cancelado",
-      title: "Cancelado",
-      color: "#6366F1",
-      description: "Completed tasks",
+      id: "Completado",
+      title: "Completado",
+      color: "#10B981",
+      description: "Tasks currently being worked on",
     },
   ],
 
@@ -273,6 +266,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         tasks: [...state.tasks, response.data.data],
         isLoadingTasks: false,
       }));
+
+      get().fetchTasks(taskData.projectId);
     } catch (error) {
       console.error("Error creating task:", error);
       set({

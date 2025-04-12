@@ -67,6 +67,7 @@ export function ContactDetails() {
     createdAt: "",
     updatedAt: "",
     taxId: "",
+    dv: "",
   });
   const [deals, setDeals] = useState([
     {
@@ -163,6 +164,7 @@ export function ContactDetails() {
         { key: "country", value: updatedData.country },
         { key: "address", value: updatedData.address },
         { key: "idNumber", value: updatedData.idNumber },
+        { key: "dv", value: updatedData.dv },
       ];
 
       await contactsService.updateContact(id, {
@@ -379,7 +381,7 @@ export function ContactDetails() {
               {/* Extended Details */}
               {showDetails && (
                 <div className="mt-6 border-t pt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
                       <p className="text-sm font-medium text-gray-500">
                         Telefono
@@ -397,6 +399,12 @@ export function ContactDetails() {
                         Número de Identificación
                       </p>
                       <p className="mt-1">{contactDetails.idNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">
+                        Digito de Verificación
+                      </p>
+                      <p className="mt-1">{contactDetails.dv}</p>
                     </div>
                   </div>
                 </div>
