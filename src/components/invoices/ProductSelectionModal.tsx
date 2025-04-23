@@ -26,11 +26,14 @@ export function ProductSelectionModal({
       try {
         setIsLoading(true);
         if (debouncedSearch) {
-          const response = await productsService.searchProducts(
+                
+          const response:any = await productsService.searchProducts(
             debouncedSearch
           );
 
-          setProducts(response.data.products || []);
+
+
+          setProducts(response.data || []);
         } else {
           const response = await productsService.getProducts(1, 100);
 
@@ -105,7 +108,7 @@ export function ProductSelectionModal({
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-semibold text-gray-900">
-                        ${product.unitPrice.toLocaleString()}
+                        ${product?.unitPrice?.toLocaleString()}
                       </div>
                       {product.taxes && (
                         <div className="text-xs text-gray-500">
