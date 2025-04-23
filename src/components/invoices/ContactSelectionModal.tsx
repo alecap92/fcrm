@@ -88,7 +88,7 @@ export function ContactSelectionModal({
             <div className="space-y-2">
               {contacts.map((contact) => (
                 <button
-                  key={contact.id}
+                  key={contact._id}
                   className="w-full p-4 text-left border rounded-lg hover:bg-gray-50 transition-colors"
                   onClick={() => {
                     onSelect(contact);

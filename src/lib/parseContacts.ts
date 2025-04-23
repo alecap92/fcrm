@@ -7,7 +7,7 @@ export const normalizeContact = (rawContact: any): Contact => {
   }, {});
 
   return {
-    id: rawContact._id,
+    _id: rawContact._id,
     organizationId: rawContact.organizationId,
     createdAt: rawContact.createdAt,
     updatedAt: rawContact.updatedAt,
@@ -31,5 +31,6 @@ export const normalizeContact = (rawContact: any): Contact => {
     position: propertyMap.position || "",
     website: propertyMap.website || "",
     dv: propertyMap.dv || "",
+    idType: propertyMap.idType || "",
   };
 };

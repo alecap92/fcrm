@@ -21,6 +21,7 @@ import { dealsService } from "../services/dealsService";
 
 // Importamos los tipos que asumo tienes en tu proyecto
 import type { Deal } from "../types/deal";
+import productAcquisitionService from "../services/productAcquisitionService";
 
 interface DealFormData {
   name: string;
@@ -29,6 +30,7 @@ interface DealFormData {
   contact: { id: string };
   stage: string;
   fields: Array<{ field: any; value: string }>;
+  products: Array<{ id: string; quantity: number }>;
 }
 
 export function Deals() {
@@ -54,28 +56,32 @@ export function Deals() {
   // Agrupamos nuestros sensores
   const sensors = useSensors(pointerSensor);
 
+
+  const fetchDeals = async () => {
+    try {
+
+      const response = await dealsService.getDeals(pipelineId);
+      const statuses = await dealsService.getStatuses(pipelineId);
+
+      // Ordenamos las columnas por la propiedad 'order'
+      const orderedStatuses = [...(statuses.data || [])].sort(
+        (a, b) => a.order - b.order
+      );
+
+      setColumns(orderedStatuses);
+      setDeals(response.data || []);
+    } catch (error) {
+      console.error("Error fetching deals:", error);
+      toast.show({
+        title: "Error",
+        description: "No se pudieron cargar los negocios",
+        type: "error",
+      });
+    }
+  };
+
   useEffect(() => {
-    const fetchDeals = async () => {
-      try {
-        const response = await dealsService.getDeals(pipelineId);
-        const statuses = await dealsService.getStatuses(pipelineId);
-
-        // Ordenamos las columnas por la propiedad 'order'
-        const orderedStatuses = [...(statuses.data || [])].sort(
-          (a, b) => a.order - b.order
-        );
-
-        setColumns(orderedStatuses);
-        setDeals(response.data || []);
-      } catch (error) {
-        console.error("Error fetching deals:", error);
-        toast.show({
-          title: "Error",
-          description: "No se pudieron cargar los negocios",
-          type: "error",
-        });
-      }
-    };
+   
 
     fetchDeals();
   }, [pipelineId, toast]);
@@ -178,10 +184,12 @@ export function Deals() {
         pipeline: pipelineId,
         status: dealData.stage,
         fields: dealData.fields,
+        products: dealData.products,
       };
 
       const response = await dealsService.createDeal(form as any);
       setDeals((prev) => [...prev, response.deal]);
+    
 
       toast.show({
         title: "Negocio creado",
@@ -190,6 +198,10 @@ export function Deals() {
       });
 
       setShowCreateDealModal(false);
+      setEditingDeal(null);
+      setSelectedDeal(null);
+      setActiveDeal(null);
+      
     } catch (error) {
       console.error("Error creating deal:", error);
       toast.show({
@@ -275,7 +287,7 @@ export function Deals() {
             </Button>
           </div>
           {/* Filtros */}
-          <DealFilters onFilterChange={() => {}} setDeals={setDeals} />
+          <DealFilters onFilterChange={() => {}} setDeals={setDeals} fetchDeals={fetchDeals} />
         </div>
 
         <div className="flex-1 overflow-x-auto p-6">
@@ -293,9 +305,9 @@ export function Deals() {
               onDragEnd={handleDragEnd}
             >
               <div className="flex gap-6">
-                {columns.map((column) => {
+                {columns?.map((column) => {
                   const columnDeals = deals.filter(
-                    (deal) => deal.status._id === column._id
+                    (deal) => deal?.status?._id === column._id
                   );
 
                   return (

@@ -107,7 +107,7 @@ export function ContactsDirectory() {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedContacts(contacts.map((contact) => contact.id));
+      setSelectedContacts(contacts.map((contact) => contact._id));
     } else {
       setSelectedContacts([]);
     }
@@ -334,20 +334,20 @@ export function ContactsDirectory() {
                   </tr>
                 ) : (
                   contacts.map((contact) => (
-                    <tr key={contact.id} className="hover:bg-gray-50">
+                    <tr key={contact._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <input
                           type="checkbox"
                           className="rounded border-gray-300 text-action focus:ring-action"
-                          checked={selectedContacts.includes(contact.id)}
-                          onChange={() => handleSelectContact(contact.id)}
+                          checked={selectedContacts.includes(contact._id)}
+                          onChange={() => handleSelectContact(contact._id)}
                         />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           <button
                             className="hover:underline"
-                            onClick={() => handleViewContact(contact.id)}
+                            onClick={() => handleViewContact(contact._id)}
                           >
                             {contact.firstName} {contact.lastName}
                           </button>
@@ -411,7 +411,7 @@ export function ContactsDirectory() {
                             size="sm"
                             className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             onClick={() => {
-                              setSelectedContacts([contact.id]);
+                              setSelectedContacts([contact._id]);
                               setShowDeleteDialog(true);
                             }}
                           >

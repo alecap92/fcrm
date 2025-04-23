@@ -1,3 +1,5 @@
+import { Product, VariantId } from "./product";
+
 export interface Deal {
   _id?: string;
   title: string;
@@ -13,7 +15,27 @@ export interface Deal {
   organizationId?: string;
   pipeline: string;
   status: DealStatus;
+  dealProducts: DealProduct[];
 }
+
+export interface DealProduct {
+  _id: string;
+  acquisitionDate: string; 
+  clientId: string; 
+  createdAt: string;
+  updatedAt: string;
+  dealId: string;
+  organizationId: string;
+  priceAtAcquisition: number;
+  productId: Product;
+  quantity: number;
+  status: string;
+  tags: string; 
+  userId: string;
+  variantId: VariantId;
+}
+
+
 
 export interface DealStatus {
   _id: string;

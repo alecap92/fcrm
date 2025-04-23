@@ -58,7 +58,9 @@ class DealsService {
 
   public async searchDeals(query: string): Promise<any> {
     return apiService.get<any[]>(`${this.baseUrl}/search`, {
-      search: query,
+      params: {
+        search: query,
+      },
     });
   }
 

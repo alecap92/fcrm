@@ -91,9 +91,9 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   const renderContact = (contact: Contact) => (
     <button
-      key={contact.id}
+      key={contact._id}
       className="w-full p-4 text-left hover:bg-gray-50 flex items-center justify-between group"
-      onClick={() => handleNavigate("contacts", contact.id)}
+      onClick={() => handleNavigate("contacts", contact._id)}
     >
       <div className="flex items-center gap-4">
         <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">

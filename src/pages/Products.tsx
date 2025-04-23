@@ -22,6 +22,8 @@ import type { Product } from "../types/product";
 import productsService from "../services/productsService";
 import { useToast } from "../components/ui/toast";
 import { useDebouncer } from "../hooks/useDebbouncer";
+import { Modal } from "../components/ui/modal";
+import { ProductCard } from "../components/products/ProductCard";
 
 export function Products() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -142,7 +144,7 @@ export function Products() {
 
     try {
       const response = await productsService.updateProduct(
-        editingProduct._id,
+        editingProduct._id || "",
         productData
       );
       setProducts(
@@ -166,6 +168,8 @@ export function Products() {
   };
 
   const handleSubmit = (productData: any) => {
+   
+
     if (editingProduct) {
       handleUpdateProduct(productData);
     } else {
@@ -284,66 +288,15 @@ export function Products() {
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredProducts.map((product) => (
-              <div
+              <ProductCard
                 key={product._id}
-                className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow"
-              >
-                <div className="aspect-square relative">
-                  {product.imageUrl ? (
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="w-full h-full object-cover rounded-t-lg"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-t-lg">
-                      <Package className="w-12 h-12 text-gray-400" />
-                    </div>
-                  )}
-                  <div className="absolute top-2 right-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="bg-white/90 hover:bg-white"
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <h3 className="font-medium text-gray-900">{product.name}</h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {product.description}
-                  </p>
-                  <div className="mt-2 flex items-baseline gap-2">
-                    <span className="text-lg font-semibold text-gray-900">
-                      ${product.unitPrice.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditProduct(product)}
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => {
-                          setProductToDelete(product._id);
-                          setShowDeleteDialog(true);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                product={product}
+                onEdit={handleEditProduct}
+                onDelete={(productId) => {
+                  setProductToDelete(productId);
+                  setShowDeleteDialog(true);
+                }}
+              />
             ))}
           </div>
         ) : (
@@ -396,7 +349,7 @@ export function Products() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        ${product.unitPrice.toFixed(2)}
+                        ${product.unitPrice?.toFixed(2) || "0.00"}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -421,7 +374,7 @@ export function Products() {
                           size="sm"
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           onClick={() => {
-                            setProductToDelete(product._id);
+                            setProductToDelete(product?._id || null);
                             setShowDeleteDialog(true);
                           }}
                         >
@@ -532,26 +485,20 @@ export function Products() {
         </div>
       )}
 
-      {/* Product Form Modal */}
-      {showProductForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                {editingProduct ? "Editar Producto" : "Nuevo Producto"}
-              </h3>
-              <ProductForm
-                product={editingProduct}
-                onSubmit={handleSubmit}
-                onCancel={() => {
-                  setShowProductForm(false);
-                  setEditingProduct(undefined);
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        isOpen={showProductForm}
+        title={editingProduct ? "Editar Producto" : "Nuevo Producto"}
+        modalSize="XL"
+        onClose={() => setShowProductForm(false)}
+      >
+        <ProductForm
+          product={editingProduct}
+          onSubmit={handleSubmit}
+          onCancel={() => setShowProductForm(false)}
+          isEditing={editingProduct ? true : false}
+        />
+      </Modal>
+     
     </div>
   );
 }

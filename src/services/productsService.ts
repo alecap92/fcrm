@@ -8,49 +8,14 @@ interface ProductResponse {
   totalProducts: number;
 }
 
-interface ValidationError {
-  field: string;
-  message: string;
-}
-
-class ProductValidationError extends Error {
-  constructor(public errors: ValidationError[]) {
-    super('Product validation failed');
-    this.name = 'ProductValidationError';
-  }
-}
-
-const validateProduct = (product: Partial<Product>): ValidationError[] => {
-  const errors: ValidationError[] = [];
-
-  if (!product.name?.trim()) {
-    errors.push({ field: 'name', message: 'Product name is required' });
-  }
-
-  if (!product.sku?.trim()) {
-    errors.push({ field: 'sku', message: 'SKU is required' });
-  }
-
-  if (typeof product.price !== 'number' || product.price < 0) {
-    errors.push({ field: 'price', message: 'Price must be a positive number' });
-  }
-
-  if (typeof product.quantity !== 'number' || product.quantity < 0) {
-    errors.push({ field: 'quantity', message: 'Quantity must be a positive number' });
-  }
-
-  if (!product.category?.trim()) {
-    errors.push({ field: 'category', message: 'Category is required' });
-  }
-
-  return errors;
-};
 
 const getProducts = async (page: number = 1, limit: number = 10) => {
   try {
     const response = await apiService.get<ProductResponse>(
       `/products?page=${page}&limit=${limit}`
     );
+
+
     return response;
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -184,6 +149,17 @@ const getLowStockProducts = async (threshold: number = 10, page: number = 1, lim
   }
 };
 
+const getProductVariants = async (id: string) => {
+  try {
+    const response = await apiService.get<any>(`/products/${id}/variants`);
+    return response;
+  } catch (error) { 
+    console.error(`Error fetching product variants ${id}:`, error);
+    throw error;
+  }
+};
+
+
 const productsService = {
   getProducts,
   getProductById,
@@ -197,6 +173,7 @@ const productsService = {
   getProductsByTag,
   getOutOfStockProducts,
   getLowStockProducts,
+  getProductVariants
 };
 
 export default productsService;

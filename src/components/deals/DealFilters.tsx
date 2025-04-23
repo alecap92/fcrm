@@ -8,9 +8,10 @@ import { dealsService } from "../../services/dealsService";
 interface DealFiltersProps {
   onFilterChange: (filters: DealFilter) => void;
   setDeals: (Deals: Deal[]) => void;
+  fetchDeals: any;
 }
 
-export function DealFilters({ onFilterChange, setDeals }: DealFiltersProps) {
+export function DealFilters({ onFilterChange, setDeals, fetchDeals }: DealFiltersProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [filters, setFilters] = useState<DealFilter>({
@@ -19,6 +20,7 @@ export function DealFilters({ onFilterChange, setDeals }: DealFiltersProps) {
     tags: [],
     assignedTo: [],
     probability: [],
+    dateRange: { start: "", end: "" },
   });
 
   const debouncedSearch = useDebouncer(searchTerm, 500);
@@ -31,24 +33,21 @@ export function DealFilters({ onFilterChange, setDeals }: DealFiltersProps) {
 
   const searchDeals = async () => {
     try {
-      const response = await dealsService.searchDeals(debouncedSearch);
-      console.log(response);
-      if (response.length === 0) {
-        setDeals([]);
+      if (!debouncedSearch) {
+        fetchDeals();
         return;
       }
-
-      setDeals(response);
+      
+      const response = await dealsService.searchDeals(debouncedSearch);
+      setDeals(response.data || []);
     } catch (error) {
-      console.error("Error fetching filtered deals:", error);
+      console.error("Error fetching deals:", error);
+      setDeals([]);
     }
   };
 
   useEffect(() => {
-    if (debouncedSearch) {
-      console.log("Search term changed:", debouncedSearch);
-      searchDeals();
-    }
+    searchDeals();
   }, [debouncedSearch]);
 
   const activeFiltersCount = Object.values(filters).filter((value) =>
@@ -198,7 +197,7 @@ export function DealFilters({ onFilterChange, setDeals }: DealFiltersProps) {
                     onChange={(e) =>
                       handleFilterChange({
                         dateRange: {
-                          ...filters.dateRange,
+                          ...filters.dateRange || { end: "" },
                           start: e.target.value,
                         },
                       })
@@ -216,7 +215,7 @@ export function DealFilters({ onFilterChange, setDeals }: DealFiltersProps) {
                     onChange={(e) =>
                       handleFilterChange({
                         dateRange: {
-                          ...filters.dateRange,
+                          ...filters.dateRange || { start: "" },
                           end: e.target.value,
                         },
                       })

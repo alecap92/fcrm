@@ -153,12 +153,12 @@ export function CreateInvoice() {
     const customer = {
       identification_number: parseInt(contact.taxId || "0"),
       dv: contact.dv, 
-      name: `${contact.firstName} ${contact.lastName}`.trim(),
+      name: `${contact.companyName}`.trim(),
       phone: contact.phone || "",
       address: contact.address?.street || "",
       email: contact.email || "",
       merchant_registration: "0000000-00", 
-      type_document_identification_id: 6, 
+      type_document_identification_id: contact.idType, 
       type_organization_id: 1, 
       type_liability_id: 7, 
       municipality_id: 822, 
@@ -328,7 +328,7 @@ export function CreateInvoice() {
       
       // Validar la factura antes de enviarla
       validateInvoice(completeInvoice);
-
+      console.log("completeInvoice", completeInvoice);
       await createInvoice(completeInvoice as Omit<Invoice, '_id' | 'createdAt' | 'updatedAt'>);
 
       toast.show({
@@ -337,7 +337,7 @@ export function CreateInvoice() {
         type: "success",
       });
 
-      navigate("/invoices");
+      // navigate("/invoices");
     } catch (error: any) {
       console.error("Error al crear factura:", error);
 

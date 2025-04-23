@@ -29,6 +29,7 @@ import type { Quote } from "../types/quote";
 import quotesService from "../services/quotesService";
 import { useDebouncer } from "../hooks/useDebbouncer";
 import { useLoading } from "../contexts/LoadingContext";
+import { useToast } from "../components/ui/toast";
 
 const getStatusColor = (status: Quote["status"]) => {
   switch (status) {
@@ -83,6 +84,7 @@ export function Quotes() {
   const [bulkDeleteConfirmation, setBulkDeleteConfirmation] = useState(false);
 
   const debouncedSearch = useDebouncer(searchTerm, 500);
+  const toast = useToast();
 
   const loadQuotes = async () => {
     try {
@@ -199,6 +201,42 @@ export function Quotes() {
     } finally {
       hideLoading();
       setBulkDeleteConfirmation(false);
+    }
+  };
+
+  const handleSendQuote = async (quoteNumber: string, email: string) => {
+    try {
+      showLoading("Enviando cotización...");
+
+      if (!email) {
+        toast.show({
+          title: "Error",
+          description: "No se puede enviar la cotización sin un correo válido",
+          type: "error",
+        });
+        return;
+      }
+
+      if(!quoteNumber) {
+        toast.show({
+          title: "Error",
+          description: "No se puede enviar la cotización sin un número de cotización",
+          type: "error",
+        });
+        return;
+      }
+
+      await quotesService.sendQuote({
+        quotationNumber: quoteNumber,
+        to: email, 
+        subject: "Cotización de manillas",
+        templateId: "2",
+        from: "ventas@manillasdecontrol.com",
+      });
+    } catch (error) {
+      console.error("Error sending quote:", error);
+    } finally { 
+      hideLoading();
     }
   };
 
@@ -435,6 +473,15 @@ export function Quotes() {
                               }
                             >
                               <Printer className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                handleSendQuote(quote.quotationNumber, quote.contactId.email)
+                              }
+                            >
+                              <Mail className="w-4 h-4" />
                             </Button>
                           </div>
                         </td>

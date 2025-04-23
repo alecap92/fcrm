@@ -1,20 +1,34 @@
 export interface Chat {
-  id: string;
+  _id: string;
+  contact: string;
   name: string;
-  avatar: string;
+  contactId?: string;
   lastMessage: string;
-  timestamp: string;
-  unread: number;
-  isOnline: boolean;
+  lastMessageTime: number;
+  unreadCount: number;
+  possibleName: string;
 }
 
 export interface Message {
-  id: string;
-  content: string;
+  _id: string;
+  user: string;
+  organization: string;
+  from: string;
+  to: string;
+  message: string;
+  mediaUrl: string | null;
+  mediaId: string;
   timestamp: string;
-  sender: 'me' | 'them';
-  status: 'sent' | 'delivered' | 'read';
+  type: string;
+  direction: 'incoming' | 'outgoing';
+  isRead: boolean;
+  possibleName: string;
+  replyToMessage: string | null;
+  messageId: string;
+  reactions: any[];
 }
+
+
 
 export interface QuickResponse {
   id: string;

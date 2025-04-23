@@ -1,8 +1,10 @@
+import axios from "axios";
 import { apiService } from "../config/apiConfig";
 import type {
   Contact,
   PaginationParams,
   PaginatedResponse,
+  Activity,
 } from "../types/contact";
 
 class ContactsService {
@@ -85,6 +87,31 @@ class ContactsService {
       `${this.baseUrl}/filter`,
       filters
     );
+  }
+
+  public async getActivities(contactId: string): Promise<any> {
+    return apiService.get(`/activities/${contactId}`);
+  }
+
+  public async createActivity(activity: Activity): Promise<any> {
+    return apiService.post(`/activities`, activity);
+  }
+
+  public async updateActivity(activityId: string, activity: Activity): Promise<any> {
+    console.log(activityId);
+    return apiService.put(`/activities/${activityId}`, activity);
+  }
+
+  public async deleteActivity(activityId: string): Promise<any> {
+    return apiService.delete(`/activities/${activityId}`);
+  }
+
+  public async uploadDocument(formData: FormData): Promise<any> {
+    return axios.post(`${import.meta.env.VITE_API_BASE_URL}/contact-files`, formData);
+  }
+
+  public async deleteFile(contactId: string, fileId: string): Promise<any> {
+    return apiService.delete(`${import.meta.env.VITE_API_BASE_URL}/contact-files/${contactId}/${fileId}`);
   }
 }
 

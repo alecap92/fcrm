@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, KeyboardEvent } from 'react';
 import { 
   X, 
   Minus,
@@ -13,18 +13,53 @@ import { Button } from '../ui/button';
 
 interface ComposeEmailProps {
   onClose: () => void;
+  handleSendEmail: (invoice: any, form: {to: string[], subject: string, content: string}) => void;
+  selectedInvoice?: any;
 }
 
-export function ComposeEmail({ onClose }: ComposeEmailProps) {
+export function ComposeEmail({ onClose, handleSendEmail, selectedInvoice }: ComposeEmailProps) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
-  const [to, setTo] = useState('');
+  const [recipients, setRecipients] = useState<string[]>([]);
+  const [currentInput, setCurrentInput] = useState('');
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
 
   const handleSend = () => {
-    // Send email logic here
-    onClose();
+    if (selectedInvoice) {
+      handleSendEmail(selectedInvoice, {to: recipients, subject, content});
+      onClose();
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    // Si se presiona Tab o Coma (,)
+    if ((e.key === 'Tab' || e.key === ',') && currentInput.trim()) {
+      e.preventDefault();
+      addRecipient();
+    }
+    // Si se presiona Enter
+    else if (e.key === 'Enter' && currentInput.trim()) {
+      e.preventDefault();
+      addRecipient();
+    }
+    // Si se presiona Backspace y no hay texto en el input, eliminar el último destinatario
+    else if (e.key === 'Backspace' && !currentInput && recipients.length > 0) {
+      removeRecipient(recipients.length - 1);
+    }
+  };
+
+  const addRecipient = () => {
+    const email = currentInput.trim().replace(',', '');
+    // Comprobar si es un email válido con una expresión regular básica
+    if (email && !recipients.includes(email)) {
+      setRecipients([...recipients, email]);
+      setCurrentInput('');
+    }
+  };
+
+  const removeRecipient = (index: number) => {
+    setRecipients(recipients.filter((_, i) => i !== index));
   };
 
   return (
@@ -78,13 +113,39 @@ export function ComposeEmail({ onClose }: ComposeEmailProps) {
           {/* Form */}
           <div className="p-4 space-y-4">
             <div>
-              <input
-                type="email"
-                placeholder="Para"
-                className="w-full px-3 py-2 border-0 border-b focus:ring-0 focus:border-action"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-              />
+              <div className="flex flex-wrap items-center gap-2 w-full px-3 py-2 border-0 border-b focus-within:border-action">
+                {recipients.map((email, index) => (
+                  <div 
+                    key={index} 
+                    className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm"
+                  >
+                    <span>{email}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeRecipient(index)}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                <input
+                  type="email"
+                  placeholder={recipients.length > 0 ? "" : "Para"}
+                  className="flex-1 min-w-[120px] border-0 focus:ring-0 p-0"
+                  value={currentInput}
+                  onChange={(e) => setCurrentInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onBlur={() => {
+                    if (currentInput.trim()) {
+                      addRecipient();
+                    }
+                  }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1 ml-3">
+                Presiona Tab, coma o Enter para agregar múltiples destinatarios
+              </p>
             </div>
             <div>
               <input
@@ -121,7 +182,7 @@ export function ComposeEmail({ onClose }: ComposeEmailProps) {
               </div>
               <Button
                 onClick={handleSend}
-                disabled={!to || !subject || !content}
+                disabled={recipients.length === 0 || !subject || !content || !selectedInvoice}
               >
                 <Send className="w-4 h-4 mr-2" />
                 Enviar

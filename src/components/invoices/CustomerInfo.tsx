@@ -11,6 +11,7 @@ export function CustomerInfo({
   customer,
   onChangeCustomer,
 }: CustomerInfoProps) {
+  console.log("customer", customer);
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="p-4 border-b">
@@ -20,7 +21,7 @@ export function CustomerInfo({
       </div>
       <div className="p-4">
 
-        {customer?.phone ? (
+        {customer?.firstName ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -32,16 +33,22 @@ export function CustomerInfo({
                     {customer.firstName} {customer.lastName}
                   </h3>
                   <div className="mt-1 text-sm text-gray-500">
+                    {customer.companyName && (
+                      <div className="flex items-center gap-1">
+                        <Building2 className="w-4 h-4" />
+                      {customer.companyName}
+                      </div>
+                    )}
                     {customer.email && (
                       <div className="flex items-center gap-1">
                         <Mail className="w-4 h-4" />
                         {customer.email}
                       </div>
                     )}
-                    {customer.phone && (
+                    {customer.mobile && (
                       <div className="flex items-center gap-1">
                         <Phone className="w-4 h-4" />
-                        {customer.phone}
+                        {customer.mobile}
                       </div>
                     )}
                   </div>

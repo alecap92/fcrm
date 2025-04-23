@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { 
   Image,
   FileText,
@@ -19,7 +19,10 @@ import { ChatHeader } from '../components/chat/ChatHeader';
 import { MessageList } from '../components/chat/MessageList';
 import { MessageInput } from '../components/chat/MessageInput';
 import { Modal } from '../components/ui/modal';
-import type { Chat, Message, QuickResponse, Deal } from '../types/chat';
+import { QuickResponses } from '../components/chat/QuickResponses';
+import type { Chat, Message, Deal } from '../types/chat';
+import chatService from '../services/chatService';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const dummyDeals: Deal[] = [
   {
@@ -38,88 +41,15 @@ const dummyDeals: Deal[] = [
   }
 ];
 
-const quickResponses: QuickResponse[] = [
-  {
-    id: '1',
-    title: 'Saludo',
-    content: '¡Hola! ¿Cómo estás?'
-  },
-  {
-    id: '2',
-    title: 'Reunión',
-    content: '¿Podemos agendar una reunión para discutir los detalles?'
-  },
-  {
-    id: '3',
-    title: 'Gracias',
-    content: 'Muchas gracias por tu tiempo y atención.'
-  },
-  {
-    id: '4',
-    title: 'Confirmación',
-    content: 'Confirmo recepción de la información. Me pondré en contacto pronto.'
-  }
-];
 
-const dummyChats: Chat[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    lastMessage: 'Hey, how are you?',
-    timestamp: '10:30 AM',
-    unread: 2,
-    isOnline: true,
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    lastMessage: 'The meeting is scheduled for tomorrow',
-    timestamp: 'Yesterday',
-    unread: 0,
-    isOnline: false,
-  },
-];
 
-const dummyMessages: Message[] = [
-  {
-    id: '1',
-    content: 'Hey, how are you?',
-    timestamp: '10:30 AM',
-    sender: 'them',
-    status: 'read',
-  },
-  {
-    id: '2',
-    content: 'I\'m good, thanks! How about you?',
-    timestamp: '10:31 AM',
-    sender: 'me',
-    status: 'read',
-  },
-  {
-    id: '3',
-    content: 'Great! Just working on some new projects.',
-    timestamp: '10:32 AM',
-    sender: 'them',
-    status: 'read',
-  },
-  {
-    id: '4',
-    content: 'That sounds interesting! What kind of projects?',
-    timestamp: '10:33 AM',
-    sender: 'me',
-    status: 'delivered',
-  },
-];
 
 export function WhatsApp() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [newMessage, setNewMessage] = useState('');
-  const [messages, setMessages] = useState<Message[]>(dummyMessages);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [showChatMenu, setShowChatMenu] = useState(false);
-  const [showAttachmentModal, setShowAttachmentModal] = useState(false);
   const [showQuickResponsesModal, setShowQuickResponsesModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [showDealsModal, setShowDealsModal] = useState(false);
@@ -130,20 +60,76 @@ export function WhatsApp() {
     stage: 'Lead',
     description: ''
   });
+  const [chatLists, setChatLists] = useState<Chat[]>([]);
+  const [page, setPage] = useState<number>(1);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [isInitialLoad, setIsInitialLoad] = useState<boolean>(true);
+  const [chatPage, setChatPage] = useState<number>(1);
+  const [isLoadingMoreChats, setIsLoadingMoreChats] = useState<boolean>(false);
+  const [hasMoreChats, setHasMoreChats] = useState<boolean>(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isContact, setIsContact] = useState<string | boolean>(false)
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
+  const { contactId } = useParams();
+  const navigate = useNavigate();
 
-    const newMsg: Message = {
-      id: Date.now().toString(),
-      content: newMessage,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      sender: 'me',
-      status: 'sent',
+  const handleSelectChat = (contactId: string) => {
+    // Buscamos el chat en la lista actual
+    const chat = findChatById(contactId);
+    if (chat) {
+      setSelectedChat(chat);
+      // Actualizar isContact cuando seleccionamos un chat de la lista
+      setIsContact(chat.contactId || false); // Asumiendo que contactId en el chat indica que es un contacto
+      // Actualizamos la URL sin recargar la página
+      window.history.pushState(null, '', `/whatsapp/${contactId}`);
+    } else {
+      // Si no está en la lista, lo cargamos específicamente
+      loadChatById(contactId);
+      // Actualizamos la URL sin recargar la página
+      window.history.pushState(null, '', `/whatsapp/${contactId}`);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !selectedChat) return;
+
+    const messageData = {
+      to: selectedChat.contact,
+      message: newMessage,
+      messageType: 'text',
+      mediaUrl: '',
+      caption: ''
     };
 
-    setMessages([...messages, newMsg]);
-    setNewMessage('');
+    try {
+      const response = await chatService.sendMessage(messageData);
+      if (response) {
+        const newMsg: Message = {
+          _id: response._id,
+          user: response.user,
+          organization: response.organization,
+          from: response.from,
+          to: response.to,
+          message: response.message,
+          mediaUrl: response.mediaUrl,
+          mediaId: response.mediaId,
+          timestamp: response.timestamp,
+          type: response.type,
+          direction: 'outgoing',
+          isRead: true,
+          possibleName: selectedChat.possibleName,
+          messageId: response.messageId,
+          reactions: [],
+          replyToMessage: ''
+        };
+        setMessages([...messages, newMsg]);
+        console.log(newMsg,1);
+        setNewMessage('');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
   };
 
   const handleQuickResponseSelect = (content: string) => {
@@ -162,33 +148,248 @@ export function WhatsApp() {
     // Show success message or handle errors
   };
 
+  const loadChatLists = async (pageNumber: number = 1) => {
+    if (isLoadingMoreChats) return;
+    
+    try {
+      setIsLoadingMoreChats(true);
+      const newChats: any = await chatService.getChatLists(40, pageNumber, searchTerm);
+
+
+      if (newChats.length < 10) {
+        setHasMoreChats(false);
+      }
+
+      if (pageNumber === 1) {
+        setChatLists(newChats);
+      } else {
+        setChatLists(prevChats => [...prevChats, ...newChats]);
+      }
+      
+      setChatPage(pageNumber);
+    } catch (error) {
+      console.error('Error cargando chats:', error);
+    } finally {
+      setIsLoadingMoreChats(false);
+    }
+  };
+
+  const loadMoreChats = () => {
+    if (hasMoreChats && !isLoadingMoreChats) {
+      loadChatLists(chatPage + 1);
+    }
+  };
+
+  const loadMessages = async (pageNumber: number = 1) => {
+    if (!selectedChat || isLoadingMore) return;
+    
+    try {
+      setIsLoadingMore(true);
+      const newMessages: any = await chatService.getMessages(
+        selectedChat?.contact, 
+        100, // mensajes por página
+        pageNumber
+      );
+      
+      if (newMessages.length < 100) {
+        setHasMore(false);
+      }
+      console.log(newMessages,1);
+      if (pageNumber === 1) {
+        setMessages(newMessages);
+      } else {
+        setMessages(prevMessages => [...prevMessages, ...newMessages]);
+      }
+      
+      setPage(pageNumber);
+    } catch (error) {
+      console.error('Error cargando mensajes:', error);
+    } finally {
+      setIsLoadingMore(false);
+      setIsInitialLoad(false);
+    }
+  }
+
+  const loadMoreMessages = () => {
+    if (hasMore && !isLoadingMore) {
+      loadMessages(page + 1);
+    }
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedChat) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('to', selectedChat.contact);
+      formData.append('messageType', 'file');
+      formData.append('caption', '');
+
+      const response = await chatService.sendMessage(formData);
+      if (response) {
+        const newMsg: Message = {
+          _id: response._id,
+          user: response.user,
+          organization: response.organization,
+          from: response.from,
+          to: response.to,
+          message: response.message,
+          mediaUrl: response.mediaUrl,
+          mediaId: response.mediaId,
+          timestamp: response.timestamp,
+          type: response.type,
+          direction: 'outgoing',
+          isRead: true,
+          possibleName: selectedChat.possibleName,
+          messageId: response.messageId,
+          reactions: [],
+          replyToMessage: ''
+        };
+        setMessages([...messages, newMsg]);
+      }
+    } catch (error) {
+      console.error('Error sending file:', error);
+    }
+  };
+
+  const handleAttachmentClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Esta función busca un chat por ID en la lista de chats
+  const findChatById = (contactId: string): Chat | undefined => {
+    return chatLists.find(chat => chat.contact === contactId);
+  };
+
+  // Función para cargar un chat específico por ID desde la API
+  const loadChatById = async (contactId: string) => {
+    try {
+      const chat:any = await chatService.getChatById(contactId, 100, 1);
+      
+      if (chat.messages && Array.isArray(chat.messages) && chat.messages.length > 0) {
+        // Encontrar la información del contacto basándonos en el primer mensaje
+        const firstMessage = chat.messages[0];
+        const contactInfo: Chat = {
+          _id: contactId,
+          name: firstMessage.possibleName || `+${firstMessage.from}`,
+          contact: firstMessage.from === "573143007263" ? firstMessage.to : firstMessage.from,
+          lastMessage: firstMessage.message,
+          lastMessageTime: firstMessage.timestamp,
+          unreadCount: 0,
+          possibleName: firstMessage.possibleName || ""
+        };
+
+        setIsContact(chat.isContact)
+        
+        setSelectedChat(contactInfo);
+        setIsInitialLoad(true);
+        setMessages(chat.messages);
+        setHasMore(chat.messages.length === 100); // Si devuelve 100 mensajes, posiblemente hay más
+      }
+    } catch (error) {
+      console.error('Error al cargar el chat específico:', error);
+    }
+  };
+
+  useEffect(() => {
+    const initialLoad = async () => {
+      await loadChatLists();
+      
+      // Si hay un chatId en la URL, intentar seleccionar ese chat
+      if (contactId) {
+        const chat = findChatById(contactId);
+        if (chat) {
+          setSelectedChat(chat);
+        } else {
+          // Si no está en la lista cargada, cargarlo específicamente
+          loadChatById(contactId);
+        }
+      }
+    };
+    
+    initialLoad();
+  }, []); // Este efecto solo se ejecuta una vez al montar el componente
+
+  // Este efecto maneja los cambios en el chatId después de la carga inicial
+  useEffect(() => {
+    if (!contactId) {
+      setSelectedChat(null);
+      return;
+    }
+    
+    // Si el ID cambió y no coincide con el chat seleccionado actualmente
+    if (selectedChat?._id !== contactId) {
+      const chat = findChatById(contactId);
+      if (chat) {
+        setSelectedChat(chat);
+      } else if (chatLists.length > 0) {
+        // Si no está en la lista actual pero ya tenemos chats cargados,
+        // cargamos específicamente ese chat desde la API
+        loadChatById(contactId);
+      }
+    }
+  }, [contactId]); // Solo dependemos del contactId para evitar recargas innecesarias
+
+  useEffect(() => {
+    if (selectedChat) {
+      // Limpiar y cargar mensajes solo cuando cambie el ID del chat
+      setPage(1);
+      setHasMore(true);
+      setIsInitialLoad(true);
+      setMessages([]); // Limpiar mensajes anteriores
+      loadMessages(1);
+    }
+  }, [selectedChat?._id]); // Dependencia solo en el ID del chat, no en todo el objeto
+
+  useEffect(() => {
+    setChatPage(1);
+    setHasMoreChats(true);
+    loadChatLists(1);
+  }, [searchTerm]);
+
   return (
-    <div className="h-screen flex bg-gray-100">
+    <div className="h-[calc(100vh-100px)] flex overflow-hidden bg-gray-100">
       <ChatList
-        chats={dummyChats}
+        chats={chatLists}
         selectedChat={selectedChat}
-        onSelectChat={setSelectedChat}
+        onSelectChat={() => {}} // Esta función ya no se usa
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
+        onLoadMore={loadMoreChats}
+        isLoading={isLoadingMoreChats}
+        hasMore={hasMoreChats}
+        handleSelectChat={handleSelectChat}
       />
 
-      <div className={`flex-1 flex flex-col bg-gray-50 ${selectedChat ? 'block' : 'hidden md:block'}`}>
+      <div className={`flex-1 flex overflow-hidden flex-col bg-gray-50 ${selectedChat ? 'block' : 'hidden md:block'}`}>
         {selectedChat ? (
           <>
             <ChatHeader
               chat={selectedChat}
-              onBack={() => setSelectedChat(null)}
+              onBack={() => {
+                setSelectedChat(null);
+                navigate('/whatsapp', { replace: true });
+              }}
               onShowMenu={() => setShowChatMenu(!showChatMenu)}
+              isContact={isContact}
             />
 
             <div className="flex-1 flex flex-col overflow-hidden">
-              <MessageList messages={messages} />
+              <MessageList 
+                messages={messages} 
+                onLoadMore={loadMoreMessages}
+                isLoading={isLoadingMore}
+                hasMore={hasMore}
+                isInitialLoad={isInitialLoad}
+              />
               
               <MessageInput
                 message={newMessage}
                 onMessageChange={setNewMessage}
                 onSend={handleSendMessage}
-                onAttachment={() => setShowAttachmentModal(true)}
+                onAttachment={handleAttachmentClick}
                 onQuickResponse={() => setShowQuickResponsesModal(true)}
               />
             </div>
@@ -199,8 +400,9 @@ export function WhatsApp() {
                   <button
                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     onClick={() => {
-                      setShowContactModal(true);
-                      setShowChatMenu(false);
+                      if(isContact){
+                        navigate(`/contacts/${isContact}`);
+                      }
                     }}
                   >
                     <Contact2 className="w-4 h-4 mr-3" />
@@ -261,62 +463,18 @@ export function WhatsApp() {
         )}
       </div>
 
-      {/* Attachment Modal */}
-      <Modal
-        isOpen={showAttachmentModal}
-        onClose={() => setShowAttachmentModal(false)}
-        title="Adjuntar archivo"
-      >
-        <div className="grid grid-cols-2 gap-4">
-          <button className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-gray-50">
-            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-              <Image className="w-6 h-6 text-blue-600" />
-            </div>
-            <span className="text-sm font-medium">Imagen</span>
-          </button>
-          <button className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-gray-50">
-            <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
-              <FileText className="w-6 h-6 text-purple-600" />
-            </div>
-            <span className="text-sm font-medium">Documento</span>
-          </button>
-          <button className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-gray-50">
-            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-              <Camera className="w-6 h-6 text-green-600" />
-            </div>
-            <span className="text-sm font-medium">Cámara</span>
-          </button>
-          <button className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-gray-50">
-            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-              <MapPin className="w-6 h-6 text-red-600" />
-            </div>
-            <span className="text-sm font-medium">Ubicación</span>
-          </button>
-        </div>
-      </Modal>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        className="hidden"
+      />
 
-      {/* Quick Responses Modal */}
-      <Modal
+      <QuickResponses
         isOpen={showQuickResponsesModal}
         onClose={() => setShowQuickResponsesModal(false)}
-        title="Respuestas rápidas"
-      >
-        <div className="space-y-2">
-          {quickResponses.map((response) => (
-            <button
-              key={response.id}
-              className="w-full p-3 text-left rounded-lg hover:bg-gray-50 flex items-center justify-between"
-              onClick={() => handleQuickResponseSelect(response.content)}
-            >
-              <div>
-                <h4 className="font-medium text-gray-900">{response.title}</h4>
-                <p className="text-sm text-gray-500 line-clamp-1">{response.content}</p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-400" />
-            </button>
-          ))}
-        </div>
-      </Modal>
+        onSelect={handleQuickResponseSelect}
+      />
 
       {/* Contact Modal */}
       <Modal
@@ -328,14 +486,11 @@ export function WhatsApp() {
           <div className="space-y-6">
             <div className="flex flex-col items-center">
               <img
-                src={selectedChat.avatar}
+                src={selectedChat.contact}
                 alt={selectedChat.name}
                 className="w-24 h-24 rounded-full"
               />
               <h3 className="mt-4 text-xl font-semibold">{selectedChat.name}</h3>
-              {selectedChat.isOnline && (
-                <span className="text-sm text-green-500">En línea</span>
-              )}
             </div>
             <div className="space-y-4">
               <div>

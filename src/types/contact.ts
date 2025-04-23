@@ -8,7 +8,7 @@ export interface IContact {
 }
 
 export interface Contact {
-  id: string;
+  _id: string;
   firstName?: string;
   organizationId?: string;
   lastName?: string;
@@ -95,4 +95,19 @@ export interface IContactDetails {
   lifeCycle: string;
   source: string;
   dv: string;
+}
+
+export interface Activity {
+  _id: string;
+  activityType:  "Reunion" | "Llamada" | "Correo" | "Nota";
+  title: string;
+  date: string;
+  notes: string;
+  status: string;
+  organizationId: string;
+  ownerId: string;
+  contactId: string;
+  createdAt: string;
+  updatedAt: string;
+  reminder: string;
 }

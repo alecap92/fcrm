@@ -33,6 +33,15 @@ const printQuote = async (id: string) =>
     responseType: "blob",
   });
 
+const sendQuote = async (form: {
+  quotationNumber: string;
+  to: string;
+  subject: string;
+  templateId: string;
+  from: string;
+}) =>
+  await apiService.post("/quotations/send-email",  form );
+
 const quotesService = {
   getQuotes,
   getQuoteById,
@@ -41,6 +50,7 @@ const quotesService = {
   deleteQuote,
   searchQuotes,
   printQuote,
+  sendQuote,
 };
 
 export default quotesService;

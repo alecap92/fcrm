@@ -21,6 +21,7 @@ import { Button } from "../components/ui/button";
 import invoiceService from "../services/invoiceService";
 import { useToast } from "../components/ui/toast";
 import { useDebouncer } from "../hooks/useDebbouncer";
+import { ComposeEmail } from "../components/email/ComposeEmail";
 
 
 export function Invoices() {
@@ -36,7 +37,10 @@ export function Invoices() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalInvoices, setTotalInvoices] = useState(0);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [selectedInvoiceForEmail, setSelectedInvoiceForEmail] = useState<any>(null);
   const menuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
 
   const debouncedSearch = useDebouncer(searchTerm, 500);
 
@@ -217,6 +221,49 @@ export function Invoices() {
     navigate(`/invoices/credit-note/new?reference=${invoice.id || invoice._id}`);
     setOpenMenuId(null);
   };
+
+  const handleSendEmail = async (invoice: any, form?: {to: string[], subject: string, content: string}) => {
+    try {
+      if (!invoice) {
+        throw new Error("No se ha seleccionado ninguna factura");
+      }
+      
+      if (form) {
+  
+
+        await invoiceService.sendEmail({
+          number: invoice.number,
+          prefix: invoice.prefix, 
+          to: form.to,
+          subject: form.subject,
+          content: form.content,
+          idNumber: invoice.identification_number
+        });
+        
+        setIsEmailOpen(false);
+        setSelectedInvoiceForEmail(null);
+        
+        toast.show({
+          title: "Correo enviado",
+          description: "Correo enviado correctamente",
+          type: "success",
+        });
+      } else {
+        // Abrir modal de correo y establecer la factura seleccionada
+        setSelectedInvoiceForEmail(invoice);
+        setIsEmailOpen(true);
+      }
+    } catch (error) {
+      console.error("Error sending email:", error);
+      toast.show({
+        title: "Error",
+        description: "Error al enviar el correo",
+        type: "error",
+      });
+    }
+  };
+
+  
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -454,6 +501,13 @@ export function Invoices() {
                                     <CreditCard className="w-4 h-4 mr-2" />
                                     Crear Nota Crédito
                                   </button>
+                                  <button
+                                    className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 flex items-center"
+                                    onClick={() => handleSendEmail(invoice)}
+                                  >
+                                    <Mail className="w-4 h-4 mr-2" />
+                                   Enviar por correo
+                                  </button>
                                 </div>
                               </div>
                             )}
@@ -529,6 +583,18 @@ export function Invoices() {
           </div>
         </div>
       </div>
+      {
+        isEmailOpen && (
+          <ComposeEmail 
+            onClose={() => {
+              setIsEmailOpen(false);
+              setSelectedInvoiceForEmail(null);
+            }} 
+            handleSendEmail={handleSendEmail}
+            selectedInvoice={selectedInvoiceForEmail}
+          />
+        )
+      }
     </div>
   );
 }

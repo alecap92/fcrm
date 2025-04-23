@@ -237,6 +237,14 @@ const getOverdueInvoices = async (page: number = 1, limit: number = 10) => {
   }
 };
 
+const sendEmail = async (form: any) => {
+  try {
+    await apiService.post(`/invoices/send`, form);
+  } catch (error) {
+    console.error(`Error sending email:`, error);
+    throw error;
+  }
+};
 const invoiceService = {
   getInvoices,
   getInvoiceById,
@@ -251,6 +259,7 @@ const invoiceService = {
   getInvoicesByCustomer,
   getInvoicesByDateRange,
   getOverdueInvoices,
+  sendEmail,
 };
 
 export default invoiceService;

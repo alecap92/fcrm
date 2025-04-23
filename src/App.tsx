@@ -30,6 +30,7 @@ import { Invoices } from "./pages/Invoices";
 import { CreateInvoice } from "./pages/CreateInvoice";
 import InvoiceConfiguration from "./pages/InvoiceConfiguration";
 import { NotasCredito } from "./pages/CreateCreditNote";
+import { Documents } from "./pages/Documents";
 
 function App() {
   return (
@@ -57,12 +58,14 @@ function App() {
                   element={<CreateContactList />}
                 />
                 <Route path="/whatsapp" element={<WhatsApp />} />
+                <Route path="/whatsapp/:contactId" element={<WhatsApp />} />
                 <Route path="/mass-whatsapp" element={<WhatsAppMass />} />
                 <Route
                   path="/mass-whatsapp/new"
                   element={<WhatsAppMassNew />}
                 />
                 <Route path="/mass-email" element={<EmailMass />} />
+                <Route path="/documents" element={<Documents />} />
                 <Route path="/mass-email/new" element={<EmailMassNew />} />
                 <Route path="/deals" element={<Deals />} />
                 <Route path="/quotes" element={<Quotes />} />

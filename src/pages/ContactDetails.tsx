@@ -21,25 +21,35 @@ import {
   Tag,
   X,
   Pencil,
+  Phone,
+  Users,
+  StickyNote,
+  File,
 } from "lucide-react";
 import { contactsService } from "../services/contactsService";
 import { useParams } from "react-router-dom";
-import { Contact } from "../types/contact";
+import { Activity, Contact } from "../types/contact";
 import { normalizeContact } from "../lib/parseContacts";
 import AddContact from "../components/contacts/AddContact";
 import { useToast } from "../components/ui/toast";
 import PrintModal from "../components/contacts/PrintModal";
+import ActivityModal from "../components/contacts/ActivityModal";
+import { UploadModal } from "../components/documents/UploadModal";
+import { DealDetailsModal } from "../components/deals/DealDetailsModal";
+import documentsService from "../services/documentsService";
+import { useAuth } from "../contexts/AuthContext";
+import { PreviewModal } from "../components/documents/PreviewModal";
 
-interface Note {
-  id: number;
-  text: string;
-  date: string;
+interface Document {
+  _id?: string;
+  name: string;
+  size: number;
+  type: string;
+  url: string;
+  
 }
 
 export function ContactDetails() {
-  const [notes, setNotes] = useState<Note[]>([
-    { id: 1, text: "Follow up on Q1 proposal", date: "2024-03-10 14:30" },
-  ]);
   const [newNote, setNewNote] = useState("");
   const [showDetails, setShowDetails] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -48,7 +58,7 @@ export function ContactDetails() {
   const { id } = useParams();
   const [contact, setContact] = useState([]);
   const [contactDetails, setContactDetails] = useState<Contact>({
-    id: "",
+    _id: "",
     firstName: "",
     lastName: "",
     email: "",
@@ -89,25 +99,30 @@ export function ContactDetails() {
     totalNotes: 0,
   });
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activityFormData, setActivityFormData] = useState<Activity>({
+    activityType: "Reunion",
+    title: "",
+    date: "",
+    notes: "",
+    status: "incomplete",
+    _id: "",
+    organizationId: "",
+    ownerId: "",
+    contactId: "",
+    createdAt: "",
+    updatedAt: "",
+    reminder: "",
+  });
+  const [showUploadDocumentModal, setShowUploadDocumentModal] = useState(false);
+  const [showDealDetailsModal, setShowDealDetailsModal] = useState(false);
+  const [dealId, setDealId] = useState("");
   const toast = useToast();
-
-  const addNote = () => {
-    if (newNote.trim()) {
-      setNotes([
-        ...notes,
-        {
-          id: Date.now(),
-          text: newNote,
-          date: new Date().toLocaleString(),
-        },
-      ]);
-      setNewNote("");
-    }
-  };
-
-  const deleteNote = (id: number) => {
-    setNotes(notes.filter((note) => note.id !== id));
-  };
+  const { user, organization} = useAuth();
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
 
   const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && newTag.trim()) {
@@ -127,11 +142,17 @@ export function ContactDetails() {
       const response: any = await contactsService.getContactById(id);
       const normalized = normalizeContact(response.data.contact);
 
+
+      setDocuments(response.data.contact.files);
+
       setContact(response.data.contact);
       setContactDetails(normalized);
       setDailyMetrics(response.data.resume);
       setDeals(response.data.deals);
       setTags(normalized.tags || []);
+
+
+      await getActivities(response.data.contact._id);
     } catch (error) {
       console.error("Error fetching contact details:", error);
       toast.show({
@@ -188,8 +209,142 @@ export function ContactDetails() {
     }
   };
 
+  const getActivities = async (contactId: string) => {
+    const response: any = await contactsService.getActivities(contactId);
+    console.log(response.data);
+    setActivities(response.data);
+  };
+
+  const handleAddActivity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try{
+      // Si el formulario tiene ID, estamos editando
+      if (activityFormData._id) {
+        console.log("activityFormData", contactDetails._id);
+        await contactsService.updateActivity(activityFormData._id, {...activityFormData, contactId: contactDetails._id});
+        toast.show({
+          title: "Success",
+          description: "Actividad actualizada correctamente",
+          type: "success",
+        });
+      } else {
+        // Si no tiene ID, estamos creando
+        console.log("activityFormData", activityFormData);
+        console.log("contactDetails", contactDetails);
+        await contactsService.createActivity({
+          ...activityFormData,
+          contactId: contactDetails._id
+        });
+        toast.show({
+          title: "Success",
+          description: "Actividad creada correctamente",
+          type: "success",
+        });
+      }
+      
+      getContact();
+      setShowActivityModal(false);
+      
+      // Resetear el formulario a valores iniciales
+      setActivityFormData({
+        activityType: "Reunion",
+        title: "",
+        date: "",
+        notes: "",
+        status: "incomplete",
+        _id: "",
+        organizationId: "",
+        ownerId: "",
+        contactId: "",
+        createdAt: "",
+        updatedAt: "",
+        reminder: "",
+      });
+    } catch (error) {
+      console.error("Error con la actividad:", error);
+      toast.show({
+        title: "Error",
+        description: "Error al procesar la actividad",
+        type: "error",
+      });
+    }
+  }
+  const deleteActivity =  async (activityId: string) => {
+    console.log("activityId", activityId);
+    try{
+      await contactsService.deleteActivity(activityId);
+      toast.show({
+        title: "Success",
+        description: "Activity deleted successfully",
+        type: "success",
+      });
+      await getActivities(contactDetails._id);
+    } catch (error) {
+      console.error("Error deleting activity:", error);
+      toast.show({
+        title: "Error",
+        description: "Failed to delete activity",
+        type: "error",
+      });
+    }
+  };
+
+  const deleteDocument = async (fileId?: string) => {
+    if (!fileId) return;
+    try {
+      await contactsService.deleteFile(contactDetails._id, fileId);
+      setDocuments(documents.filter(doc => doc._id !== fileId));
+      toast.show({
+        title: "Success",
+        description: "Documento eliminado correctamente",
+        type: "success",
+      });
+      await getContact();
+    } catch (error) {
+      console.error("Error eliminando documento:", error);
+      toast.show({
+        title: "Error",
+        description: "Error al eliminar documento",
+        type: "error",
+      });
+    }
+  };
+
+  const handleUploadDocument = async (files: FileList) => {
+    if (files.length === 0) return;
+
+    try {
+      const file = files[0];
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('organizationId', organization?._id || '');
+      formData.append('uploadedBy', user?._id || '');
+      formData.append('contactId', contactDetails._id);
+      
+      await contactsService.uploadDocument(formData);
+      
+      toast.show({
+        title: "Success",
+        description: "Documento subido correctamente",
+        type: "success",
+      });
+      getContact();
+    } catch (error) {
+      console.error("Error al subir documento:", error);
+      toast.show({
+        title: "Error",
+        description: "Error al subir documento",
+        type: "error",
+      });
+    }
+  };
+
+  
+
   useEffect(() => {
     getContact();
+    
   }, [id]);
 
   return (
@@ -419,7 +574,12 @@ export function ContactDetails() {
                   <div key={deal._id} className="border rounded-lg p-4">
                     <div className="flex justify-between items-center">
                       <div>
-                        <h3 className="font-medium">{deal.title}</h3>
+                        <h3 className="font-medium cursor-pointer hover:text-indigo-600 transition-colors text-blue-500"
+                        onClick={() => {
+                          setDealId(deal._id);
+                          setShowDealDetailsModal(true);
+                        }}
+                        >{deal.title}</h3>
                         <p className="text-sm text-gray-500">
                           Due: {new Date(deal.closingDate).toLocaleDateString()}
                         </p>
@@ -485,30 +645,41 @@ export function ContactDetails() {
           {/* Notes Section */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">Notes</h2>
+              <h2 className="text-lg font-semibold mb-4">Actividades</h2>
               <div className="space-y-4">
                 <div className="flex space-x-2">
                   <input
                     type="text"
                     value={newNote}
                     onChange={(e) => setNewNote(e.target.value)}
-                    placeholder="Add a note..."
+                    placeholder="Buscar Actividad..."
                     className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <button
-                    onClick={addNote}
+                    onClick={() => setShowActivityModal(true)}
                     className="bg-indigo-600 text-white rounded-lg px-4 py-2 hover:bg-indigo-700 transition-colors"
                   >
                     <PlusCircle className="h-5 w-5" />
                   </button>
                 </div>
                 <div className="space-y-3">
-                  {notes.map((note) => (
-                    <div key={note.id} className="bg-gray-50 rounded-lg p-3">
+                  {activities.map((activity) => (
+                    <div key={activity._id} className="bg-gray-50 rounded-lg p-3">
                       <div className="flex justify-between items-start">
-                        <p className="text-gray-700">{note.text}</p>
+                        <div className="flex items-center space-x-2">
+                          {activity.activityType === "Reunion" && <Users className="h-4 w-4 text-blue-500" />}
+                          {activity.activityType === "Llamada" && <Phone className="h-4 w-4 text-green-500" />}
+                          {activity.activityType === "Correo" && <Mail className="h-4 w-4 text-red-500" />}
+                          {activity.activityType === "Nota" && <StickyNote className="h-4 w-4 text-yellow-500" />}
+                          <p className="text-gray-700"
+                          onClick={() => {
+                            setActivityFormData(activity);
+                            setShowActivityModal(true);
+                          }}
+                          >{activity.title}</p>
+                        </div>
                         <button
-                          onClick={() => deleteNote(note.id)}
+                          onClick={() => deleteActivity(activity._id)}
                           className="text-gray-400 hover:text-red-500 transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -516,16 +687,87 @@ export function ContactDetails() {
                       </div>
                       <div className="flex items-center mt-2 text-sm text-gray-500">
                         <Clock className="h-4 w-4 mr-1" />
-                        {note.date}
+                        {activity.date}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
+            <div className="bg-white rounded-lg shadow p-6 mt-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold mb-4">Documentos</h2>
+                <button
+                  onClick={() => setShowUploadDocumentModal(true)}
+                className="bg-indigo-600 text-white rounded-lg px-4 py-2 hover:bg-indigo-700 transition-colors hover:scale-105"
+              >
+                <PlusCircle className="h-5 w-5" />
+              </button>
+              </div>
+              { documents.length === 0 && (
+                <p className="text-gray-500">No hay documentos</p>
+              )}
+              { documents.length > 0 && (
+              
+              documents.map((document) => (
+                <div className="space-y-4" key={document._id}>
+                  <div className="flex items-center justify-between">
+                    <div 
+                      className="flex items-center space-x-2 cursor-pointer"
+                      onClick={() => {
+                        setSelectedDocument(document);
+                        setShowPreviewModal(true);
+                      }}
+                    >
+                      <File className="h-5 w-5 text-gray-400" />
+                      <p className="text-gray-700">{document.name}</p>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteDocument(document._id);
+                      }}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))
+              )}
+            </div>
+            <div className="bg-white rounded-lg shadow p-6 mt-4">
+              <h2 className="text-lg font-semibold mb-4">Cotizaciones</h2>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <File className="h-5 w-5 text-gray-400" />
+                  <p className="text-gray-700">Cotización 1</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      <PreviewModal
+        isOpen={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        document={selectedDocument as any}
+      />
+
+      <UploadModal
+        isOpen={showUploadDocumentModal}
+        onClose={() => setShowUploadDocumentModal(false)}
+        onUpload={handleUploadDocument}
+      />
+
+      <ActivityModal 
+      isOpen={showActivityModal}
+      onClose={() => setShowActivityModal(false)} 
+      onSubmit={handleAddActivity}
+      formData={activityFormData}
+      setFormData={setActivityFormData}
+      />
 
       {/* Edit Contact Modal */}
       <AddContact
@@ -540,6 +782,16 @@ export function ContactDetails() {
           contact={contact}
           onClose={() => setShowPrintModal(false)}
         />
+      )}
+
+      { showDealDetailsModal && (
+      <DealDetailsModal
+        // isOpen={showDealDetailsModal}
+        onClose={() => setShowDealDetailsModal(false)}
+        dealId={dealId}
+        deal={[] as any}
+        onEdit={() => setShowDealDetailsModal(true)}
+      />
       )}
     </div>
   );

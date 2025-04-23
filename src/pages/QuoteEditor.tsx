@@ -32,7 +32,7 @@ export function QuoteEditor() {
       firstName: "",
       lastName: "",
       email: "",
-      id: "",
+    _id: "",
       taxId: "",
       createdAt: "",
       updatedAt: "",
@@ -90,6 +90,7 @@ export function QuoteEditor() {
   }, [organization.settings.quotations.quotationNumber]);
 
   const handleSelectContact = (contact: Contact) => {
+    console.log("contact2", contact);
     setQuote((prev) => ({
       ...prev,
       contact: {
@@ -97,10 +98,10 @@ export function QuoteEditor() {
         firstName: contact.firstName || "",
         lastName: contact.lastName || "",
         email: contact.email || "",
-        mobile: contact.phone || "",
+        mobile: contact.mobile || "",
         companyName: contact.companyName || "",
         taxId: contact.taxId || "",
-        id: contact.id,
+        id: contact._id,
         createdAt: contact.createdAt || "",
         updatedAt: contact.updatedAt || "",
         idType: contact.idType || "",
@@ -322,9 +323,14 @@ export function QuoteEditor() {
                     lastName: quote.contact?.lastName || "",
                     email: quote.contact?.email || "",
                     taxId: quote.contact?.taxId || "",
-                    id: quote.contact?.id || "",
+                    _id: quote.contact?._id || "",
                     createdAt: quote.contact?.createdAt || "",
                     updatedAt: quote.contact?.updatedAt || "",
+                    phone: quote.contact?.phone || "",
+                    mobile: quote.contact?.mobile || "",
+                    companyName: quote.contact?.companyName || "",
+                    idType: quote.contact?.idType || "",
+                    idNumber: quote.contact?.idNumber || "",
                   }}
                   onChangeCustomer={() => setShowContactModal(true)}
                 />

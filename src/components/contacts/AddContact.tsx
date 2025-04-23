@@ -37,6 +37,7 @@ export default function CreateContactModal({
     tags: "",
     notes: "",
     dv: initialData?.dv || "",
+    idType: initialData?.idType || "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -65,6 +66,7 @@ export default function CreateContactModal({
       tags: "",
       notes: "",
       dv: initialData?.dv || "",
+      idType: initialData?.idType || "",
     });
   }, [initialData]);
 
@@ -164,6 +166,7 @@ export default function CreateContactModal({
                     "Hospitales e IPS",
                     "Bares y Restaurantes",
                     "Hoteles y Piscinas",
+                    "Condominios y Apartamentos",
                     "Revendedor",
                     "Parques",
                     "Iglesia",
@@ -191,6 +194,9 @@ export default function CreateContactModal({
                   Bares y Restaurantes
                 </option>
                 <option value="Hoteles y Piscinas">Hoteles y Piscinas</option>
+                <option value="Condominios y Apartamentos">
+                  Condominios y Apartamentos
+                </option>
                 <option value="Revendedor">Revendedor</option>
                 <option value="Parques">Parques</option>
                 <option value="Iglesia">Iglesia</option>
@@ -207,6 +213,29 @@ export default function CreateContactModal({
                 <option value="Colegios">Colegios</option>
                 <option value="Eventos">Eventos</option>
                 <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Tipo de documento</label>
+              <select
+                value={formData.idType}
+                onChange={(e) =>
+                  setFormData({ ...formData, idType: e.target.value })
+                }
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
+              >
+                <option value="1">Registro civil</option>
+                <option value="2">Tarjeta de identidad</option>
+                <option value="3">Cédula de ciudadanía</option>
+                <option value="4">Tarjeta de extranjería</option>
+                <option value="5">Cédula de extranjería</option>
+                <option value="6">NIT</option>
+                <option value="7">Pasaporte</option>
+                <option value="8">Documento de identificación extranjero</option>
+                <option value="9">NIT de otro país</option>
+                <option value="10">NUIP *</option>
+                <option value="11">PEP (Permiso Especial de Permanencia)</option>
+                <option value="12">PPT (Permiso Protección Temporal)</option>
               </select>
             </div>
             <div>
