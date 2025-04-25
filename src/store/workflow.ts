@@ -7,6 +7,7 @@ import {
   ModuleEvent,
   Automation,
 } from "../services/automationService";
+import { webhookService } from "../services/webhookService";
 
 interface HistoryState {
   nodes: Node[];
@@ -126,6 +127,29 @@ const formatNodeForBackend = (node: Node, nextNodes: string[]) => {
     // Extract the base type (module name) without '_trigger'
     const module = node.type.replace("_trigger", "");
 
+    // Caso especial para el trigger manual
+    if (module === "manual") {
+      return {
+        ...baseNode,
+        type: "trigger",
+        module: "manual",
+        event: "manual_execution",
+        payloadMatch: node.data?.payloadMatch || {},
+      };
+    }
+
+    // Caso especial para webhook trigger
+    if (module === "webhook") {
+      return {
+        ...baseNode,
+        type: "trigger",
+        module: "webhook",
+        event: node.data?.event || "contact_form",
+        webhookId: node.data?.webhookId || "",
+        payloadMatch: node.data?.payloadMatch || {},
+      };
+    }
+
     // Determinar el evento adecuado según el módulo o usar datos del nodo
     let event = node.data?.event || "created"; // Valor predeterminado
 
@@ -190,29 +214,65 @@ const formatNodeForBackend = (node: Node, nextNodes: string[]) => {
       const emailData = {
         ...baseNode,
         type: "send_email",
-        to: node.data?.to || "{{contact.email}}",
+        to: node.data?.to || node.data?.recipient || "{{contact.email}}",
         subject: node.data?.subject || "Email notification",
-        emailBody: node.data?.emailBody || "<p>Default email content</p>",
+        emailBody: node.data?.emailBody || node.data?.content || "<p>Default email content</p>",
       };
 
       console.log("Email node complete data:", emailData);
       return emailData;
 
+    case "mass_email":
+    case "send_mass_email":
+    case "massiveMail":
+      // Asegurar que todos los campos obligatorios para email masivo estén presentes
+      const massEmailData = {
+        ...baseNode,
+        type: "send_mass_email",
+        listId: node.data?.listId || "",
+        subject: node.data?.subject || "Mass Email Campaign",
+        emailBody: node.data?.emailBody || "<p>Default mass email content</p>",
+        from: node.data?.from || "",
+      };
+
+      console.log("Mass Email node complete data:", massEmailData);
+      return massEmailData;
+
     case "whatsapp":
       return {
         ...baseNode,
         type: "send_whatsapp",
-        to: node.data?.to || "{{contact.phone}}",
+        to: node.data?.to || node.data?.recipient || "{{contact.phone}}",
         message: node.data?.message || "Default WhatsApp message",
       };
 
+    case "contacts":
+      // Obtener contactData y manejar la transformación de companyName a company
+      const contactData = { ...node.data?.contactData };
+      
+      // Si existe companyName pero no company, actualizar
+      if (contactData.companyName && !contactData.company) {
+        contactData.company = contactData.companyName;
+        delete contactData.companyName;
+      }
+      
+      return {
+        ...baseNode,
+        type: "contacts",
+        action: node.data?.action || "create",
+        contactData: contactData,
+      };
+
     case "delay":
+      // Convertir la duración a un número entero
+      const duration = node.data?.duration 
+        ? parseInt(node.data.duration, 10)
+        : 5;
+        
       return {
         ...baseNode,
         type: "delay",
-        delayType: node.data?.delayType || "minutes",
-        duration: node.data?.duration || 5,
-        businessHours: node.data?.businessHours || false,
+        delayMinutes: isNaN(duration) ? 5 : duration,
       };
 
     case "transform":
@@ -249,6 +309,38 @@ const formatNodeFromBackend = (
 
   switch (apiNode.type) {
     case "trigger":
+      // Caso especial para el trigger manual
+      if (apiNode.module === "manual" && apiNode.event === "manual_execution") {
+        return {
+          ...baseNode,
+          type: "manual_trigger",
+          data: {
+            ...baseNode.data,
+            module: apiNode.module,
+            event: apiNode.event,
+            label: "Manual Trigger",
+            description: apiNode.description || "Run workflow manually",
+          },
+        };
+      }
+      
+      // Caso especial para webhook trigger
+      if (apiNode.module === "webhook") {
+        return {
+          ...baseNode,
+          type: "webhook_trigger",
+          data: {
+            ...baseNode.data,
+            module: apiNode.module,
+            event: apiNode.event,
+            webhookId: apiNode.webhookId || "",
+            webhookName: apiNode.name || "Webhook Trigger",
+            webhookDescription: apiNode.description || "Recibe datos externos",
+            label: "Webhook Trigger",
+          },
+        };
+      }
+      
       return {
         ...baseNode,
         type: `${apiNode.module}_trigger`,
@@ -300,6 +392,20 @@ const formatNodeFromBackend = (
         },
       };
 
+    case "send_mass_email":
+      return {
+        ...baseNode,
+        type: "mass_email",
+        data: {
+          ...baseNode.data,
+          listId: apiNode.listId,
+          subject: apiNode.subject,
+          emailBody: apiNode.emailBody,
+          from: apiNode.from,
+          label: `Mass Email: ${apiNode.subject || "No subject"}`,
+        },
+      };
+
     case "send_whatsapp":
       return {
         ...baseNode,
@@ -312,6 +418,25 @@ const formatNodeFromBackend = (
         },
       };
 
+    case "contacts":
+      // Si contactData tiene company pero no companyName, hacer la conversión inversa
+      const contactData = { ...apiNode.contactData };
+      if (contactData.company && !contactData.companyName) {
+        contactData.companyName = contactData.company;
+        delete contactData.company;
+      }
+      
+      return {
+        ...baseNode,
+        type: "contacts",
+        data: {
+          ...baseNode.data,
+          action: apiNode.action || "create",
+          contactData,
+          label: `Contact: ${apiNode.action || "create"}`,
+        },
+      };
+
     case "delay":
       return {
         ...baseNode,
@@ -319,9 +444,10 @@ const formatNodeFromBackend = (
         data: {
           ...baseNode.data,
           delayType: apiNode.delayType,
-          duration: apiNode.duration,
+          duration: apiNode.delayMinutes, // Usar delayMinutes como duration
+          delayMinutes: apiNode.delayMinutes,
           businessHours: apiNode.businessHours,
-          label: `Delay: ${apiNode.duration} ${apiNode.delayType}`,
+          label: `Delay: ${apiNode.delayMinutes} minutes`,
         },
       };
 
@@ -671,15 +797,65 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     console.log("All formatted nodes:", formattedNodes);
 
     const workflowData = {
-      name: state.name,
-      description: state.description,
+      name: state.name || "Untitled Workflow",
+      description: state.description || "",
       isActive: state.isActive,
       nodes: formattedNodes,
     };
 
+    console.log("Saving workflow with data:", workflowData);
+
     try {
       set({ isSaving: true, error: null });
-
+      
+      const { nodes } = state;
+      const updateNodeMethod = get().updateNode;
+      
+      // Preparar los nodos para el backend
+      const webhookTriggerNodes: Node[] = [];
+      
+      // Buscar nodos de tipo webhook_trigger que necesiten crear webhook
+      nodes.forEach(node => {
+        if (node.type === 'webhook_trigger' && !node.data.webhookId) {
+          webhookTriggerNodes.push(node);
+        }
+      });
+      
+      // Crear webhooks para los nodos que lo necesiten
+      if (webhookTriggerNodes.length > 0) {
+        for (const node of webhookTriggerNodes) {
+          try {
+            // Crear webhook usando webhookService
+            const webhookData = {
+              name: node.data.webhookName || "Webhook para creación de contactos",
+              description: node.data.webhookDescription || "Recibe datos de formularios externos y crea contactos",
+              module: "webhook",
+              event: node.data.event || "contact_form",
+              isActive: true,
+              organizationId: "659d89b73c6aa865f1e7d6fb", // Debe ser dinámico en producción
+              createdBy: "6594a74983de58ca5547b945"  // Debe ser dinámico en producción
+            };
+            
+            const webhook = await webhookService.createWebhookEndpoint(webhookData);
+            
+            // Actualizar el nodo con el ID del webhook creado
+            updateNodeMethod(node.id, { 
+              webhookId: webhook.id,
+              webhookUrl: `http://localhost:3001/api/v1/webhooks/id/${webhook.id}`
+            });
+          } catch (err) {
+            const error = err as Error;
+            console.error('Error creating webhook:', error);
+            set({ 
+              error: `Error al crear webhook: ${error.message || "Error desconocido"}`,
+              isSaving: false 
+            });
+            return;
+          }
+        }
+      }
+      
+      // Continuar con el guardado normal de la automatización
       let result;
       if (state.workflowId) {
         // Actualizar workflow existente

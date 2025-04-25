@@ -22,6 +22,7 @@ import { dealsService } from "../services/dealsService";
 // Importamos los tipos que asumo tienes en tu proyecto
 import type { Deal } from "../types/deal";
 import productAcquisitionService from "../services/productAcquisitionService";
+import { useLoading } from "../contexts/LoadingContext";
 
 interface DealFormData {
   name: string;
@@ -41,6 +42,7 @@ export function Deals() {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const toast = useToast();
+  const { showLoading, hideLoading } = useLoading();
 
   // Ejemplo de pipelineId
   const pipelineId = "66c6370ad573dacc51e620f0";
@@ -56,10 +58,9 @@ export function Deals() {
   // Agrupamos nuestros sensores
   const sensors = useSensors(pointerSensor);
 
-
   const fetchDeals = async () => {
     try {
-
+      showLoading("Cargando negocios...");
       const response = await dealsService.getDeals(pipelineId);
       const statuses = await dealsService.getStatuses(pipelineId);
 
@@ -77,12 +78,12 @@ export function Deals() {
         description: "No se pudieron cargar los negocios",
         type: "error",
       });
+    } finally {
+      hideLoading();
     }
   };
 
   useEffect(() => {
-   
-
     fetchDeals();
   }, [pipelineId, toast]);
 
@@ -189,7 +190,6 @@ export function Deals() {
 
       const response = await dealsService.createDeal(form as any);
       setDeals((prev) => [...prev, response.deal]);
-    
 
       toast.show({
         title: "Negocio creado",
@@ -201,7 +201,6 @@ export function Deals() {
       setEditingDeal(null);
       setSelectedDeal(null);
       setActiveDeal(null);
-      
     } catch (error) {
       console.error("Error creating deal:", error);
       toast.show({
@@ -216,6 +215,8 @@ export function Deals() {
     if (!editingDeal?._id) return;
 
     try {
+      console.log("Productos a actualizar:", dealData.products);
+
       const form = {
         title: dealData.name,
         amount: Number(dealData.value),
@@ -223,12 +224,17 @@ export function Deals() {
         associatedContactId: dealData.contact.id,
         status: dealData.stage,
         fields: dealData.fields,
+        dealProducts: dealData.products,
       };
+
+      console.log("Enviando al backend:", form);
 
       const response: Deal = await dealsService.updateDeal(
         editingDeal._id,
         form as any
       );
+
+      console.log("Respuesta del backend:", response);
 
       setDeals((prev) =>
         prev.map((deal) => (deal._id === editingDeal._id ? response : deal))
@@ -287,7 +293,11 @@ export function Deals() {
             </Button>
           </div>
           {/* Filtros */}
-          <DealFilters onFilterChange={() => {}} setDeals={setDeals} fetchDeals={fetchDeals} />
+          <DealFilters
+            onFilterChange={() => {}}
+            setDeals={setDeals}
+            fetchDeals={fetchDeals}
+          />
         </div>
 
         <div className="flex-1 overflow-x-auto p-6">
@@ -316,6 +326,7 @@ export function Deals() {
                       column={column}
                       deals={columnDeals}
                       onDealClick={(deal) => setSelectedDeal(deal)}
+                      onEditDeal={(deal) => setEditingDeal(deal)}
                       handleDeleteDeal={handleDeleteDeal}
                     />
                   );
@@ -347,7 +358,7 @@ export function Deals() {
         }}
         onSubmit={editingDeal ? handleUpdateDeal : handleCreateDeal}
         initialStage={pipelineId}
-        // initialData={editingDeal}
+        initialData={editingDeal}
       />
 
       {/* Modal para Detalles de un Deal */}

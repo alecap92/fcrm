@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Switch } from '../components/ui/switch';
-import { Plus, Zap, Power, Calendar, MessageSquare, Mail, Globe, Search, Filter, Activity, Trash2 } from 'lucide-react';
+import { Plus, Zap, Power, Calendar, MessageSquare, Mail, Globe, Search, Filter, Activity, Trash2, Play } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState } from 'react';
 import { EmptyState } from '../components/EmptyState';
@@ -79,6 +79,8 @@ const getTriggerIcon = (triggerType: string) => {
       return <Globe className="w-5 h-5" />;
     case 'date_trigger':
       return <Calendar className="w-5 h-5" />;
+    case 'manual_trigger':
+      return <Play className="w-5 h-5" />;
     default:
       return <Zap className="w-5 h-5" />;
   }

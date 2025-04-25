@@ -11,8 +11,11 @@ import {
   Filter,
   RefreshCw,
   Loader2,
+  Play,
+  Globe,
 } from "lucide-react";
 import { Input } from "./ui/input";
+import { Handle } from "reactflow";
 
 interface NodeItemProps {
   type: string;
@@ -31,6 +34,8 @@ const getNodeIcon = (type: string) => {
     case "contacts_trigger":
     case "tasks_trigger":
       return <Zap className="w-4 h-4" />;
+    case "manual_trigger":
+      return <Play className="w-4 h-4" />;
     case "webhook":
     case "http_request":
       return <Activity className="w-4 h-4" />;
@@ -46,6 +51,10 @@ const getNodeIcon = (type: string) => {
       return <Clock className="w-4 h-4" />;
     case "transform":
       return <RefreshCw className="w-4 h-4" />;
+    case "send_mass_email":
+      return <Mail className="w-4 h-4" />;
+    case "webhook_trigger":
+      return <Globe className="w-4 h-4" />;
     default:
       return <BarChart2 className="w-4 h-4" />;
   }
@@ -95,7 +104,7 @@ const NodeItem: React.FC<NodeItemProps> = ({
             category
           )}`}
         >
-          {category}
+          {category.toLowerCase()}
         </span>
       </div>
     </div>
@@ -124,49 +133,70 @@ export const Sidebar = () => {
           label: "Deal Trigger",
           description: "Start when deal status changes",
           icon: getNodeIcon("deals_trigger"),
-          category: "Trigger",
+          category: "trigger",
+        },
+        {
+          type: "manual_trigger",
+          label: "Manual Trigger",
+          description: "Start workflow with manual execution",
+          icon: getNodeIcon("manual_trigger"),
+          category: "trigger",
+        },
+        {
+          type: "webhook_trigger",
+          label: "Webhook Trigger",
+          description: "Start when external data is received",
+          icon: getNodeIcon("webhook_trigger"),
+          category: "trigger",
+        },
+        {
+          type: "send_mass_email",
+          label: "Massive Mail",
+          description: "Send an email to multiple recipients",
+          icon: getNodeIcon("email"),
+          category: "action",
         },
         {
           type: "webhook",
           label: "HTTP Request",
           description: "Make HTTP request to external service",
           icon: getNodeIcon("webhook"),
-          category: "Action",
+          category: "action",
         },
         {
           type: "condition",
           label: "Condition",
           description: "Branch workflow based on conditions",
           icon: getNodeIcon("condition"),
-          category: "Condition",
+          category: "condition",
         },
         {
           type: "email",
           label: "Send Email",
           description: "Send email notification",
           icon: getNodeIcon("email"),
-          category: "Action",
+          category: "action",
         },
         {
           type: "whatsapp",
           label: "Send WhatsApp",
           description: "Send WhatsApp message",
           icon: getNodeIcon("whatsapp"),
-          category: "Action",
+          category: "action",
         },
         {
           type: "delay",
           label: "Delay",
           description: "Wait for specified time",
           icon: getNodeIcon("delay"),
-          category: "Action",
+          category: "action",
         },
         {
           type: "transform",
           label: "Transform Data",
           description: "Modify data between steps",
           icon: getNodeIcon("transform"),
-          category: "Action",
+          category: "action",
         },
       ];
     }
@@ -177,7 +207,7 @@ export const Sidebar = () => {
       label: nodeType.label,
       description: nodeType.description,
       icon: getNodeIcon(nodeType.type),
-      category: nodeType.category,
+      category: nodeType.category.toLowerCase(),
     }));
   };
 
@@ -192,12 +222,34 @@ export const Sidebar = () => {
       label: `${moduleEvent.module}: ${moduleEvent.event}`,
       description: moduleEvent.description,
       icon: getNodeIcon("trigger"),
-      category: "Trigger",
+      category: "trigger",
     }));
   };
 
   // Combinar todos los nodos
   const allNodes = [...getNodeItems()];
+
+  // Asegurar que manual_trigger siempre esté disponible
+  if (!allNodes.some(node => node.type === "manual_trigger")) {
+    allNodes.push({
+      type: "manual_trigger",
+      label: "Manual Trigger",
+      description: "Start workflow with manual execution",
+      icon: getNodeIcon("manual_trigger"),
+      category: "trigger",
+    });
+  }
+
+  // Asegurar que massiveMail siempre esté disponible
+  if (!allNodes.some(node => node.type === "send_mass_email")) {
+    allNodes.push({
+      type: "send_mass_email",
+      label: "Massive Mail",
+      description: "Send an email to multiple recipients",
+      icon: getNodeIcon("email"),
+      category: "action",
+    });
+  }
 
   // Filtrar nodos según búsqueda y categoría
   const filteredNodes = allNodes.filter((node) => {
@@ -214,7 +266,7 @@ export const Sidebar = () => {
   // Agrupar nodos por categoría
   const groupedNodes: Record<string, NodeItemProps[]> = filteredNodes.reduce(
     (acc, node) => {
-      const category = node.category;
+      const category = node.category.toLowerCase();
       if (!acc[category]) {
         acc[category] = [];
       }
@@ -225,7 +277,7 @@ export const Sidebar = () => {
   );
 
   // Orden de las categorías
-  const categoryOrder = ["Trigger", "Condition", "Action"];
+  const categoryOrder = ["trigger", "condition", "action"];
   const sortedCategories = Object.keys(groupedNodes).sort(
     (a, b) => categoryOrder.indexOf(a) - categoryOrder.indexOf(b)
   );
@@ -300,7 +352,7 @@ export const Sidebar = () => {
           sortedCategories.map((category) => (
             <div key={category} className="mb-6">
               <h3 className="text-sm font-semibold mb-2 text-gray-600">
-                {category}
+                {category.charAt(0).toUpperCase() + category.slice(1)}
               </h3>
               {groupedNodes[category].map((node, index) => (
                 <NodeItem

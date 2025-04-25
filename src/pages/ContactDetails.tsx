@@ -39,6 +39,9 @@ import { DealDetailsModal } from "../components/deals/DealDetailsModal";
 import documentsService from "../services/documentsService";
 import { useAuth } from "../contexts/AuthContext";
 import { PreviewModal } from "../components/documents/PreviewModal";
+import quotesService from "../services/quotesService";
+import { Quote } from "../types/quote";
+import { useLoading } from "../contexts/LoadingContext";
 
 interface Document {
   _id?: string;
@@ -46,7 +49,6 @@ interface Document {
   size: number;
   type: string;
   url: string;
-  
 }
 
 export function ContactDetails() {
@@ -119,10 +121,15 @@ export function ContactDetails() {
   const [showDealDetailsModal, setShowDealDetailsModal] = useState(false);
   const [dealId, setDealId] = useState("");
   const toast = useToast();
-  const { user, organization} = useAuth();
+  const { user, organization } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(
+    null
+  );
+  const [quotations, setQuotations] = useState<Quote[]>([]);
+
+  const { showLoading, hideLoading } = useLoading();
 
   const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && newTag.trim()) {
@@ -139,9 +146,10 @@ export function ContactDetails() {
     try {
       if (!id) return;
 
+      showLoading("Cargando contacto...");
+
       const response: any = await contactsService.getContactById(id);
       const normalized = normalizeContact(response.data.contact);
-
 
       setDocuments(response.data.contact.files);
 
@@ -151,8 +159,8 @@ export function ContactDetails() {
       setDeals(response.data.deals);
       setTags(normalized.tags || []);
 
-
       await getActivities(response.data.contact._id);
+      await handleGetQuotations();
     } catch (error) {
       console.error("Error fetching contact details:", error);
       toast.show({
@@ -160,6 +168,38 @@ export function ContactDetails() {
         description: "Failed to load contact details",
         type: "error",
       });
+    } finally {
+      hideLoading();
+    }
+  };
+
+  const handleGetQuotations = async () => {
+    try {
+      const response: any = await quotesService.searchQuotes(id as any);
+
+      setQuotations(response.data.quotations);
+    } catch (error) {
+      console.error("Error fetching quotations:", error);
+    }
+  };
+
+  const handlePrint = async (quoteId: string) => {
+    try {
+      showLoading("Generando PDF de la cotización...");
+      const response = await quotesService.printQuote(quoteId);
+
+      const blob = await response.data;
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cotizacion_${quoteId}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+    } finally {
+      hideLoading();
     }
   };
 
@@ -217,11 +257,14 @@ export function ContactDetails() {
 
   const handleAddActivity = async (e: React.FormEvent) => {
     e.preventDefault();
-    try{
+    try {
       // Si el formulario tiene ID, estamos editando
       if (activityFormData._id) {
         console.log("activityFormData", contactDetails._id);
-        await contactsService.updateActivity(activityFormData._id, {...activityFormData, contactId: contactDetails._id});
+        await contactsService.updateActivity(activityFormData._id, {
+          ...activityFormData,
+          contactId: contactDetails._id,
+        });
         toast.show({
           title: "Success",
           description: "Actividad actualizada correctamente",
@@ -229,11 +272,10 @@ export function ContactDetails() {
         });
       } else {
         // Si no tiene ID, estamos creando
-        console.log("activityFormData", activityFormData);
-        console.log("contactDetails", contactDetails);
+
         await contactsService.createActivity({
           ...activityFormData,
-          contactId: contactDetails._id
+          contactId: contactDetails._id,
         });
         toast.show({
           title: "Success",
@@ -241,10 +283,10 @@ export function ContactDetails() {
           type: "success",
         });
       }
-      
+
       getContact();
       setShowActivityModal(false);
-      
+
       // Resetear el formulario a valores iniciales
       setActivityFormData({
         activityType: "Reunion",
@@ -268,10 +310,10 @@ export function ContactDetails() {
         type: "error",
       });
     }
-  }
-  const deleteActivity =  async (activityId: string) => {
+  };
+  const deleteActivity = async (activityId: string) => {
     console.log("activityId", activityId);
-    try{
+    try {
       await contactsService.deleteActivity(activityId);
       toast.show({
         title: "Success",
@@ -293,7 +335,7 @@ export function ContactDetails() {
     if (!fileId) return;
     try {
       await contactsService.deleteFile(contactDetails._id, fileId);
-      setDocuments(documents.filter(doc => doc._id !== fileId));
+      setDocuments(documents.filter((doc) => doc._id !== fileId));
       toast.show({
         title: "Success",
         description: "Documento eliminado correctamente",
@@ -315,15 +357,15 @@ export function ContactDetails() {
 
     try {
       const file = files[0];
-      
+
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('organizationId', organization?._id || '');
-      formData.append('uploadedBy', user?._id || '');
-      formData.append('contactId', contactDetails._id);
-      
+      formData.append("file", file);
+      formData.append("organizationId", organization?._id || "");
+      formData.append("uploadedBy", user?._id || "");
+      formData.append("contactId", contactDetails._id);
+
       await contactsService.uploadDocument(formData);
-      
+
       toast.show({
         title: "Success",
         description: "Documento subido correctamente",
@@ -340,11 +382,8 @@ export function ContactDetails() {
     }
   };
 
-  
-
   useEffect(() => {
     getContact();
-    
   }, [id]);
 
   return (
@@ -570,74 +609,51 @@ export function ContactDetails() {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Deals</h2>
               <div className="space-y-4">
-                {deals.map((deal) => (
-                  <div key={deal._id} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-medium cursor-pointer hover:text-indigo-600 transition-colors text-blue-500"
-                        onClick={() => {
-                          setDealId(deal._id);
-                          setShowDealDetailsModal(true);
-                        }}
-                        >{deal.title}</h3>
-                        <p className="text-sm text-gray-500">
-                          Due: {new Date(deal.closingDate).toLocaleDateString()}
-                        </p>
-                        <p>
-                          <span className="text-sm text-gray-500">Etapa: </span>
-                          {deal.status.name}
-                        </p>
+                {deals.length > 0 ? (
+                  deals.map((deal) => (
+                    <div key={deal._id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3
+                            className="font-medium cursor-pointer hover:text-indigo-600 transition-colors text-blue-500"
+                            onClick={() => {
+                              setDealId(deal._id);
+                              setShowDealDetailsModal(true);
+                            }}
+                          >
+                            {deal.title}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            Due:{" "}
+                            {new Date(deal.closingDate).toLocaleDateString()}
+                          </p>
+                          <p>
+                            <span className="text-sm text-gray-500">
+                              Etapa:{" "}
+                            </span>
+                            {deal.status.name}
+                          </p>
+                        </div>
+                        <div className="flex items-center">
+                          <DollarSign className="h-5 w-5 text-green-500" />
+                          <span className="font-semibold text-green-500">
+                            {deal.amount.toLocaleString()}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center">
-                        <DollarSign className="h-5 w-5 text-green-500" />
-                        <span className="font-semibold text-green-500">
-                          {deal.amount.toLocaleString()}
-                        </span>
+                      <div className="mt-2">
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-green-500 h-2 rounded-full"
+                            style={{ width: `${100}%` }}
+                          ></div>
+                        </div>
                       </div>
                     </div>
-                    <div className="mt-2">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-green-500 h-2 rounded-full"
-                          style={{ width: `${100}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Recent Conversations */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">
-                Recent Conversations
-              </h2>
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <MessageSquare className="h-5 w-5 text-gray-400 mt-1" />
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <p className="font-medium">Product Demo Call</p>
-                      <span className="text-sm text-gray-500">2 days ago</span>
-                    </div>
-                    <p className="text-gray-600 text-sm">
-                      Discussed new feature requirements and timeline for Q2
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <Calendar className="h-5 w-5 text-gray-400 mt-1" />
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <p className="font-medium">Meeting Scheduled</p>
-                      <span className="text-sm text-gray-500">1 week ago</span>
-                    </div>
-                    <p className="text-gray-600 text-sm">
-                      Follow-up meeting scheduled for next sprint planning
-                    </p>
-                  </div>
-                </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500">No hay negocios</p>
+                )}
               </div>
             </div>
           </div>
@@ -664,19 +680,33 @@ export function ContactDetails() {
                 </div>
                 <div className="space-y-3">
                   {activities.map((activity) => (
-                    <div key={activity._id} className="bg-gray-50 rounded-lg p-3">
+                    <div
+                      key={activity._id}
+                      className="bg-gray-50 rounded-lg p-3"
+                    >
                       <div className="flex justify-between items-start">
                         <div className="flex items-center space-x-2">
-                          {activity.activityType === "Reunion" && <Users className="h-4 w-4 text-blue-500" />}
-                          {activity.activityType === "Llamada" && <Phone className="h-4 w-4 text-green-500" />}
-                          {activity.activityType === "Correo" && <Mail className="h-4 w-4 text-red-500" />}
-                          {activity.activityType === "Nota" && <StickyNote className="h-4 w-4 text-yellow-500" />}
-                          <p className="text-gray-700"
-                          onClick={() => {
-                            setActivityFormData(activity);
-                            setShowActivityModal(true);
-                          }}
-                          >{activity.title}</p>
+                          {activity.activityType === "Reunion" && (
+                            <Users className="h-4 w-4 text-blue-500" />
+                          )}
+                          {activity.activityType === "Llamada" && (
+                            <Phone className="h-4 w-4 text-green-500" />
+                          )}
+                          {activity.activityType === "Correo" && (
+                            <Mail className="h-4 w-4 text-red-500" />
+                          )}
+                          {activity.activityType === "Nota" && (
+                            <StickyNote className="h-4 w-4 text-yellow-500" />
+                          )}
+                          <p
+                            className="text-gray-700"
+                            onClick={() => {
+                              setActivityFormData(activity);
+                              setShowActivityModal(true);
+                            }}
+                          >
+                            {activity.title}
+                          </p>
                         </div>
                         <button
                           onClick={() => deleteActivity(activity._id)}
@@ -699,49 +729,74 @@ export function ContactDetails() {
                 <h2 className="text-lg font-semibold mb-4">Documentos</h2>
                 <button
                   onClick={() => setShowUploadDocumentModal(true)}
-                className="bg-indigo-600 text-white rounded-lg px-4 py-2 hover:bg-indigo-700 transition-colors hover:scale-105"
-              >
-                <PlusCircle className="h-5 w-5" />
-              </button>
+                  className="bg-indigo-600 text-white rounded-lg px-4 py-2 hover:bg-indigo-700 transition-colors hover:scale-105"
+                >
+                  <PlusCircle className="h-5 w-5" />
+                </button>
               </div>
-              { documents.length === 0 && (
+              {documents.length === 0 && (
                 <p className="text-gray-500">No hay documentos</p>
               )}
-              { documents.length > 0 && (
-              
-              documents.map((document) => (
-                <div className="space-y-4" key={document._id}>
-                  <div className="flex items-center justify-between">
-                    <div 
-                      className="flex items-center space-x-2 cursor-pointer"
-                      onClick={() => {
-                        setSelectedDocument(document);
-                        setShowPreviewModal(true);
-                      }}
-                    >
-                      <File className="h-5 w-5 text-gray-400" />
-                      <p className="text-gray-700">{document.name}</p>
+              {documents.length > 0 &&
+                documents.map((document) => (
+                  <div className="space-y-4" key={document._id}>
+                    <div className="flex items-center justify-between">
+                      <div
+                        className="flex items-center space-x-2 cursor-pointer"
+                        onClick={() => {
+                          setSelectedDocument(document);
+                          setShowPreviewModal(true);
+                        }}
+                      >
+                        <File className="h-5 w-5 text-gray-400" />
+                        <p className="text-gray-700">{document.name}</p>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteDocument(document._id);
+                        }}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteDocument(document._id);
-                      }}
-                      className="text-gray-400 hover:text-red-500 transition-colors"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
                   </div>
-                </div>
-              ))
-              )}
+                ))}
             </div>
             <div className="bg-white rounded-lg shadow p-6 mt-4">
               <h2 className="text-lg font-semibold mb-4">Cotizaciones</h2>
               <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <File className="h-5 w-5 text-gray-400" />
-                  <p className="text-gray-700">Cotización 1</p>
+                <div className="flex flex-col gap-2">
+                  {quotations.length > 0 ? (
+                    quotations.map((quotation) => (
+                      <div
+                        className="flex items-center space-x-2"
+                        key={quotation._id}
+                      >
+                        <File className="h-5 w-5 text-gray-400" />
+                        <div className="flex gap-2">
+                          <p
+                            className="text-gray-700 cursor-pointer hover:text-blue-500 transition-colors"
+                            onClick={() =>
+                              handlePrint(quotation.quotationNumber)
+                            }
+                          >
+                            {quotation.quotationNumber}
+                          </p>
+                          <p className="text-gray-500">
+                            (
+                            {new Date(
+                              quotation.creationDate
+                            ).toLocaleDateString()}
+                            )
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No hay cotizaciones</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -761,12 +816,12 @@ export function ContactDetails() {
         onUpload={handleUploadDocument}
       />
 
-      <ActivityModal 
-      isOpen={showActivityModal}
-      onClose={() => setShowActivityModal(false)} 
-      onSubmit={handleAddActivity}
-      formData={activityFormData}
-      setFormData={setActivityFormData}
+      <ActivityModal
+        isOpen={showActivityModal}
+        onClose={() => setShowActivityModal(false)}
+        onSubmit={handleAddActivity}
+        formData={activityFormData}
+        setFormData={setActivityFormData}
       />
 
       {/* Edit Contact Modal */}
@@ -784,14 +839,14 @@ export function ContactDetails() {
         />
       )}
 
-      { showDealDetailsModal && (
-      <DealDetailsModal
-        // isOpen={showDealDetailsModal}
-        onClose={() => setShowDealDetailsModal(false)}
-        dealId={dealId}
-        deal={[] as any}
-        onEdit={() => setShowDealDetailsModal(true)}
-      />
+      {showDealDetailsModal && (
+        <DealDetailsModal
+          // isOpen={showDealDetailsModal}
+          onClose={() => setShowDealDetailsModal(false)}
+          dealId={dealId}
+          deal={[] as any}
+          onEdit={() => setShowDealDetailsModal(true)}
+        />
       )}
     </div>
   );

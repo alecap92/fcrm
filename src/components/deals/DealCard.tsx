@@ -67,7 +67,7 @@ export function DealCard({ deal, onEdit, onView }: DealCardProps) {
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   onClick={handleViewClick}
                 >
-                  View Details
+                  View Details2
                 </button>
                 <button
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

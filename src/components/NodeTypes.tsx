@@ -18,6 +18,8 @@ import {
   Trash2,
   Copy,
   Settings,
+  Play,
+  Users,
 } from "lucide-react";
 import { NodeEditor } from "./NodeEditor";
 import { useWorkflowStore } from "../store/workflow";
@@ -132,8 +134,12 @@ const WebhookTriggerNode = ({ id, data }: { id: string; data: any }) => (
     <div className="flex items-center gap-2">
       <Globe className="w-4 h-4" />
       <div>
-        <p className="font-semibold">Webhook</p>
-        <p className="text-sm">{data.webhook || "When form submitted..."}</p>
+        <p className="font-semibold">Webhook Trigger</p>
+        {data.webhookId ? (
+          <p className="text-sm">ID: {data.webhookId.substring(0, 8)}...</p>
+        ) : (
+          <p className="text-sm">Pendiente de configurar...</p>
+        )}
       </div>
     </div>
   </NodeWrapper>
@@ -191,6 +197,20 @@ const DateTriggerNode = ({ id, data }: { id: string; data: any }) => (
   </NodeWrapper>
 );
 
+// Trigger manual
+const ManualTriggerNode = ({ id, data }: { id: string; data: any }) => (
+  <NodeWrapper type="manual_trigger" data={data} id={id}>
+    <Handle type="source" position={Position.Bottom} />
+    <div className="flex items-center gap-2">
+      <Play className="w-4 h-4" />
+      <div>
+        <p className="font-semibold">Manual Trigger</p>
+        <p className="text-sm">{data.description || "Run workflow manually..."}</p>
+      </div>
+    </div>
+  </NodeWrapper>
+);
+
 // Handler Nodes
 const ChatGPTNode = ({ id, data }: { id: string; data: any }) => (
   <NodeWrapper type="chatgpt" data={data} id={id}>
@@ -233,7 +253,8 @@ const EmailNode = ({ id, data }: { id: string; data: any }) => {
         emailBody: data.emailBody || "<p>Default email content</p>",
       });
     }
-  }, [id, data, updateNode]);
+  // Eliminar data de las dependencias para evitar bucles infinitos
+  }, [id, updateNode]);
 
   return (
     <NodeWrapper type="email" data={data} id={id}>
@@ -244,6 +265,40 @@ const EmailNode = ({ id, data }: { id: string; data: any }) => {
         <div>
           <p className="font-semibold">Send Email</p>
           <p className="text-sm">To: {data.to || data.recipient || "..."}</p>
+        </div>
+      </div>
+    </NodeWrapper>
+  );
+};
+
+// Nodo para email masivo
+const MassiveMailNode = ({ id, data }: { id: string; data: any }) => {
+  const { updateNode } = useWorkflowStore();
+
+  // Asegurarnos de que los campos requeridos estén configurados
+  useEffect(() => {
+    // Si algún campo requerido falta, actualizar el nodo con valores predeterminados
+    if (!data.listId || !data.subject || !data.emailBody || !data.from) {
+      updateNode(id, {
+        listId: data.listId || "",
+        from: data.from || "{{user.email}}",
+        subject: data.subject || "Massive Email Campaign",
+        emailBody: data.emailBody || "<p>Default massive email content</p>",
+      });
+    }
+  // Eliminar data de las dependencias para evitar bucles infinitos
+  }, [id, updateNode]);
+
+  return (
+    <NodeWrapper type="send_mass_email" data={data} id={id}>
+      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Bottom} />
+      <div className="flex items-center gap-2">
+        <Mail className="w-4 h-4" />
+        <div>
+          <p className="font-semibold">Massive Mail</p>
+          <p className="text-sm">To List: {data.listId || "..."}</p>
+          <p className="text-sm">Subject: {data.subject || "..."}</p>
         </div>
       </div>
     </NodeWrapper>
@@ -375,7 +430,8 @@ const WhatsappNode = ({ id, data }: { id: string; data: any }) => {
         message: data.message || "Default WhatsApp message",
       });
     }
-  }, [id, data, updateNode]);
+  // Eliminar data de las dependencias para evitar bucles infinitos
+  }, [id, updateNode]);
 
   return (
     <NodeWrapper type="whatsapp" data={data} id={id}>
@@ -396,14 +452,24 @@ const DelayNode = ({ id, data }: { id: string; data: any }) => {
   const { updateNode } = useWorkflowStore();
 
   useEffect(() => {
-    if (!data.delayType || !data.duration) {
+    // Asegurar que duration sea un número entero
+    const duration = data.duration ? parseInt(data.duration, 10) : 5;
+    if (!data.duration || isNaN(duration) || duration <= 0) {
       updateNode(id, {
-        delayType: data.delayType || "minutes",
-        duration: data.duration || 5,
-        businessHours: data.businessHours || false,
+        duration: 5,
+        delayMinutes: 5, // Añadir este campo para compatibilidad con el backend
+      });
+    } else if (duration !== data.delayMinutes) {
+      // Asegurar que ambos campos estén sincronizados
+      updateNode(id, {
+        delayMinutes: duration,
       });
     }
-  }, [id, data, updateNode]);
+  // Eliminar data de las dependencias para evitar bucles infinitos
+  }, [id, updateNode]);
+
+  // Convertir duration a número para la visualización
+  const displayDuration = data.duration ? parseInt(data.duration, 10) : 5;
 
   return (
     <NodeWrapper type="delay" data={data} id={id}>
@@ -414,7 +480,7 @@ const DelayNode = ({ id, data }: { id: string; data: any }) => {
         <div>
           <p className="font-semibold">Delay</p>
           <p className="text-sm">
-            {data.duration || "5"} {data.delayType || "minutes"}
+            {displayDuration} minutes
           </p>
         </div>
       </div>
@@ -431,7 +497,8 @@ const TransformNode = ({ id, data }: { id: string; data: any }) => {
         transformations: data.transformations || [],
       });
     }
-  }, [id, data, updateNode]);
+  // Eliminar data de las dependencias para evitar bucles infinitos
+  }, [id, updateNode]);
 
   return (
     <NodeWrapper type="transform" data={data} id={id}>
@@ -458,6 +525,7 @@ export const nodeTypes = {
   tasks_trigger: TaskTriggerNode,
   task_trigger: TaskTriggerNode, // Alias para compatibilidad
   date_trigger: DateTriggerNode,
+  manual_trigger: ManualTriggerNode, // Nuevo trigger manual
   contacts: Contacts, // Alias para compatibilidad con el backend
   WhatsAppTriggerNode: WhatsAppTriggerNode, // Alias para compatibilidad con el backend
 
@@ -465,6 +533,9 @@ export const nodeTypes = {
   chatgpt: ChatGPTNode,
   email: EmailNode,
   send_email: EmailNode, // Alias para compatibilidad con el backend
+  mass_email: MassiveMailNode,
+  send_mass_email: MassiveMailNode, // Alias para compatibilidad con el backend
+  massiveMail: MassiveMailNode,  // Nuevo nodo para correo masivo
   webhook: WebhookNode,
   http_request: WebhookNode, // Alias para compatibilidad con el backend
   create_deal: CreateDealNode,

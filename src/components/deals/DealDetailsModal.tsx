@@ -46,23 +46,24 @@ export function DealDetailsModal({
 
   const parseContactInfo = () => {
     if (currentDeal?.associatedContactId) {
-      const parsedContact = [currentDeal.associatedContactId].map(normalizeContact);
+      const parsedContact = [currentDeal.associatedContactId].map(
+        normalizeContact
+      );
       setContact(parsedContact[0]);
     }
   };
 
   const fetchDeal = async () => {
-    if (dealId) { 
+    if (dealId) {
       try {
-
         const response = await dealsService.getDealById(dealId);
-        
+
         // Parsear la respuesta para unir deal y fields si es necesario
         if (response.data && response.data.deal) {
           // Si la respuesta tiene una estructura con deal y fields separados
           const dealData = {
             ...response.data.deal,
-            fields: response.data.fields || []
+            fields: response.data.fields || [],
           };
           setCurrentDeal(dealData);
         } else {
@@ -77,8 +78,11 @@ export function DealDetailsModal({
 
   useEffect(() => {
     // Verificar si deal es válido o si necesitamos obtenerlo
-    const isDealValid = deal && Object.keys(deal).length >= 0 && !(Array.isArray(deal) && deal.length === 0);
-    
+    const isDealValid =
+      deal &&
+      Object.keys(deal).length >= 0 &&
+      !(Array.isArray(deal) && deal.length === 0);
+
     if (isDealValid) {
       setCurrentDeal(deal);
     } else if (dealId) {
@@ -142,38 +146,46 @@ export function DealDetailsModal({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
-
-             
-
-             
-
               {/* Files */}
               <div className="bg-white rounded-lg border p-4">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-medium text-gray-900">Productos</h3>
-                 
+                  <h3 className="text-sm font-medium text-gray-900">
+                    Productos
+                  </h3>
                 </div>
-                <div className="space-y-2">
-                    {
-                      currentDeal?.dealProducts?.map((product) => {
-                        return (
-                          <div key={product._id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
-                             <Box className="w-5 h-5 text-gray-400" />
-                             <div>
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {product.productId.name} - {product.variantId.attributeValues[0].value}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                Cantidad: {product.quantity}
-                              </p>  
-                              <p className="text-xs text-gray-500">
-                                ${product.variantId.attributeValues[0].price}
-                              </p>
-                             </div>
+                <div className="space-y-3">
+                  {currentDeal?.dealProducts?.length > 0 ? (
+                    currentDeal.dealProducts.map((product) => (
+                      <div
+                        key={product._id}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all border"
+                      >
+                        <Box className="w-8 h-8 text-blue-500 bg-blue-50 p-1.5 rounded-md" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {product.productId.name}
+                          </p>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                              Variante:{" "}
+                              {product.variantId.attributeValues[0].value}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                              Cantidad: {product.quantity}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                              Precio: $
+                              {product.variantId.attributeValues[0].price}
+                            </span>
                           </div>
-                        )
-                      })
-                    }
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">
+                      No hay productos asociados a este negocio
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -192,7 +204,7 @@ export function DealDetailsModal({
                       Value
                     </div>
                     <span className="text-sm font-medium text-gray-900">
-                      ${currentDeal.amount?.toLocaleString() || '0'}
+                      ${currentDeal.amount?.toLocaleString() || "0"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -201,7 +213,12 @@ export function DealDetailsModal({
                       Expected Close
                     </div>
                     <span className="text-sm font-medium text-gray-900">
-                      {currentDeal.closingDate ? format(new Date(currentDeal.closingDate), "dd/MM/yyyy") : 'No definido'}
+                      {currentDeal.closingDate
+                        ? format(
+                            new Date(currentDeal.closingDate),
+                            "dd/MM/yyyy"
+                          )
+                        : "No definido"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -210,7 +227,9 @@ export function DealDetailsModal({
                       Created
                     </div>
                     <span className="text-sm font-medium text-gray-900">
-                      {currentDeal.createdAt ? format(new Date(currentDeal.createdAt), "dd/MM/yyyy") : 'No definido'}
+                      {currentDeal.createdAt
+                        ? format(new Date(currentDeal.createdAt), "dd/MM/yyyy")
+                        : "No definido"}
                     </span>
                   </div>
                 </div>
@@ -225,19 +244,26 @@ export function DealDetailsModal({
                   <div className="flex items-center text-sm">
                     <Building2 className="w-4 h-4 text-gray-400 mr-2" />
                     <span className="text-gray-900">
-                      {currentDeal.associatedContactId?.properties?.companyName || contact?.companyName || 'No disponible'}
+                      {currentDeal.associatedContactId?.properties
+                        ?.companyName ||
+                        contact?.companyName ||
+                        "No disponible"}
                     </span>
                   </div>
                   <div className="flex items-center text-sm">
                     <Mail className="w-4 h-4 text-gray-400 mr-2" />
                     <span className="text-gray-900">
-                      {currentDeal.associatedContactId?.properties?.email || contact?.email || 'No disponible'}
+                      {currentDeal.associatedContactId?.properties?.email ||
+                        contact?.email ||
+                        "No disponible"}
                     </span>
                   </div>
                   <div className="flex items-center text-sm">
                     <Phone className="w-4 h-4 text-gray-400 mr-2" />
                     <span className="text-gray-900">
-                      {currentDeal.associatedContactId?.properties?.phone || contact?.mobile || 'No disponible'}
+                      {currentDeal.associatedContactId?.properties?.phone ||
+                        contact?.mobile ||
+                        "No disponible"}
                     </span>
                   </div>
                 </div>
@@ -249,22 +275,26 @@ export function DealDetailsModal({
                   Custom Fields
                 </h3>
                 <div className="space-y-3">
-                  {currentDeal.fields && Array.isArray(currentDeal.fields) && currentDeal.fields.length > 0 ? (
+                  {currentDeal.fields &&
+                  Array.isArray(currentDeal.fields) &&
+                  currentDeal.fields.length > 0 ? (
                     currentDeal.fields.map((field: any) => (
                       <div
                         key={field._id || field.field?._id}
                         className="flex items-center justify-between"
                       >
                         <span className="text-sm text-gray-500">
-                          {field.field?.name || 'Campo personalizado'}
+                          {field.field?.name || "Campo personalizado"}
                         </span>
                         <span className="text-sm font-medium text-gray-900">
-                          {field.value || ''}
+                          {field.value || ""}
                         </span>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500">No hay campos personalizados</p>
+                    <p className="text-sm text-gray-500">
+                      No hay campos personalizados
+                    </p>
                   )}
                 </div>
               </div>
