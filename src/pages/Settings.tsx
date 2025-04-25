@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   OrganizationSettings,
   UsersSettings,
@@ -9,12 +9,14 @@ import {
   InvoiceSettings,
   DealsSettings,
   QuotationSettings,
-  SettingsSidebar
-} from '../components/settings';
-import type { SettingsSection } from '../types/settings';
+  SettingsSidebar,
+  LeadScoringSettings,
+} from "../components/settings";
+import type { SettingsSection } from "../types/settings";
 
 export function Settings() {
-  const [activeSection, setActiveSection] = useState<SettingsSection>('organization');
+  const [activeSection, setActiveSection] =
+    useState<SettingsSection>("organization");
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -31,15 +33,16 @@ export function Settings() {
           {/* Main Content */}
           <div className="col-span-12 lg:col-span-9">
             <div className="bg-white rounded-lg shadow">
-              {activeSection === 'organization' && <OrganizationSettings />}
-              {activeSection === 'users' && <UsersSettings />}
-              {activeSection === 'contact-fields' && <ContactFieldsSettings />}
-              {activeSection === 'security' && <SecuritySettings />}
-              {activeSection === 'integrations' && <IntegrationsSettings />}
-              {activeSection === 'email' && <EmailSettings />}
-              {activeSection === 'invoice' && <InvoiceSettings />}
-              {activeSection === 'quotation' && <QuotationSettings />}
-              {activeSection === 'deals' && <DealsSettings />}
+              {activeSection === "organization" && <OrganizationSettings />}
+              {activeSection === "users" && <UsersSettings />}
+              {activeSection === "contact-fields" && <ContactFieldsSettings />}
+              {activeSection === "security" && <SecuritySettings />}
+              {activeSection === "integrations" && <IntegrationsSettings />}
+              {activeSection === "email" && <EmailSettings />}
+              {activeSection === "invoice" && <InvoiceSettings />}
+              {activeSection === "quotation" && <QuotationSettings />}
+              {activeSection === "deals" && <DealsSettings />}
+              {activeSection === "lead-scoring" && <LeadScoringSettings />}
             </div>
           </div>
         </div>

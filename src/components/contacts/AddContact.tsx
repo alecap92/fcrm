@@ -277,6 +277,7 @@ export default function CreateContactModal({
                 <option value="Prospecto">Prospecto</option>
                 <option value="Cliente">Cliente</option>
                 <option value="Descalificado">Descalificado</option>
+                <option value="Perdido">Perdido</option>
                 <option value="Otro">Otro</option>
               </select>
             </div>

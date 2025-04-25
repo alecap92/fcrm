@@ -127,6 +127,7 @@ export function ContactDetails() {
     null
   );
   const [quotations, setQuotations] = useState<Quote[]>([]);
+  const [leadScore, setLeadScore] = useState<number>(0);
 
   const { showLoading, hideLoading } = useLoading();
 
@@ -157,6 +158,8 @@ export function ContactDetails() {
       setDailyMetrics(response.data.resume);
       setDeals(response.data.deals);
       setTags(normalized.tags || []);
+
+      setLeadScore(response.data.leadScore);
 
       await getActivities(response.data.contact._id);
       await handleGetQuotations();
@@ -486,10 +489,8 @@ export function ContactDetails() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Total de notas</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {dailyMetrics.totalNotes}
-                </p>
+                <p className="text-sm text-gray-500">Lead Score</p>
+                <p className="text-2xl font-bold text-gray-900">{leadScore}</p>
               </div>
               <CheckCircle2 className="h-8 w-8 text-blue-500" />
             </div>

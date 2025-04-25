@@ -7,7 +7,8 @@ export type SettingsSection =
   | "email"
   | "invoice"
   | "deals"
-  | "quotation";
+  | "quotation"
+  | "lead-scoring";
 
 export interface Organization {
   _id?: string;
