@@ -35,9 +35,10 @@ export default function CreateContactModal({
     postalCode: initialData?.address?.zipCode || "",
     source: "",
     tags: "",
-    notes: "",
+    notas: initialData?.notas || "",
     dv: initialData?.dv || "",
     idType: initialData?.idType || "",
+    lifeCycle: initialData?.lifeCycle || "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -64,9 +65,10 @@ export default function CreateContactModal({
       postalCode: initialData?.address?.zipCode || "",
       source: "",
       tags: "",
-      notes: "",
       dv: initialData?.dv || "",
       idType: initialData?.idType || "",
+      notas: initialData?.notas || "",
+      lifeCycle: initialData?.lifeCycle || "",
     });
   }, [initialData]);
 
@@ -156,7 +158,7 @@ export default function CreateContactModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Company Type <span className="text-red-500">*</span>
+                Tipo de Empresa <span className="text-red-500">*</span>
               </label>
               <select
                 required
@@ -181,13 +183,14 @@ export default function CreateContactModal({
                     "Otro",
                   ].includes(formData.companyType)
                     ? formData.companyType
-                    : "Otro"
+                    : ""
                 }
                 onChange={(e) =>
                   setFormData({ ...formData, companyType: e.target.value })
                 }
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
               >
+                <option value="">-Selecciona un tipo de empresa-</option>
                 <option value="Personal">Personal</option>
                 <option value="Hospitales e IPS">Hospitales e IPS</option>
                 <option value="Bares y Restaurantes">
@@ -216,7 +219,9 @@ export default function CreateContactModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Tipo de documento</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Tipo de documento
+              </label>
               <select
                 value={formData.idType}
                 onChange={(e) =>
@@ -231,10 +236,14 @@ export default function CreateContactModal({
                 <option value="5">Cédula de extranjería</option>
                 <option value="6">NIT</option>
                 <option value="7">Pasaporte</option>
-                <option value="8">Documento de identificación extranjero</option>
+                <option value="8">
+                  Documento de identificación extranjero
+                </option>
                 <option value="9">NIT de otro país</option>
                 <option value="10">NUIP *</option>
-                <option value="11">PEP (Permiso Especial de Permanencia)</option>
+                <option value="11">
+                  PEP (Permiso Especial de Permanencia)
+                </option>
                 <option value="12">PPT (Permiso Protección Temporal)</option>
               </select>
             </div>
@@ -250,6 +259,26 @@ export default function CreateContactModal({
                 }
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Ciclo De Vida <span className="text-red-500">*</span>
+              </label>
+              <select
+                required
+                value={formData.lifeCycle}
+                onChange={(e) =>
+                  setFormData({ ...formData, lifeCycle: e.target.value })
+                }
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
+              >
+                <option value="">-Selecciona un ciclo de vida-</option>
+                <option value="Lead">Lead</option>
+                <option value="Prospecto">Prospecto</option>
+                <option value="Cliente">Cliente</option>
+                <option value="Descalificado">Descalificado</option>
+                <option value="Otro">Otro</option>
+              </select>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -300,9 +329,10 @@ export default function CreateContactModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                City
+                Ciudad <span className="text-red-500">*</span>
               </label>
               <input
+                required
                 type="text"
                 value={formData.city}
                 onChange={(e) =>
@@ -360,23 +390,29 @@ export default function CreateContactModal({
               <option value="website">Website</option>
               <option value="referral">Referral</option>
               <option value="social">Social Media</option>
-              <option value="event">Event</option>
-              <option value="other">Other</option>
+              <option value="evento">Evento</option>
+              <option value="newsletter">Newsletter</option>
+              <option value="email">Email</option>
+              <option value="phone">Phone</option>
+              <option value="importacion">Importacion</option>
+              <option value="otro">Otro</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Notes
+              Notas
             </label>
             <textarea
-              value={formData.notes}
+              value={formData.notas}
               onChange={(e) =>
-                setFormData({ ...formData, notes: e.target.value })
+                setFormData({ ...formData, notas: e.target.value })
               }
               rows={3}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
-              placeholder="Additional notes about the contact..."
+              placeholder="Notas adicionales sobre el contacto..."
+              name="notas"
+              id="notas"
             />
           </div>
         </div>

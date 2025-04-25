@@ -6,8 +6,6 @@ import {
   Mail,
   MapPin,
   DollarSign,
-  MessageSquare,
-  Calendar,
   PlusCircle,
   Clock,
   Trash2,
@@ -36,7 +34,6 @@ import PrintModal from "../components/contacts/PrintModal";
 import ActivityModal from "../components/contacts/ActivityModal";
 import { UploadModal } from "../components/documents/UploadModal";
 import { DealDetailsModal } from "../components/deals/DealDetailsModal";
-import documentsService from "../services/documentsService";
 import { useAuth } from "../contexts/AuthContext";
 import { PreviewModal } from "../components/documents/PreviewModal";
 import quotesService from "../services/quotesService";
@@ -80,6 +77,8 @@ export function ContactDetails() {
     updatedAt: "",
     taxId: "",
     dv: "",
+    notas: "",
+    lifeCycle: "",
   });
   const [deals, setDeals] = useState([
     {
@@ -226,6 +225,8 @@ export function ContactDetails() {
         { key: "address", value: updatedData.address },
         { key: "idNumber", value: updatedData.idNumber },
         { key: "dv", value: updatedData.dv },
+        { key: "notas", value: updatedData.notas },
+        { key: "lifeCycle", value: updatedData.lifeCycle },
       ];
 
       await contactsService.updateContact(id, {
@@ -599,6 +600,10 @@ export function ContactDetails() {
                         Digito de Verificación
                       </p>
                       <p className="mt-1">{contactDetails.dv}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Notas</p>
+                      <p className="mt-1">{contactDetails.notas}</p>
                     </div>
                   </div>
                 </div>

@@ -34,7 +34,9 @@ export interface Contact {
   mobile?: string;
   idType?: string;
   website?: string;
-  dv?: string | undefined;  
+  dv?: string | undefined;
+  notas?: string;
+  lifeCycle?: string;
 }
 
 export interface ContactFilters {
@@ -99,7 +101,7 @@ export interface IContactDetails {
 
 export interface Activity {
   _id: string;
-  activityType:  "Reunion" | "Llamada" | "Correo" | "Nota";
+  activityType: "Reunion" | "Llamada" | "Correo" | "Nota";
   title: string;
   date: string;
   notes: string;

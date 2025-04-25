@@ -32,5 +32,7 @@ export const normalizeContact = (rawContact: any): Contact => {
     website: propertyMap.website || "",
     dv: propertyMap.dv || "",
     idType: propertyMap.idType || "",
+    notas: propertyMap.notas || "",
+    lifeCycle: propertyMap.lifeCycle || "",
   };
 };
