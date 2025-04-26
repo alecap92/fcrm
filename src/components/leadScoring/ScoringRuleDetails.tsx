@@ -65,10 +65,7 @@ export const ScoringRuleDetails: React.FC<ScoringRuleDetailsProps> = ({
           <h2 className="text-xl font-bold text-gray-900">{rule.name}</h2>
           <p className="mt-1 text-sm text-gray-500">{rule.description}</p>
         </div>
-        <Badge
-          variant={rule.isActive ? "success" : "secondary"}
-          className="text-xs font-medium"
-        >
+        <Badge className="text-xs font-medium">
           {rule.isActive ? "Activa" : "Inactiva"}
         </Badge>
       </div>
@@ -123,9 +120,9 @@ export const ScoringRuleDetails: React.FC<ScoringRuleDetailsProps> = ({
       <div>
         <h3 className="text-sm font-medium text-gray-700 mb-3">Condiciones</h3>
         <div className="space-y-3">
-          {rule.conditions.map((condition) => (
+          {rule?.conditions?.map((condition) => (
             <div
-              key={condition.id}
+              key={condition._id}
               className="bg-gray-50 p-3 rounded-lg border border-gray-200"
             >
               <div className="flex items-center justify-between">
@@ -142,10 +139,7 @@ export const ScoringRuleDetails: React.FC<ScoringRuleDetailsProps> = ({
                     </span>
                   )}
                 </div>
-                <Badge
-                  variant={condition.points >= 0 ? "success" : "danger"}
-                  className="text-xs"
-                >
+                <Badge className="text-xs">
                   {condition.points > 0 ? "+" : ""}
                   {condition.points} puntos
                 </Badge>

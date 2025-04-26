@@ -5,8 +5,7 @@ import { ScoringRulesList } from "../leadScoring/ScoringRulesList";
 import { ScoringRuleForm } from "../leadScoring/ScoringRuleForm";
 import { ScoringRuleDetails } from "../leadScoring/ScoringRuleDetails";
 import { ScorePreview } from "../leadScoring/ScorePreview";
-import { LeadScoreStats } from "../leadScoring/LeadScoreStats";
-import { ScoringRule, LeadScoringStats } from "../../types/leadScoring";
+import { ScoringRule } from "../../types/leadScoring";
 import { leadScoringService } from "../../services/leadScoringService";
 import { useToast } from "../ui/toast";
 
@@ -29,7 +28,7 @@ export const LeadScoringSettings = () => {
     try {
       setLoading(true);
       const rulesData = await leadScoringService.getRules();
-
+      console.log("Reglas obtenidas:", rulesData);
       setRules(rulesData);
       setError(null);
     } catch (err) {
@@ -41,10 +40,10 @@ export const LeadScoringSettings = () => {
   };
 
   const handleCreateRule = async (
-    rule: Omit<ScoringRule, "id" | "createdAt" | "updatedAt">
+    rule: Omit<ScoringRule, "id" | "_id" | "createdAt" | "updatedAt">
   ) => {
     try {
-      console.log(rule, 12);
+      console.log("Creando regla:", rule);
       await leadScoringService.createRule(rule);
       toast.show({
         title: "Regla creada con éxito",
@@ -54,22 +53,35 @@ export const LeadScoringSettings = () => {
       setModalView(null);
       fetchRules();
     } catch (err) {
+      console.error("Error al crear la regla:", err);
       toast.show({
         title: "Error al crear la regla",
         description: "Ha ocurrido un error al crear la regla",
         type: "error",
       });
-      console.error(err);
     }
   };
 
   const handleUpdateRule = async (
-    rule: Omit<ScoringRule, "id" | "createdAt" | "updatedAt">
+    rule: Omit<ScoringRule, "id" | "_id" | "createdAt" | "updatedAt">
   ) => {
     if (!selectedRule) return;
 
+    // Identificar el ID correcto para la actualización
+    const ruleId = selectedRule.id || selectedRule._id;
+    if (!ruleId) {
+      console.error("Error: No se puede actualizar la regla sin ID");
+      toast.show({
+        title: "Error al actualizar",
+        description: "No se pudo identificar la regla para actualizar",
+        type: "error",
+      });
+      return;
+    }
+
     try {
-      await leadScoringService.updateRule(selectedRule.id, rule);
+      console.log(`Actualizando regla con ID ${ruleId}:`, rule);
+      await leadScoringService.updateRule(ruleId, rule);
       toast.show({
         title: "Regla actualizada con éxito",
         description: "La regla ha sido actualizada correctamente",
@@ -78,21 +90,33 @@ export const LeadScoringSettings = () => {
       setModalView(null);
       fetchRules();
     } catch (err) {
+      console.error("Error al actualizar la regla:", err);
       toast.show({
         title: "Error al actualizar la regla",
         description: "Ha ocurrido un error al actualizar la regla",
         type: "error",
       });
-      console.error(err);
     }
   };
 
   const handleDeleteRule = async (rule: ScoringRule) => {
+    // Identificar el ID correcto para la eliminación
+    const ruleId = rule.id || rule._id;
+    if (!ruleId) {
+      console.error("Error: No se puede eliminar la regla sin ID");
+      toast.show({
+        title: "Error al eliminar",
+        description: "No se pudo identificar la regla para eliminar",
+        type: "error",
+      });
+      return;
+    }
+
     if (!window.confirm("¿Estás seguro de que deseas eliminar esta regla?"))
       return;
 
     try {
-      await leadScoringService.deleteRule(rule.id);
+      await leadScoringService.deleteRule(ruleId);
       toast.show({
         title: "Regla eliminada con éxito",
         description: "La regla ha sido eliminada correctamente",
@@ -100,30 +124,42 @@ export const LeadScoringSettings = () => {
       });
       fetchRules();
     } catch (err) {
+      console.error("Error al eliminar la regla:", err);
       toast.show({
         title: "Error al eliminar la regla",
         description: "Ha ocurrido un error al eliminar la regla",
         type: "error",
       });
-      console.error(err);
     }
   };
 
   const handleToggleStatus = async (rule: ScoringRule) => {
+    // Identificar el ID correcto para cambiar el estado
+    const ruleId = rule.id || rule._id;
+    if (!ruleId) {
+      console.error("Error: No se puede cambiar el estado de la regla sin ID");
+      toast.show({
+        title: "Error al cambiar estado",
+        description: "No se pudo identificar la regla para cambiar su estado",
+        type: "error",
+      });
+      return;
+    }
+
     try {
-      await leadScoringService.toggleRuleStatus(rule.id, !rule.isActive);
+      await leadScoringService.toggleRuleStatus(ruleId, !rule.isActive);
       toast.show({
         title: `Regla ${rule.isActive ? "desactivada" : "activada"} con éxito`,
         type: "success",
       });
       fetchRules();
     } catch (err) {
+      console.error("Error al cambiar el estado de la regla:", err);
       toast.show({
         title: "Error al cambiar el estado de la regla",
         description: "Ha ocurrido un error al cambiar el estado de la regla",
         type: "error",
       });
-      console.error(err);
     }
   };
 
@@ -133,29 +169,91 @@ export const LeadScoringSettings = () => {
       setPreviewData(previewResult);
       setModalView("preview");
     } catch (err) {
+      console.error("Error al generar la vista previa:", err);
       toast.show({
         title: "Error al generar la vista previa",
         description: "Ha ocurrido un error al generar la vista previa",
         type: "error",
       });
-      console.error(err);
     }
   };
 
   const handleEditRule = (rule: ScoringRule) => {
-    setSelectedRule(rule);
-    setModalView("edit");
+    console.log("Editando regla (LeadScoringSettings):", rule);
+
+    // Identificar el ID correcto para obtener la regla
+    const ruleId = rule.id || rule._id;
+    if (!ruleId) {
+      console.error("Error: Regla inválida para editar", rule);
+      toast.show({
+        title: "Error al editar",
+        description: "No se puede editar esta regla porque faltan datos",
+        type: "error",
+      });
+      return;
+    }
+
+    // Primero obtener la regla completa del servidor
+    leadScoringService
+      .getRule(ruleId)
+      .then((fullRule) => {
+        console.log("Regla completa obtenida:", fullRule);
+        setSelectedRule(fullRule);
+        setModalView("edit");
+      })
+      .catch((err) => {
+        console.error("Error al obtener detalles de la regla:", err);
+        toast.show({
+          title: "Error al editar",
+          description: "No se pudieron cargar los detalles de la regla",
+          type: "error",
+        });
+      });
   };
 
   const handleViewRule = (rule: ScoringRule) => {
-    setSelectedRule(rule);
-    setModalView("view");
+    console.log("Viendo detalles de regla (LeadScoringSettings):", rule);
+
+    // Identificar el ID correcto para obtener la regla
+    const ruleId = rule.id || rule._id;
+    if (!ruleId) {
+      console.error("Error: Regla inválida para ver", rule);
+      return;
+    }
+
+    leadScoringService
+      .getRule(ruleId)
+      .then((fullRule) => {
+        console.log("Regla completa obtenida para vista:", fullRule);
+        setSelectedRule(fullRule);
+        setModalView("view");
+      })
+      .catch((err) => {
+        console.error("Error al obtener detalles de la regla para vista:", err);
+        toast.show({
+          title: "Error",
+          description: "No se pudieron cargar los detalles de la regla",
+          type: "error",
+        });
+      });
   };
 
   const closeModal = () => {
     setModalView(null);
     setSelectedRule(null);
     setPreviewData(null);
+  };
+
+  // Prepara la regla para el formulario, normalizando la estructura
+  const prepareRuleForForm = (rule: ScoringRule): ScoringRule => {
+    // Si la regla tiene rules pero no conditions, usamos rules como conditions
+    if (rule.rules && !rule.conditions) {
+      return {
+        ...rule,
+        conditions: rule.rules,
+      };
+    }
+    return rule;
   };
 
   const renderModalContent = () => {
@@ -176,13 +274,16 @@ export const LeadScoringSettings = () => {
         );
       case "edit":
         if (!selectedRule) return null;
+
+        const preparedRule = prepareRuleForForm(selectedRule);
+
         return (
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl mx-auto">
             <h2 className="text-xl font-bold mb-6">
               Editar regla de puntuación
             </h2>
             <ScoringRuleForm
-              initialData={selectedRule}
+              initialData={preparedRule}
               onSubmit={handleUpdateRule}
               onCancel={closeModal}
               isPreviewAvailable={true}
@@ -192,6 +293,9 @@ export const LeadScoringSettings = () => {
         );
       case "view":
         if (!selectedRule) return null;
+
+        const viewRule = prepareRuleForForm(selectedRule);
+
         return (
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl mx-auto">
             <div className="flex justify-between items-center mb-6">
@@ -209,7 +313,7 @@ export const LeadScoringSettings = () => {
               </div>
             </div>
             <ScoringRuleDetails
-              rule={selectedRule}
+              rule={viewRule}
               stats={{
                 contactsAffected: 0, // Estos valores deberían venir de una API
                 averagePointsAdded: 0,
@@ -243,7 +347,7 @@ export const LeadScoringSettings = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">
           Puntuación de Leads (Lead Scoring)

@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import { Edit2, Trash2, Eye, MoreVertical, Zap, ZapOff } from "lucide-react";
+import { Edit2, Trash2, Eye, Zap, ZapOff } from "lucide-react";
 import { Button } from "../ui/button";
 import { ScoringRule } from "../../types/leadScoring";
-import { Badge } from "../ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -23,11 +22,62 @@ export const ScoringRulesList: React.FC<ScoringRulesListProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const filteredRules = rules.filter(
+  const filteredRules = rules?.filter(
     (rule) =>
       rule.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rule.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleEditClick = (rule: ScoringRule) => {
+    console.log("Clic en editar regla (ScoringRulesList):", rule);
+    if (!rule || (!rule.id && !rule._id)) {
+      console.error(
+        "Error: Regla inválida para editar en ScoringRulesList",
+        rule
+      );
+      return;
+    }
+
+    try {
+      onEdit(rule);
+    } catch (error) {
+      console.error("Error al llamar a onEdit:", error);
+    }
+  };
+
+  const handleViewClick = (rule: ScoringRule) => {
+    console.log("Clic en ver regla (ScoringRulesList):", rule);
+    if (!rule || (!rule.id && !rule._id)) {
+      console.error("Error: Regla inválida para ver en ScoringRulesList", rule);
+      return;
+    }
+
+    try {
+      onView(rule);
+    } catch (error) {
+      console.error("Error al llamar a onView:", error);
+    }
+  };
+
+  const handleDeleteClick = (rule: ScoringRule) => {
+    console.log("Clic en eliminar regla:", rule);
+    onDelete(rule);
+  };
+
+  const handleToggleClick = (rule: ScoringRule) => {
+    console.log("Clic en cambiar estado de regla:", rule);
+    onToggleStatus(rule);
+  };
+
+  // Función para obtener el número de condiciones
+  const getConditionsCount = (rule: ScoringRule): number => {
+    if (rule.conditions && rule.conditions.length > 0) {
+      return rule.conditions.length;
+    } else if (rule.rules && rule.rules.length > 0) {
+      return rule.rules.length;
+    }
+    return 0;
+  };
 
   return (
     <div className="bg-white rounded-lg shadow">
@@ -68,7 +118,11 @@ export const ScoringRulesList: React.FC<ScoringRulesListProps> = ({
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredRules.length > 0 ? (
               filteredRules.map((rule) => (
-                <tr key={rule.id} className="hover:bg-gray-50">
+                <tr
+                  key={rule.id || rule._id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => handleViewClick(rule)}
+                >
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {rule.name}
                   </td>
@@ -76,37 +130,35 @@ export const ScoringRulesList: React.FC<ScoringRulesListProps> = ({
                     {rule.description}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge className="text-xs font-medium">
+                    <div
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        rule.isActive
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
                       {rule.isActive ? "Activa" : "Inactiva"}
-                    </Badge>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {/* {rule.conditions.length} */}
+                    {getConditionsCount(rule)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDistanceToNow(new Date(rule.updatedAt), {
-                      addSuffix: true,
-                      locale: es,
-                    })}
+                    {rule.updatedAt &&
+                      formatDistanceToNow(new Date(rule.updatedAt), {
+                        addSuffix: true,
+                        locale: es,
+                      })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onToggleStatus(rule)}
-                        title={rule.isActive ? "Desactivar" : "Activar"}
-                      >
-                        {rule.isActive ? (
-                          <ZapOff className="h-4 w-4 text-amber-500" />
-                        ) : (
-                          <Zap className="h-4 w-4 text-green-500" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onView(rule)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewClick(rule);
+                        }}
                         title="Ver detalles"
                       >
                         <Eye className="h-4 w-4 text-blue-500" />
@@ -114,7 +166,10 @@ export const ScoringRulesList: React.FC<ScoringRulesListProps> = ({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onEdit(rule)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditClick(rule);
+                        }}
                         title="Editar"
                       >
                         <Edit2 className="h-4 w-4 text-amber-500" />
@@ -122,7 +177,10 @@ export const ScoringRulesList: React.FC<ScoringRulesListProps> = ({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onDelete(rule)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClick(rule);
+                        }}
                         title="Eliminar"
                         className="hover:text-red-500"
                       >
