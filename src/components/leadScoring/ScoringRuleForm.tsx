@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Eye } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Switch } from "../ui/switch";
@@ -7,22 +7,100 @@ import {
   ScoringRule,
   ScoringCondition,
   ContactProperty,
+  DealProperty,
 } from "../../types/leadScoring";
 import { ScoringConditionForm } from "./ScoringConditionForm";
 import { useAuth } from "../../contexts/AuthContext";
+import { dealsService } from "../../services/dealsService";
 
-// Lista de tipos de condiciones
-const conditionTypes: {
+// Lista de tipos de condiciones básicas
+const basicConditionTypes: {
   value: ScoringCondition["condition"];
   label: string;
+  category: "basic";
 }[] = [
-  { value: "exists", label: "Existe" },
-  { value: "equals", label: "Igual a" },
-  { value: "not_equals", label: "No igual a" },
-  { value: "contains", label: "Contiene" },
-  { value: "greater_than", label: "Mayor que" },
-  { value: "less_than", label: "Menor que" },
-  { value: "in_list", label: "En la lista" },
+  { value: "exists", label: "Existe", category: "basic" },
+  { value: "equals", label: "Igual a", category: "basic" },
+  { value: "not_equals", label: "No igual a", category: "basic" },
+  { value: "contains", label: "Contiene", category: "basic" },
+  { value: "greater_than", label: "Mayor que", category: "basic" },
+  { value: "less_than", label: "Menor que", category: "basic" },
+  { value: "in_list", label: "En la lista", category: "basic" },
+];
+
+// Lista de tipos de condiciones relacionadas con deals
+const dealConditionTypes: {
+  value: ScoringCondition["condition"];
+  label: string;
+  category: "deal";
+}[] = [
+  {
+    value: "LAST_DEAL_OLDER_THAN",
+    label: "Último negocio más antiguo que X días",
+    category: "deal",
+  },
+  {
+    value: "LAST_DEAL_NEWER_THAN",
+    label: "Último negocio más reciente que X días",
+    category: "deal",
+  },
+  {
+    value: "DEAL_AMOUNT_GREATER_THAN",
+    label: "Monto del negocio mayor que",
+    category: "deal",
+  },
+  {
+    value: "DEAL_AMOUNT_LESS_THAN",
+    label: "Monto del negocio menor que",
+    category: "deal",
+  },
+  { value: "DEAL_STATUS_IS", label: "Estado del negocio es", category: "deal" },
+  {
+    value: "DEAL_PIPELINE_IS",
+    label: "Pipeline del negocio es",
+    category: "deal",
+  },
+  {
+    value: "TOTAL_DEALS_COUNT_GREATER_THAN",
+    label: "Cantidad de negocios mayor que",
+    category: "deal",
+  },
+  {
+    value: "TOTAL_DEALS_AMOUNT_GREATER_THAN",
+    label: "Valor total de negocios mayor que",
+    category: "deal",
+  },
+  {
+    value: "HAS_PURCHASED_PRODUCT",
+    label: "Ha comprado el producto",
+    category: "deal",
+  },
+  {
+    value: "PURCHASE_FREQUENCY_LESS_THAN",
+    label: "Frecuencia de compra menor que X días",
+    category: "deal",
+  },
+  {
+    value: "DEAL_FIELD_VALUE_IS",
+    label: "Campo personalizado del negocio es",
+    category: "deal",
+  },
+];
+
+// Combinar todos los tipos de condiciones
+const conditionTypes = [...basicConditionTypes, ...dealConditionTypes];
+
+// Propiedades de deals predeterminadas
+const dealProperties: { value: string; label: string }[] = [
+  { value: "title", label: "Título del negocio" },
+  { value: "amount", label: "Monto" },
+  { value: "closingDate", label: "Fecha de cierre" },
+  { value: "status", label: "Estado" },
+  { value: "pipeline", label: "Pipeline" },
+  { value: "associatedContactId", label: "Contacto asociado" },
+  { value: "associatedCompanyId", label: "Empresa asociada" },
+  { value: "lastActivityDate", label: "Fecha de última actividad" },
+  { value: "productsPurchased", label: "Productos adquiridos" },
 ];
 
 interface ScoringRuleFormProps {
@@ -48,18 +126,71 @@ export const ScoringRuleForm: React.FC<ScoringRuleFormProps> = ({
   const [conditions, setConditions] = useState<ScoringCondition[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { organization } = useAuth();
+  const [pipelineOptions, setPipelineOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
+  const [statusOptions, setStatusOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
 
   // Propiedades de contacto desde la organización
   const contactProperties = organization?.contactProperties?.map((prop) => ({
     value: prop.key as ContactProperty,
     label: prop.label || prop.key,
+    category: "contact" as const,
   })) || [
     // Propiedades predeterminadas como fallback
-    { value: "email", label: "Email" },
-    { value: "firstName", label: "Nombre" },
-    { value: "lastName", label: "Apellido" },
-    { value: "phone", label: "Teléfono" },
+    { value: "email", label: "Email", category: "contact" as const },
+    { value: "firstName", label: "Nombre", category: "contact" as const },
+    { value: "lastName", label: "Apellido", category: "contact" as const },
+    { value: "phone", label: "Teléfono", category: "contact" as const },
   ];
+
+  // Combinar propiedades de contacto y deals
+  const allProperties = [
+    ...contactProperties,
+    ...dealProperties.map((prop) => ({ ...prop, category: "deal" as const })),
+  ];
+
+  // Cargar pipelines y estados desde dealsService
+  useEffect(() => {
+    const fetchDealOptions = async () => {
+      try {
+        // Obtener pipelines
+        const pipelinesResponse = await dealsService.getPipelines();
+        if (pipelinesResponse && pipelinesResponse.data) {
+          const formattedPipelines = pipelinesResponse.data.map(
+            (pipeline: any) => ({
+              value: pipeline.id || pipeline._id,
+              label: pipeline.name,
+            })
+          );
+          setPipelineOptions(formattedPipelines);
+
+          // Si hay pipelines, obtener estados del primer pipeline
+          if (formattedPipelines.length > 0) {
+            const firstPipelineId = formattedPipelines[0].value;
+            const statusesResponse = await dealsService.getStatuses(
+              firstPipelineId
+            );
+            if (statusesResponse && statusesResponse.data) {
+              const formattedStatuses = statusesResponse.data.map(
+                (column: any) => ({
+                  value: column.id || column._id,
+                  label: column.name,
+                })
+              );
+              setStatusOptions(formattedStatuses);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error al cargar opciones de deals:", error);
+      }
+    };
+
+    fetchDealOptions();
+  }, []);
 
   // Inicializar el formulario con los datos existentes si se están editando
   useEffect(() => {
@@ -248,8 +379,10 @@ export const ScoringRuleForm: React.FC<ScoringRuleFormProps> = ({
               <ScoringConditionForm
                 key={index}
                 condition={condition}
-                contactProperties={contactProperties}
+                contactProperties={allProperties}
                 conditionTypes={conditionTypes}
+                pipelineOptions={pipelineOptions}
+                statusOptions={statusOptions}
                 onUpdate={(updates) => handleUpdateCondition(index, updates)}
                 onRemove={() => handleRemoveCondition(index)}
               />

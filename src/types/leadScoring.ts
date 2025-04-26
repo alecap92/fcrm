@@ -7,7 +7,19 @@ export interface ScoringCondition {
     | "contains"
     | "greater_than"
     | "less_than"
-    | "in_list";
+    | "in_list"
+    // Condiciones relacionadas con deals
+    | "LAST_DEAL_OLDER_THAN"
+    | "LAST_DEAL_NEWER_THAN"
+    | "DEAL_AMOUNT_GREATER_THAN"
+    | "DEAL_AMOUNT_LESS_THAN"
+    | "DEAL_STATUS_IS"
+    | "DEAL_PIPELINE_IS"
+    | "TOTAL_DEALS_COUNT_GREATER_THAN"
+    | "TOTAL_DEALS_AMOUNT_GREATER_THAN"
+    | "HAS_PURCHASED_PRODUCT"
+    | "PURCHASE_FREQUENCY_LESS_THAN"
+    | "DEAL_FIELD_VALUE_IS";
   value?: string | number | string[];
   points: number;
   _id?: string;
@@ -40,6 +52,18 @@ export type ContactProperty =
   | "state"
   | "lifeCycle"
   | "source";
+
+// Propiedades de deals disponibles para reglas de puntuación
+export type DealProperty =
+  | "title"
+  | "amount"
+  | "closingDate"
+  | "status"
+  | "pipeline"
+  | "associatedContactId"
+  | "associatedCompanyId"
+  | "lastActivityDate"
+  | "productsPurchased";
 
 export interface LeadScoringStats {
   totalRules: number;
