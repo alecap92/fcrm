@@ -40,6 +40,8 @@ import quotesService from "../services/quotesService";
 import { Quote } from "../types/quote";
 import { useLoading } from "../contexts/LoadingContext";
 import AiComments from "../components/contacts/AiComments";
+import { ComposeEmail } from "../components/email/ComposeEmail";
+import emailsService from "../services/emailService";
 
 interface Document {
   _id?: string;
@@ -134,6 +136,7 @@ export function ContactDetails() {
 
   const [aiComments, setAiComments] = useState<string>("");
   const [isLoadingAiComments, setIsLoadingAiComments] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && newTag.trim()) {
@@ -406,6 +409,18 @@ export function ContactDetails() {
     }
   };
 
+  const handleSendEmail = async (form: {
+    to: string[];
+    subject: string;
+    content: string;
+  }) => {
+    console.log(" click");
+    console.log(form, " form");
+
+    const response = await emailsService.sendEmail(form);
+    console.log(response, " response");
+  };
+
   useEffect(() => {
     getContact();
   }, [id]);
@@ -471,7 +486,10 @@ export function ContactDetails() {
                 <MessageCircle className="h-5 w-5" />
                 <span>WhatsApp</span>
               </button>
-              <button className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+              <button
+                onClick={() => setShowEmailModal(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
                 <Send className="h-5 w-5" />
                 <span>Email</span>
               </button>
@@ -873,6 +891,14 @@ export function ContactDetails() {
         formData={activityFormData}
         setFormData={setActivityFormData}
       />
+
+      {showEmailModal ? (
+        <ComposeEmail
+          onClose={() => setShowEmailModal(false)}
+          handleSendEmail={handleSendEmail}
+          defaultRecipientsEmail={[contactDetails.email as any]}
+        />
+      ) : null}
 
       {/* Edit Contact Modal */}
       <AddContact
