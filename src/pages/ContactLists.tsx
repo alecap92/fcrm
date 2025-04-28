@@ -98,12 +98,14 @@ export function ContactLists() {
             <h1 className="text-2xl font-semibold text-gray-900">
               Grupos y Listas
             </h1>
-            <Link to="/contacts/lists/new">
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Crear Lista
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link to="/contacts/lists/new">
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Crear Lista
+                </Button>
+              </Link>
+            </div>
           </div>
 
           <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-4">
@@ -123,7 +125,7 @@ export function ContactLists() {
 
       <div className="p-4 sm:p-6">
         <div className="bg-white rounded-lg shadow">
-          <div className="overflow-x-auto">
+          <div className="">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr>

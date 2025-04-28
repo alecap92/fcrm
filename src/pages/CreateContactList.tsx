@@ -20,30 +20,6 @@ import { contactsService } from "../services/contactsService";
 import { normalizeContact } from "../lib/parseContacts";
 import contactListService from "../services/contactListService";
 
-const dummyContacts: Contact[] = [
-  {
-    id: "1",
-    firstName: "John",
-    lastName: "Doe",
-    email: "john@example.com",
-    phone: "+1 234 567 890",
-    companyName: "Acme Inc",
-    position: "CEO",
-    address: {
-      street: "123 Main St",
-      city: "New York",
-      state: "NY",
-      country: "USA",
-      zipCode: "10001",
-    },
-    tags: ["client", "vip"],
-    customFields: {},
-    createdAt: "2024-03-15T10:00:00Z",
-    updatedAt: "2024-03-15T10:00:00Z",
-    taxId: "tax-1",
-  },
-];
-
 export function CreateContactList() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
@@ -51,7 +27,7 @@ export function CreateContactList() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>(dummyContacts);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleApplyFilters = async (filters: FilterCondition[]) => {
@@ -60,7 +36,6 @@ export function CreateContactList() {
     const response = await contactsService.filterContacts(filters);
     setContacts(response.data.map(normalizeContact));
     console.log(response.data);
-    // setContacts(filteredContacts);
   };
 
   const handleRemoveFilter = (id: string) => {
@@ -69,40 +44,68 @@ export function CreateContactList() {
 
   const handleClearFilters = () => {
     setActiveFilters([]);
-    setContacts(dummyContacts);
+    setContacts([]);
   };
 
   const handleSave = async () => {
-    const newErrors: Record<string, string> = {};
+    try {
+      const newErrors: Record<string, string> = {};
 
-    if (!name.trim()) {
-      newErrors.name = "List name is required";
+      if (!name.trim()) {
+        newErrors.name = "List name is required";
+      }
+
+      // Separar filtros normales de los filtros hasDeals
+      const hasDealsFilter = activeFilters.find(
+        (filter) => filter.key === "hasDeals"
+      );
+      const normalFilters = activeFilters.filter(
+        (filter) => filter.key !== "hasDeals"
+      );
+
+      // Construir la estructura correcta para el objeto form
+      const form: any = {
+        name,
+        description,
+        contactIds: selectedContacts,
+        filters: normalFilters,
+        isDynamic: false,
+      };
+
+      // Si existe un filtro hasDeals, agregarlo en el formato correcto
+      if (hasDealsFilter) {
+        form.Deals = [
+          {
+            field: "hasDeals",
+            value: hasDealsFilter.operator === "true",
+          },
+        ];
+      }
+
+      console.log(form);
+
+      await contactListService.createContactList(form);
+
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        return;
+      }
+
+      // Reset form
+      setName("");
+      setDescription("");
+      setSelectedContacts([]);
+      setActiveFilters([]);
+      setContacts([]);
+      setErrors({});
+      setShowFilters(false);
+      navigate("/contacts/lists");
+    } catch (error) {
+      console.error("Error creating contact list:", error);
+      setErrors({
+        name: "An error occurred while creating the list",
+      });
     }
-
-    const form: any = {
-      name,
-      description,
-      contactIds: selectedContacts,
-      filters: activeFilters,
-      isDynamic: false,
-    };
-
-    await contactListService.createContactList(form);
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    // Reset form
-    setName("");
-    setDescription("");
-    setSelectedContacts([]);
-    setActiveFilters([]);
-    setContacts(dummyContacts);
-    setErrors({});
-    setShowFilters(false);
-    navigate("/contacts/lists");
   };
 
   return (
@@ -198,120 +201,143 @@ export function CreateContactList() {
               )}
 
               <div className="bg-white rounded-lg shadow overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      <th className="px-6 py-3 bg-gray-50 text-left">
-                        <input
-                          type="checkbox"
-                          className="rounded border-gray-300 text-action focus:ring-action"
-                          checked={selectedContacts.length === contacts.length}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedContacts(contacts.map((c) => c.id));
-                            } else {
-                              setSelectedContacts([]);
-                            }
-                          }}
-                        />
-                      </th>
-                      <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Contact
-                      </th>
-                      <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Company
-                      </th>
-                      <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tags
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {contacts.map((contact) => (
-                      <tr key={contact.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
+                {contacts.length > 0 ? (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        <th className="px-6 py-3 bg-gray-50 text-left">
                           <input
                             type="checkbox"
                             className="rounded border-gray-300 text-action focus:ring-action"
-                            checked={selectedContacts.includes(contact.id)}
+                            checked={
+                              selectedContacts.length === contacts.length
+                            }
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setSelectedContacts([
-                                  ...selectedContacts,
-                                  contact.id,
-                                ]);
+                                setSelectedContacts(contacts.map((c) => c._id));
                               } else {
-                                setSelectedContacts(
-                                  selectedContacts.filter(
-                                    (id) => id !== contact.id
-                                  )
-                                );
+                                setSelectedContacts([]);
                               }
                             }}
                           />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {contact.firstName} {contact.lastName}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col">
-                            <div className="flex items-center text-sm text-gray-500">
-                              <Mail className="w-4 h-4 mr-1" />
-                              {contact.email}
+                        </th>
+                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Name
+                        </th>
+                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Contact
+                        </th>
+                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Company
+                        </th>
+                        <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Tags
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {contacts.map((contact) => (
+                        <tr key={contact._id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <input
+                              type="checkbox"
+                              className="rounded border-gray-300 text-action focus:ring-action"
+                              checked={selectedContacts.includes(contact._id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedContacts([
+                                    ...selectedContacts,
+                                    contact._id,
+                                  ]);
+                                } else {
+                                  setSelectedContacts(
+                                    selectedContacts.filter(
+                                      (id) => id !== contact._id
+                                    )
+                                  );
+                                }
+                              }}
+                            />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {contact.firstName} {contact.lastName}
                             </div>
-                            {contact.phone && (
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col">
                               <div className="flex items-center text-sm text-gray-500">
-                                <Phone className="w-4 h-4 mr-1" />
-                                {contact.phone}
+                                <Mail className="w-4 h-4 mr-1" />
+                                {contact.email}
+                              </div>
+                              {contact.phone && (
+                                <div className="flex items-center text-sm text-gray-500">
+                                  <Phone className="w-4 h-4 mr-1" />
+                                  {contact.phone}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            {contact.companyName && (
+                              <div className="flex items-center">
+                                <Building2 className="w-4 h-4 mr-2 text-gray-400" />
+                                <div className="text-sm text-gray-900">
+                                  {contact.companyName}
+                                </div>
                               </div>
                             )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {contact.companyName && (
-                            <div className="flex items-center">
-                              <Building2 className="w-4 h-4 mr-2 text-gray-400" />
-                              <div className="text-sm text-gray-900">
-                                {contact.companyName}
+                            {contact.address && (
+                              <div className="flex items-center text-sm text-gray-500 mt-1">
+                                <MapPin className="w-4 h-4 mr-1" />
+                                {[
+                                  contact.address.street,
+                                  contact.address.city,
+                                  contact.address.state,
+                                  contact.address.country,
+                                ]
+                                  .filter(Boolean)
+                                  .join(", ")}
                               </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex flex-wrap gap-1">
+                              {contact?.tags?.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-action/10 text-action"
+                                >
+                                  <Tags className="w-3 h-3 mr-1" />
+                                  {tag}
+                                </span>
+                              ))}
                             </div>
-                          )}
-                          {contact.address && (
-                            <div className="flex items-center text-sm text-gray-500 mt-1">
-                              <MapPin className="w-4 h-4 mr-1" />
-                              {[
-                                contact.address.street,
-                                contact.address.city,
-                                contact.address.state,
-                                contact.address.country,
-                              ]
-                                .filter(Boolean)
-                                .join(", ")}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex flex-wrap gap-1">
-                            {contact?.tags?.map((tag) => (
-                              <span
-                                key={tag}
-                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-action/10 text-action"
-                              >
-                                <Tags className="w-3 h-3 mr-1" />
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                    <Filter className="w-12 h-12 text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Agrega filtros para comenzar
+                    </h3>
+                    <p className="text-sm text-gray-500 max-w-md">
+                      Utiliza el botón de filtros en la parte superior para
+                      encontrar contactos y agregarlos a tu lista.
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowFilters(true)}
+                      className="mt-4"
+                    >
+                      <Filter className="w-4 h-4 mr-2" />
+                      Agregar filtros
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 

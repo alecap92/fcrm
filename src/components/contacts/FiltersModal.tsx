@@ -23,6 +23,7 @@ const operators = {
   number: ["equals", "greater than", "less than", "between"],
   date: ["equals", "before", "after", "between", "in the last"],
   list: ["includes", "excludes", "is empty", "is not empty"],
+  boolean: ["true", "false"],
 };
 
 function FilterConditionItem({
@@ -36,8 +37,9 @@ function FilterConditionItem({
 }) {
   const state = useAuth();
   const fields = state.organization.contactProperties;
-  const field = fields.find((f: any) => f.field === condition.key);
-  const fieldType = field?.type || "text";
+  const fieldObj: any = fields.find((f: any) => f.field === condition.key);
+  const fieldType =
+    condition.key === "hasDeals" ? "boolean" : fieldObj?.type || "text";
   const availableOperators = operators[fieldType as keyof typeof operators];
 
   return (
@@ -48,11 +50,14 @@ function FilterConditionItem({
           onChange={(e) => onUpdate(condition.id, { key: e.target.value })}
           className="rounded-md border-gray-300 focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
         >
+          <option value="">Seleccione un campo</option>
           {fields.map((field: any) => (
             <option key={field.id} value={field.key}>
               {field.label}
             </option>
           ))}
+          <option value="leadScore">Lead Score</option>
+          <option value="hasDeals">Has Deals</option>
         </select>
 
         <select
@@ -60,15 +65,26 @@ function FilterConditionItem({
           onChange={(e) => onUpdate(condition.id, { operator: e.target.value })}
           className="rounded-md border-gray-300 focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
         >
-          {availableOperators.map((op) => (
-            <option key={op} value={op}>
-              {op}
-            </option>
-          ))}
+          {condition.key === "leadScore" ? (
+            <>
+              <option value="">Seleccione un operador</option>
+              <option value="greater_than">Mayor que</option>
+              <option value="less_than">Menor que</option>
+              <option value="equals">Igual a</option>
+            </>
+          ) : availableOperators ? (
+            availableOperators.map((op) => (
+              <option key={op} value={op}>
+                {op}
+              </option>
+            ))
+          ) : null}
         </select>
 
         <div className="md:col-span-2">
-          {fieldType === "date" && condition.operator === "between" ? (
+          {condition.key === "hasDeals" ? (
+            <div className="text-gray-500">No se requiere valor</div>
+          ) : fieldType === "date" && condition.operator === "between" ? (
             <div className="flex gap-2">
               <input
                 type="date"
@@ -102,6 +118,7 @@ function FilterConditionItem({
               }
               className="w-full rounded-md border-gray-300 focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
               placeholder="Enter value..."
+              disabled={condition.key === "hasDeals"}
             />
           )}
         </div>
@@ -155,6 +172,23 @@ function FiltersModal({
     );
   };
 
+  const handleApply = () => {
+    // Formato correcto para enviar los datos
+    const formattedConditions = conditions.map((condition) => {
+      // Para hasDeals, ajustamos el formato para que coincida con la estructura requerida
+      if (condition.key === "hasDeals") {
+        return {
+          ...condition,
+          value: condition.operator === "true" ? "true" : "false",
+        };
+      }
+      return condition;
+    });
+
+    onApply(formattedConditions);
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -189,8 +223,7 @@ function FiltersModal({
 
             {conditions.length === 0 && (
               <div className="text-center py-8 text-gray-500">
-                No filter conditions added yet. Click "Add Condition" to start
-                filtering.
+                Añade filtros para empezar
               </div>
             )}
           </div>
@@ -200,13 +233,7 @@ function FiltersModal({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            onClick={() => {
-              onApply(conditions);
-              onClose();
-            }}
-            disabled={conditions.length === 0}
-          >
+          <Button onClick={handleApply} disabled={conditions.length === 0}>
             Apply Filters
           </Button>
         </div>

@@ -158,8 +158,9 @@ export function ContactDetails() {
       setDailyMetrics(response.data.resume);
       setDeals(response.data.deals);
       setTags(normalized.tags || []);
+      setLeadScore(response.data.contact.leadScore);
 
-      setLeadScore(response.data.leadScore);
+      console.log(response.data.contact.leadScore);
 
       await getActivities(response.data.contact._id);
       await handleGetQuotations();
@@ -688,7 +689,11 @@ export function ContactDetails() {
                   {activities.map((activity) => (
                     <div
                       key={activity._id}
-                      className="bg-gray-50 rounded-lg p-3"
+                      className="bg-gray-50 rounded-lg p-3 cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => {
+                        setActivityFormData(activity);
+                        setShowActivityModal(true);
+                      }}
                     >
                       <div className="flex justify-between items-start">
                         <div className="flex items-center space-x-2">
@@ -704,18 +709,13 @@ export function ContactDetails() {
                           {activity.activityType === "Nota" && (
                             <StickyNote className="h-4 w-4 text-yellow-500" />
                           )}
-                          <p
-                            className="text-gray-700"
-                            onClick={() => {
-                              setActivityFormData(activity);
-                              setShowActivityModal(true);
-                            }}
-                          >
-                            {activity.title}
-                          </p>
+                          <p className="text-gray-700">{activity.title}</p>
                         </div>
                         <button
-                          onClick={() => deleteActivity(activity._id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteActivity(activity._id);
+                          }}
                           className="text-gray-400 hover:text-red-500 transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />

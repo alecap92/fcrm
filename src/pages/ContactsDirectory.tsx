@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { contactsService } from "../services/contactsService";
+import { importService } from "../services/importService";
 import { useToast } from "../components/ui/toast";
 import type {
   Contact,
@@ -32,6 +33,7 @@ import { useNavigate } from "react-router-dom";
 import FiltersModal from "../components/contacts/FiltersModal";
 import { ActiveFilters } from "../components/contacts/ActiveFilters";
 import { normalizeContact } from "../lib/parseContacts";
+import ImportContactsModal from "../components/contacts/ImportContactsModal";
 
 export function ContactsDirectory() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -48,6 +50,7 @@ export function ContactsDirectory() {
   const [totalContacts, setTotalContacts] = useState(0);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const navigate = useNavigate();
 
@@ -200,6 +203,72 @@ export function ContactsDirectory() {
     navigate(`/contacts/${contactId}`);
   };
 
+  const handleImportContacts = async (
+    file: File,
+    mapping: Record<string, string>
+  ) => {
+    try {
+      setIsLoading(true);
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("mapping", JSON.stringify(mapping));
+
+      await importService.importContacts(formData);
+
+      toast.show({
+        title: "Éxito",
+        description: "Contactos importados correctamente",
+        type: "success",
+      });
+
+      setShowImportModal(false);
+      loadContacts();
+    } catch (err) {
+      toast.show({
+        title: "Error",
+        description: "No se pudieron importar los contactos",
+        type: "error",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExportContacts = async () => {
+    try {
+      setIsLoading(true);
+
+      const blob = await contactsService.exportContacts();
+
+      // Crear URL para descargar
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `contactos_${new Date().toISOString().split("T")[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+
+      // Limpiar
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.show({
+        title: "Éxito",
+        description: "Contactos exportados correctamente",
+        type: "success",
+      });
+    } catch (err) {
+      toast.show({
+        title: "Error",
+        description: "No se pudieron exportar los contactos",
+        type: "error",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -231,13 +300,13 @@ export function ContactsDirectory() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowImportModal(true)}
+              >
                 <Upload className="w-4 h-4 mr-2" />
                 Importar
-              </Button>
-              <Button variant="outline" size="sm">
-                <Download className="w-4 h-4 mr-2" />
-                Exportar
               </Button>
               <Button onClick={() => setShowCreateModal(true)}>
                 <Plus className="w-4 h-4 mr-2" />
@@ -496,6 +565,11 @@ export function ContactsDirectory() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSubmit={handleCreateContact}
+      />
+      <ImportContactsModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={handleImportContacts}
       />
     </div>
   );

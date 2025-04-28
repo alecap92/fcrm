@@ -70,14 +70,20 @@ class ContactsService {
     });
   }
 
-  public async importContacts(
-    contacts: Array<Omit<Contact, "id" | "createdAt" | "updatedAt">>
-  ): Promise<{
+  public async importContacts(formData: FormData): Promise<{
     success: number;
     failed: number;
     errors: Array<{ index: number; error: string }>;
   }> {
-    return apiService.post(`${this.baseUrl}/import`, { contacts });
+    return axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/contacts/import`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
   }
 
   public async filterContacts(
@@ -97,7 +103,10 @@ class ContactsService {
     return apiService.post(`/activities`, activity);
   }
 
-  public async updateActivity(activityId: string, activity: Activity): Promise<any> {
+  public async updateActivity(
+    activityId: string,
+    activity: Activity
+  ): Promise<any> {
     console.log(activityId);
     return apiService.put(`/activities/${activityId}`, activity);
   }
@@ -107,11 +116,31 @@ class ContactsService {
   }
 
   public async uploadDocument(formData: FormData): Promise<any> {
-    return axios.post(`${import.meta.env.VITE_API_BASE_URL}/contact-files`, formData);
+    return axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/contact-files`,
+      formData
+    );
   }
 
   public async deleteFile(contactId: string, fileId: string): Promise<any> {
-    return apiService.delete(`${import.meta.env.VITE_API_BASE_URL}/contact-files/${contactId}/${fileId}`);
+    return apiService.delete(
+      `${
+        import.meta.env.VITE_API_BASE_URL
+      }/contact-files/${contactId}/${fileId}`
+    );
+  }
+
+  public async exportContacts(): Promise<Blob> {
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_BASE_URL}/contacts/export`,
+      {
+        responseType: "blob",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+    return response.data;
   }
 }
 
