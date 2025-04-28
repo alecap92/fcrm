@@ -39,6 +39,7 @@ import { PreviewModal } from "../components/documents/PreviewModal";
 import quotesService from "../services/quotesService";
 import { Quote } from "../types/quote";
 import { useLoading } from "../contexts/LoadingContext";
+import AiComments from "../components/contacts/AiComments";
 
 interface Document {
   _id?: string;
@@ -131,6 +132,9 @@ export function ContactDetails() {
 
   const { showLoading, hideLoading } = useLoading();
 
+  const [aiComments, setAiComments] = useState<string>("");
+  const [isLoadingAiComments, setIsLoadingAiComments] = useState(false);
+
   const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && newTag.trim()) {
       setTags([...tags, newTag.trim()]);
@@ -160,8 +164,6 @@ export function ContactDetails() {
       setTags(normalized.tags || []);
       setLeadScore(response.data.contact.leadScore);
 
-      console.log(response.data.contact.leadScore);
-
       await getActivities(response.data.contact._id);
       await handleGetQuotations();
     } catch (error) {
@@ -173,6 +175,23 @@ export function ContactDetails() {
       });
     } finally {
       hideLoading();
+    }
+  };
+
+  const getAiComments = async () => {
+    try {
+      setIsLoadingAiComments(true);
+      const response: any = await contactsService.getAiComments(id as any);
+      setAiComments(response.data.analysis);
+    } catch (error) {
+      console.error("Error obteniendo comentarios de IA:", error);
+      toast.show({
+        title: "Error",
+        description: "No se pudieron cargar los comentarios de IA",
+        type: "error",
+      });
+    } finally {
+      setIsLoadingAiComments(false);
     }
   };
 
@@ -390,6 +409,12 @@ export function ContactDetails() {
   useEffect(() => {
     getContact();
   }, [id]);
+
+  useEffect(() => {
+    if (contactDetails._id) {
+      getAiComments();
+    }
+  }, [contactDetails._id]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -667,6 +692,25 @@ export function ContactDetails() {
 
           {/* Notes Section */}
           <div className="lg:col-span-1">
+            <div
+              className={`bg-white rounded-lg shadow p-6 my-2 relative ${
+                isLoadingAiComments ? "gradient-border" : ""
+              }`}
+            >
+              {isLoadingAiComments && (
+                <div className="absolute inset-0 gradient-border-animation rounded-lg pointer-events-none"></div>
+              )}
+              <h2 className="text-lg font-semibold mb-4">Comentarios de IA</h2>
+              {isLoadingAiComments ? (
+                <p className="text-gray-500">Cargando comentarios de IA...</p>
+              ) : aiComments === "" ? (
+                <p className="text-gray-500">
+                  Aquí puedes ver los comentarios de la IA sobre el contacto.
+                </p>
+              ) : (
+                <AiComments comments={aiComments} />
+              )}
+            </div>
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Actividades</h2>
               <div className="space-y-4">

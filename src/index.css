@@ -1,7 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -84,4 +84,40 @@
 
 .skeleton {
   @apply animate-pulse bg-gray-200 rounded;
+}
+
+/* Animación de borde con gradiente */
+@keyframes gradient-animation {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+.gradient-border-animation {
+  border: 2px solid transparent;
+  background-image: linear-gradient(45deg, #d1345b, #1f2a48, #6366f1, #d1345b);
+  background-size: 300% 300%;
+  background-position: 0 0;
+  background-clip: padding-box;
+  position: relative;
+  z-index: 1;
+  animation: gradient-animation 3s ease infinite;
+}
+
+.gradient-border-animation::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  background: linear-gradient(45deg, #d1345b, #1f2a48, #6366f1, #d1345b);
+  background-size: 300% 300%;
+  background-position: 0 0;
+  animation: gradient-animation 3s ease infinite;
+  border-radius: 8px;
 }

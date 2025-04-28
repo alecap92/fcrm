@@ -136,11 +136,23 @@ class ContactsService {
       {
         responseType: "blob",
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
         },
       }
     );
     return response.data;
+  }
+
+  public async getAiComments(contactId: string): Promise<any> {
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_BASE_URL}/contacts/analyse/${contactId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+        },
+      }
+    );
+    return response;
   }
 }
 
