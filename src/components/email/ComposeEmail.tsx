@@ -5,15 +5,16 @@ import {
   Maximize2,
   Minimize2,
   Paperclip,
-  Image,
-  Link,
   Send,
   File,
   MessageSquare,
+  Eye,
+  Code,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import fragmentsService from "../../services/fragmentsService";
 import { QuickResponses } from "../chat/QuickResponses";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
 
 interface ComposeEmailProps {
   onClose: () => void;
@@ -36,10 +37,11 @@ export function ComposeEmail({
   const [currentInput, setCurrentInput] = useState("");
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
+  const [showHtmlView, setShowHtmlView] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [showQuickResponses, setShowQuickResponses] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const quillRef = useRef<any>(null);
 
   const handleSend = () => {
     if (selectedInvoice) {
@@ -57,25 +59,23 @@ export function ComposeEmail({
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    // Si se presiona Tab o Coma (,)
     if ((e.key === "Tab" || e.key === ",") && currentInput.trim()) {
       e.preventDefault();
       addRecipient();
-    }
-    // Si se presiona Enter
-    else if (e.key === "Enter" && currentInput.trim()) {
+    } else if (e.key === "Enter" && currentInput.trim()) {
       e.preventDefault();
       addRecipient();
-    }
-    // Si se presiona Backspace y no hay texto en el input, eliminar el último destinatario
-    else if (e.key === "Backspace" && !currentInput && recipients.length > 0) {
+    } else if (
+      e.key === "Backspace" &&
+      !currentInput &&
+      recipients.length > 0
+    ) {
       removeRecipient(recipients.length - 1);
     }
   };
 
   const addRecipient = () => {
     const email = currentInput.trim().replace(",", "");
-    // Comprobar si es un email válido con una expresión regular básica
     if (email && !recipients.includes(email)) {
       setRecipients([...recipients, email]);
       setCurrentInput("");
@@ -97,31 +97,47 @@ export function ComposeEmail({
     setAttachments(attachments.filter((_, i) => i !== index));
   };
 
-  const insertTextAtCursor = (text: string) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const newContent =
-      content.substring(0, start) + text + content.substring(end);
-
-    setContent(newContent);
-
-    // Restaurar la posición del cursor después de la inserción
-    setTimeout(() => {
-      if (textarea) {
-        const newCursorPos = start + text.length;
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-        textarea.focus();
-      }
-    }, 0);
-  };
-
   const handleQuickResponseSelect = (text: string) => {
-    insertTextAtCursor(text);
+    if (quillRef.current) {
+      const quill = quillRef.current.getEditor();
+      const range = quill.getSelection();
+      quill.insertText(range ? range.index : 0, text);
+    }
     setShowQuickResponses(false);
   };
+
+  const modules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ["bold", "italic", "underline", "strike"],
+      [{ list: "ordered" }, { list: "bullet" }],
+      ["link", "image"],
+      ["clean"],
+    ],
+    clipboard: {
+      matchVisual: false,
+    },
+  };
+
+  const formats = [
+    "header",
+    "bold",
+    "italic",
+    "underline",
+    "strike",
+    "list",
+    "bullet",
+    "link",
+    "image",
+  ];
+
+  useEffect(() => {
+    // Limpiar el contenido del editor cuando se monta el componente
+    if (quillRef.current) {
+      const quill = quillRef.current.getEditor();
+      quill.root.innerHTML = "";
+    }
+  }, []);
 
   return (
     <div
@@ -222,13 +238,45 @@ export function ComposeEmail({
               />
             </div>
             <div className="flex-1">
-              <textarea
-                ref={textareaRef}
-                placeholder="Escribe tu mensaje aquí..."
-                className="w-full h-64 px-3 py-2 border-0 resize-none focus:ring-0"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-              />
+              <div className="flex justify-end mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowHtmlView(!showHtmlView)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  {showHtmlView ? (
+                    <>
+                      <Eye className="w-4 h-4 mr-1" />
+                      Vista Previa
+                    </>
+                  ) : (
+                    <>
+                      <Code className="w-4 h-4 mr-1" />
+                      HTML
+                    </>
+                  )}
+                </Button>
+              </div>
+              {showHtmlView ? (
+                <textarea
+                  className="w-full h-64 px-3 py-2 border rounded-md font-mono text-sm"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Escribe tu HTML aquí..."
+                />
+              ) : (
+                <ReactQuill
+                  ref={quillRef}
+                  theme="snow"
+                  value={content}
+                  onChange={setContent}
+                  modules={modules}
+                  formats={formats}
+                  className="h-64"
+                  placeholder="Escribe tu mensaje aquí..."
+                />
+              )}
             </div>
             {/* Attachments */}
             {attachments.length > 0 && (
