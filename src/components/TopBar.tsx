@@ -25,6 +25,7 @@ import {
   Notebook,
   NotebookPen,
   File,
+  Brain,
 } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 import { useState, useEffect, useRef } from "react";
@@ -73,7 +74,7 @@ const menuItems: MenuItem[] = [
         href: "/invoices",
         icon: <FileText className="w-4 h-4" />,
       },
-      
+
       {
         label: "Oportunidades",
         href: "/deals",
@@ -96,7 +97,11 @@ const menuItems: MenuItem[] = [
         icon: <FileText className="w-4 h-4" />,
       },
       { label: "Correo", href: "/email", icon: <Mail className="w-4 h-4" /> },
-      { label: "Documentos", href: "/documents", icon: <File className="w-4 h-4" /> },
+      {
+        label: "Documentos",
+        href: "/documents",
+        icon: <File className="w-4 h-4" />,
+      },
     ],
   },
   {
@@ -112,6 +117,11 @@ const menuItems: MenuItem[] = [
         label: "Redes Sociales",
         href: "/social-media",
         icon: <Instagram className="w-4 h-4" />,
+      },
+      {
+        label: "Estrategia",
+        href: "/strategy",
+        icon: <Brain className="w-4 h-4" />,
       },
     ],
   },
