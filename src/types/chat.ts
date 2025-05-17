@@ -20,15 +20,14 @@ export interface Message {
   mediaId: string;
   timestamp: string;
   type: string;
-  direction: 'incoming' | 'outgoing';
+  direction: "incoming" | "outgoing";
   isRead: boolean;
   possibleName: string;
   replyToMessage: string | null;
   messageId: string;
   reactions: any[];
+  conversation: string;
 }
-
-
 
 export interface QuickResponse {
   id: string;

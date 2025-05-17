@@ -273,7 +273,7 @@ export function CreateDealModal({
         fields: [...formattedFields, ...additionalFormattedFields],
         products: formattedProducts,
       };
-
+      console.log(formDataToSubmit);
       onSubmit(formDataToSubmit);
       setProducts([]);
       setAdditionalFields([]);

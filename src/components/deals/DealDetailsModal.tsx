@@ -167,15 +167,21 @@ export function DealDetailsModal({
                           </p>
                           <div className="flex flex-wrap gap-2 mt-1">
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                              Variante: {console.log(product.variantId) as any}
-                              {product?.variantId?.attributeValues[0].value}
+                              Variante:{" "}
+                              {product.variantId
+                                ? product?.variantId?.attributeValues[0].value
+                                : "Sin Variante"}
                             </span>
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
                               Cantidad: {product.quantity}
                             </span>
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
                               Precio: $
-                              {product?.variantId?.attributeValues[0].price}
+                              {product.priceAtAcquisition
+                                ? product.priceAtAcquisition
+                                : product.variantId
+                                ? product?.variantId?.attributeValues[0].price
+                                : "Sin Precio"}
                             </span>
                           </div>
                         </div>

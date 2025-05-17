@@ -19,7 +19,7 @@ class DealsService {
 
   public async getDeals(
     pipelineId: string,
-    pagination?: PaginationParams
+    pagination: PaginationParams = { limit: 10, page: 1 }
   ): Promise<any> {
     return apiService.get<PaginatedResponse<Deal>>(
       `${this.baseUrl}?limit=${pagination?.limit}&page=${pagination?.page}&pipelineId=${pipelineId}`

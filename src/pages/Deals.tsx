@@ -21,7 +21,6 @@ import { dealsService } from "../services/dealsService";
 
 // Importamos los tipos que asumo tienes en tu proyecto
 import type { Deal } from "../types/deal";
-import productAcquisitionService from "../services/productAcquisitionService";
 import { useLoading } from "../contexts/LoadingContext";
 
 interface DealFormData {

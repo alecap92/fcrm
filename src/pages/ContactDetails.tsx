@@ -681,7 +681,8 @@ export function ContactDetails() {
                             <span className="text-sm text-gray-500">
                               Etapa:{" "}
                             </span>
-                            {deal.status.name}
+                            {deal?.status?.name}
+                            {console.log(deal.status) as any}
                           </p>
                         </div>
                         <div className="flex items-center">
