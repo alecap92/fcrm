@@ -41,7 +41,7 @@ interface DealField {
 
 interface productAcquisition {
   productId: string;
-  variantId: string;
+  variantId: string | undefined;
   quantity: number;
   priceAtAcquisition: number;
   productName: string;
