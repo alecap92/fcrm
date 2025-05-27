@@ -12,7 +12,7 @@ import {
   Code,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { QuickResponses } from "../chat/QuickResponses";
+import { QuickResponses } from "../chat/templates/QuickResponses";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 

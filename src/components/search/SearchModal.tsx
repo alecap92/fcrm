@@ -48,6 +48,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
       const response = await advanceSearchService.AdvanceSearch(term);
       console.log(response, 12);
       const contacts = response.contacts.map(normalizeContact);
+
       setSearchResults({ contacts, deals: response.deals });
     } catch (err) {
       setError("Ocurrió un error durante la búsqueda");

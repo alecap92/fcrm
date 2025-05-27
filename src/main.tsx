@@ -5,6 +5,7 @@ import { ToastProvider } from "./components/ui/toast";
 import { AuthProvider } from "./contexts/AuthContext";
 import { WorkflowProvider } from "./contexts/WorkflowContext";
 import { LoadingProvider } from "./contexts/LoadingContext";
+import { ChatProvider } from "./contexts/ChatContext";
 import { AuthInitializer } from "./components/auth/AuthInitializer";
 import App from "./App.tsx";
 import "./index.css";
@@ -17,7 +18,9 @@ createRoot(document.getElementById("root")!).render(
           <AuthProvider>
             <WorkflowProvider>
               <LoadingProvider>
-                <App />
+                <ChatProvider>
+                  <App />
+                </ChatProvider>
               </LoadingProvider>
             </WorkflowProvider>
           </AuthProvider>

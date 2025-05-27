@@ -30,10 +30,16 @@ const getFragmentById = async (id: string) => {
   }
 };
 
-const searchFragments = async (search: string) => {
+const searchFragments = async (
+  search: string,
+  page: number = 1,
+  limit: number = 5
+) => {
   try {
     const response = await apiService.get<FragmentResponse>(
-      `/fragments/search?term=${encodeURIComponent(search)}`
+      `/fragments/search?term=${encodeURIComponent(
+        search
+      )}&page=${page}&limit=${limit}`
     );
     return response;
   } catch (error) {

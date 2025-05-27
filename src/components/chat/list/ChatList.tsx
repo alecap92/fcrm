@@ -1,6 +1,6 @@
-import { Search } from 'lucide-react';
-import { Chat } from '../../types/chat';
-import { useEffect, useRef } from 'react';
+import { Search } from "lucide-react";
+import { Chat } from "../../../types/chat";
+import { useRef } from "react";
 
 interface ChatListProps {
   chats: Chat[];
@@ -14,15 +14,15 @@ interface ChatListProps {
   handleSelectChat: (contactId: string) => void;
 }
 
-export function ChatList({ 
-  chats, 
-  selectedChat, 
-  searchTerm, 
+export function ChatList({
+  chats,
+  selectedChat,
+  searchTerm,
   onSearchChange,
   onLoadMore,
   isLoading,
   hasMore,
-  handleSelectChat
+  handleSelectChat,
 }: ChatListProps) {
   const chatListRef = useRef<HTMLDivElement>(null);
 
@@ -32,9 +32,13 @@ export function ChatList({
     if (!chatListRef.current) return;
 
     const { scrollTop, scrollHeight, clientHeight } = chatListRef.current;
-    
+
     // Si el scroll está cerca del final, cargamos más chats
-    if (scrollHeight - scrollTop - clientHeight < 100 && hasMore && !isLoading) {
+    if (
+      scrollHeight - scrollTop - clientHeight < 100 &&
+      hasMore &&
+      !isLoading
+    ) {
       onLoadMore();
     }
   };
@@ -54,7 +58,7 @@ export function ChatList({
         </div>
       </div>
 
-      <div 
+      <div
         ref={chatListRef}
         className="h-[calc(100vh-65px)] overflow-y-auto"
         onScroll={handleScroll}
@@ -63,14 +67,14 @@ export function ChatList({
           <div
             key={chat._id}
             className={`p-4 border-b hover:bg-gray-50 cursor-pointer ${
-              selectedChat?._id === chat._id ? 'bg-action/5' : ''
+              selectedChat?._id === chat._id ? "bg-action/5" : ""
             }`}
             onClick={() => handleSelectChat(chat.contact)}
           >
             <div className="flex items-center gap-3">
               <div className="relative">
                 <img
-                  src={'https://avatar.iran.liara.run/public'}
+                  src={"https://avatar.iran.liara.run/public"}
                   alt={chat.name}
                   className="w-12 h-12 rounded-full"
                 />
@@ -81,10 +85,15 @@ export function ChatList({
                     {chat.name}
                   </h3>
                   <span className="text-xs text-gray-500">
-                    {new Date(chat.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(chat.lastMessageTime).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 truncate">{chat.lastMessage}</p>
+                <p className="text-sm text-gray-500 truncate">
+                  {chat.lastMessage}
+                </p>
               </div>
               {chat.unreadCount > 0 && (
                 <div className="flex-shrink-0">
@@ -96,13 +105,13 @@ export function ChatList({
             </div>
           </div>
         ))}
-        
+
         {isLoading && (
           <div className="text-center py-4">
             <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
           </div>
         )}
-        
+
         {!hasMore && chats.length > 0 && (
           <div className="text-center py-4 text-sm text-gray-500">
             No hay más chats para mostrar

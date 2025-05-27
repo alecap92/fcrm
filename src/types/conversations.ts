@@ -11,6 +11,7 @@ export interface ApiConversationResponse {
       contact: {
         reference: string;
         type: "Contact";
+        contactId: string;
       };
     };
     unreadCount: number;

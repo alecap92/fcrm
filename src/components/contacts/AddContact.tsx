@@ -44,6 +44,30 @@ export default function CreateContactModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(formData);
+    // Limpiar el formulario después del envío
+    setFormData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      mobile: "",
+      companyName: "",
+      companyType: "",
+      idNumber: "",
+      position: "",
+      website: "",
+      address: "",
+      city: "",
+      state: "",
+      country: "",
+      postalCode: "",
+      source: "",
+      tags: "",
+      notas: "",
+      dv: "",
+      idType: "",
+      lifeCycle: "",
+    });
   };
 
   useEffect(() => {

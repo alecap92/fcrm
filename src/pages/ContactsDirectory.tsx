@@ -140,8 +140,6 @@ export function ContactsDirectory() {
         return;
       }
 
-      console.log("Contact data:", contactData.firstName);
-
       await contactsService.createContact(contactData);
       toast.show({
         title: "Success",

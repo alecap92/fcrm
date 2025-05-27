@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { 
+import { useEffect, useState, useRef } from "react";
+import {
   Image,
   FileText,
   Camera,
@@ -11,43 +11,41 @@ import {
   ChevronRight,
   Plus,
   Building2,
-  DollarSign
-} from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { ChatList } from '../components/chat/ChatList';
-import { ChatHeader } from '../components/chat/ChatHeader';
-import { MessageList } from '../components/chat/MessageList';
-import { MessageInput } from '../components/chat/MessageInput';
-import { Modal } from '../components/ui/modal';
-import { QuickResponses } from '../components/chat/QuickResponses';
-import type { Chat, Message, Deal } from '../types/chat';
-import chatService from '../services/chatService';
-import { useNavigate, useParams } from 'react-router-dom';
+  DollarSign,
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import { ChatList } from "../components/chat/list/ChatList";
+import { ChatHeader } from "../components/chat/list/ChatHeader";
+import { MessageList } from "../components/chat/messages/MessageList";
+import { MessageInput } from "../components/chat/input/MessageInput";
+import { Modal } from "../components/ui/modal";
+import { QuickResponses } from "../components/chat/templates/QuickResponses";
+import type { Chat, Message, Deal } from "../types/chat";
+import chatService from "../services/chatService";
+import { useNavigate, useParams } from "react-router-dom";
+import { useChatContext } from "../contexts/ChatContext";
 
 const dummyDeals: Deal[] = [
   {
-    id: '1',
-    name: 'Software License 2024',
+    id: "1",
+    name: "Software License 2024",
     value: 5000,
-    stage: 'Negotiation',
-    createdAt: '2024-03-15',
+    stage: "Negotiation",
+    createdAt: "2024-03-15",
   },
   {
-    id: '2',
-    name: 'Consulting Services',
+    id: "2",
+    name: "Consulting Services",
     value: 12000,
-    stage: 'Proposal',
-    createdAt: '2024-03-10',
-  }
+    stage: "Proposal",
+    createdAt: "2024-03-10",
+  },
 ];
 
-
-
-
 export function WhatsApp() {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [showChatMenu, setShowChatMenu] = useState(false);
   const [showQuickResponsesModal, setShowQuickResponsesModal] = useState(false);
@@ -55,10 +53,10 @@ export function WhatsApp() {
   const [showDealsModal, setShowDealsModal] = useState(false);
   const [showCreateDealModal, setShowCreateDealModal] = useState(false);
   const [newDeal, setNewDeal] = useState({
-    name: '',
-    value: '',
-    stage: 'Lead',
-    description: ''
+    name: "",
+    value: "",
+    stage: "Lead",
+    description: "",
   });
   const [chatLists, setChatLists] = useState<Chat[]>([]);
   const [page, setPage] = useState<number>(1);
@@ -69,10 +67,13 @@ export function WhatsApp() {
   const [isLoadingMoreChats, setIsLoadingMoreChats] = useState<boolean>(false);
   const [hasMoreChats, setHasMoreChats] = useState<boolean>(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isContact, setIsContact] = useState<string | boolean>(false)
+  const [isContact, setIsContact] = useState<string | boolean>(false);
 
   const { contactId } = useParams();
   const navigate = useNavigate();
+
+  // Obtener isUploadingFile del contexto de chat
+  const { isUploadingFile } = useChatContext();
 
   const handleSelectChat = (contactId: string) => {
     // Buscamos el chat en la lista actual
@@ -82,12 +83,12 @@ export function WhatsApp() {
       // Actualizar isContact cuando seleccionamos un chat de la lista
       setIsContact(chat.contactId || false); // Asumiendo que contactId en el chat indica que es un contacto
       // Actualizamos la URL sin recargar la página
-      window.history.pushState(null, '', `/whatsapp/${contactId}`);
+      window.history.pushState(null, "", `/whatsapp/${contactId}`);
     } else {
       // Si no está en la lista, lo cargamos específicamente
       loadChatById(contactId);
       // Actualizamos la URL sin recargar la página
-      window.history.pushState(null, '', `/whatsapp/${contactId}`);
+      window.history.pushState(null, "", `/whatsapp/${contactId}`);
     }
   };
 
@@ -97,15 +98,15 @@ export function WhatsApp() {
     const messageData = {
       to: selectedChat.contact,
       message: newMessage,
-      messageType: 'text',
-      mediaUrl: '',
-      caption: ''
+      messageType: "text",
+      mediaUrl: "",
+      caption: "",
     };
 
     try {
       const response = await chatService.sendMessage(messageData);
       if (response) {
-        const newMsg: Message = {
+        const newMsg: any = {
           _id: response._id,
           user: response.user,
           organization: response.organization,
@@ -116,19 +117,19 @@ export function WhatsApp() {
           mediaId: response.mediaId,
           timestamp: response.timestamp,
           type: response.type,
-          direction: 'outgoing',
+          direction: "outgoing",
           isRead: true,
           possibleName: selectedChat.possibleName,
           messageId: response.messageId,
           reactions: [],
-          replyToMessage: ''
+          replyToMessage: "",
         };
         setMessages([...messages, newMsg]);
-        console.log(newMsg,1);
-        setNewMessage('');
+        console.log(newMsg, 1);
+        setNewMessage("");
       }
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
     }
   };
 
@@ -150,11 +151,14 @@ export function WhatsApp() {
 
   const loadChatLists = async (pageNumber: number = 1) => {
     if (isLoadingMoreChats) return;
-    
+
     try {
       setIsLoadingMoreChats(true);
-      const newChats: any = await chatService.getChatLists(40, pageNumber, searchTerm);
-
+      const newChats: any = await chatService.getChatLists(
+        40,
+        pageNumber,
+        searchTerm
+      );
 
       if (newChats.length < 10) {
         setHasMoreChats(false);
@@ -163,12 +167,12 @@ export function WhatsApp() {
       if (pageNumber === 1) {
         setChatLists(newChats);
       } else {
-        setChatLists(prevChats => [...prevChats, ...newChats]);
+        setChatLists((prevChats) => [...prevChats, ...newChats]);
       }
-      
+
       setChatPage(pageNumber);
     } catch (error) {
-      console.error('Error cargando chats:', error);
+      console.error("Error cargando chats:", error);
     } finally {
       setIsLoadingMoreChats(false);
     }
@@ -182,33 +186,33 @@ export function WhatsApp() {
 
   const loadMessages = async (pageNumber: number = 1) => {
     if (!selectedChat || isLoadingMore) return;
-    
+
     try {
       setIsLoadingMore(true);
       const newMessages: any = await chatService.getMessages(
-        selectedChat?.contact, 
+        selectedChat?.contact,
         100, // mensajes por página
         pageNumber
       );
-      
+
       if (newMessages.length < 100) {
         setHasMore(false);
       }
-      console.log(newMessages,1);
+      console.log(newMessages, 1);
       if (pageNumber === 1) {
         setMessages(newMessages);
       } else {
-        setMessages(prevMessages => [...prevMessages, ...newMessages]);
+        setMessages((prevMessages) => [...prevMessages, ...newMessages]);
       }
-      
+
       setPage(pageNumber);
     } catch (error) {
-      console.error('Error cargando mensajes:', error);
+      console.error("Error cargando mensajes:", error);
     } finally {
       setIsLoadingMore(false);
       setIsInitialLoad(false);
     }
-  }
+  };
 
   const loadMoreMessages = () => {
     if (hasMore && !isLoadingMore) {
@@ -216,20 +220,22 @@ export function WhatsApp() {
     }
   };
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file || !selectedChat) return;
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('to', selectedChat.contact);
-      formData.append('messageType', 'file');
-      formData.append('caption', '');
+      formData.append("file", file);
+      formData.append("to", selectedChat.contact);
+      formData.append("messageType", "file");
+      formData.append("caption", "");
 
       const response = await chatService.sendMessage(formData);
       if (response) {
-        const newMsg: Message = {
+        const newMsg: any = {
           _id: response._id,
           user: response.user,
           organization: response.organization,
@@ -240,17 +246,17 @@ export function WhatsApp() {
           mediaId: response.mediaId,
           timestamp: response.timestamp,
           type: response.type,
-          direction: 'outgoing',
+          direction: "outgoing",
           isRead: true,
           possibleName: selectedChat.possibleName,
           messageId: response.messageId,
           reactions: [],
-          replyToMessage: ''
+          replyToMessage: "",
         };
         setMessages([...messages, newMsg]);
       }
     } catch (error) {
-      console.error('Error sending file:', error);
+      console.error("Error sending file:", error);
     }
   };
 
@@ -260,43 +266,50 @@ export function WhatsApp() {
 
   // Esta función busca un chat por ID en la lista de chats
   const findChatById = (contactId: string): Chat | undefined => {
-    return chatLists.find(chat => chat.contact === contactId);
+    return chatLists.find((chat) => chat.contact === contactId);
   };
 
   // Función para cargar un chat específico por ID desde la API
   const loadChatById = async (contactId: string) => {
     try {
-      const chat:any = await chatService.getChatById(contactId, 100, 1);
-      
-      if (chat.messages && Array.isArray(chat.messages) && chat.messages.length > 0) {
+      const chat: any = await chatService.getChatById(contactId, 100, 1);
+
+      if (
+        chat.messages &&
+        Array.isArray(chat.messages) &&
+        chat.messages.length > 0
+      ) {
         // Encontrar la información del contacto basándonos en el primer mensaje
         const firstMessage = chat.messages[0];
         const contactInfo: Chat = {
           _id: contactId,
           name: firstMessage.possibleName || `+${firstMessage.from}`,
-          contact: firstMessage.from === "573143007263" ? firstMessage.to : firstMessage.from,
+          contact:
+            firstMessage.from === "573143007263"
+              ? firstMessage.to
+              : firstMessage.from,
           lastMessage: firstMessage.message,
           lastMessageTime: firstMessage.timestamp,
           unreadCount: 0,
-          possibleName: firstMessage.possibleName || ""
+          possibleName: firstMessage.possibleName || "",
         };
 
-        setIsContact(chat.isContact)
-        
+        setIsContact(chat.isContact);
+
         setSelectedChat(contactInfo);
         setIsInitialLoad(true);
         setMessages(chat.messages);
         setHasMore(chat.messages.length === 100); // Si devuelve 100 mensajes, posiblemente hay más
       }
     } catch (error) {
-      console.error('Error al cargar el chat específico:', error);
+      console.error("Error al cargar el chat específico:", error);
     }
   };
 
   useEffect(() => {
     const initialLoad = async () => {
       await loadChatLists();
-      
+
       // Si hay un chatId en la URL, intentar seleccionar ese chat
       if (contactId) {
         const chat = findChatById(contactId);
@@ -308,7 +321,7 @@ export function WhatsApp() {
         }
       }
     };
-    
+
     initialLoad();
   }, []); // Este efecto solo se ejecuta una vez al montar el componente
 
@@ -318,7 +331,7 @@ export function WhatsApp() {
       setSelectedChat(null);
       return;
     }
-    
+
     // Si el ID cambió y no coincide con el chat seleccionado actualmente
     if (selectedChat?._id !== contactId) {
       const chat = findChatById(contactId);
@@ -363,34 +376,50 @@ export function WhatsApp() {
         handleSelectChat={handleSelectChat}
       />
 
-      <div className={`flex-1 flex overflow-hidden flex-col bg-gray-50 ${selectedChat ? 'block' : 'hidden md:block'}`}>
+      <div
+        className={`flex-1 flex overflow-hidden flex-col bg-gray-50 ${
+          selectedChat ? "block" : "hidden md:block"
+        }`}
+      >
         {selectedChat ? (
           <>
             <ChatHeader
               chat={selectedChat}
               onBack={() => {
                 setSelectedChat(null);
-                navigate('/whatsapp', { replace: true });
+                navigate("/whatsapp", { replace: true });
               }}
               onShowMenu={() => setShowChatMenu(!showChatMenu)}
               isContact={isContact}
             />
 
             <div className="flex-1 flex flex-col overflow-hidden">
-              <MessageList 
-                messages={messages} 
+              <MessageList
+                messages={messages}
                 onLoadMore={loadMoreMessages}
                 isLoading={isLoadingMore}
                 hasMore={hasMore}
                 isInitialLoad={isInitialLoad}
               />
-              
+
               <MessageInput
                 message={newMessage}
                 onMessageChange={setNewMessage}
                 onSend={handleSendMessage}
                 onAttachment={handleAttachmentClick}
                 onQuickResponse={() => setShowQuickResponsesModal(true)}
+                onMessageTemplates={() => {
+                  // TODO: Implementar modal de plantillas
+                  console.log("Plantillas de mensaje");
+                }}
+                onLibraryUpload={(document) => {
+                  // Manejar subida desde biblioteca
+                  console.log(
+                    "Archivo seleccionado desde biblioteca:",
+                    document
+                  );
+                }}
+                isUploadingFile={isUploadingFile}
               />
             </div>
 
@@ -400,7 +429,7 @@ export function WhatsApp() {
                   <button
                     className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     onClick={() => {
-                      if(isContact){
+                      if (isContact) {
                         navigate(`/contacts/${isContact}`);
                       }
                     }}
@@ -490,24 +519,37 @@ export function WhatsApp() {
                 alt={selectedChat.name}
                 className="w-24 h-24 rounded-full"
               />
-              <h3 className="mt-4 text-xl font-semibold">{selectedChat.name}</h3>
+              <h3 className="mt-4 text-xl font-semibold">
+                {selectedChat.name}
+              </h3>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-500">Teléfono</label>
+                <label className="text-sm font-medium text-gray-500">
+                  Teléfono
+                </label>
                 <p className="mt-1">+1 234 567 890</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Email</label>
+                <label className="text-sm font-medium text-gray-500">
+                  Email
+                </label>
                 <p className="mt-1">contact@example.com</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Notas</label>
-                <p className="mt-1 text-sm text-gray-600">Cliente VIP - Requiere atención prioritaria</p>
+                <label className="text-sm font-medium text-gray-500">
+                  Notas
+                </label>
+                <p className="mt-1 text-sm text-gray-600">
+                  Cliente VIP - Requiere atención prioritaria
+                </p>
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowContactModal(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowContactModal(false)}
+              >
                 Cerrar
               </Button>
               <Button>
@@ -527,7 +569,10 @@ export function WhatsApp() {
       >
         <div className="space-y-4">
           {dummyDeals.map((deal) => (
-            <div key={deal.id} className="p-4 border rounded-lg hover:bg-gray-50">
+            <div
+              key={deal.id}
+              className="p-4 border rounded-lg hover:bg-gray-50"
+            >
               <div className="flex justify-between items-start">
                 <div>
                   <h4 className="font-medium text-gray-900">{deal.name}</h4>
@@ -543,10 +588,12 @@ export function WhatsApp() {
             </div>
           ))}
           <div className="flex justify-end">
-            <Button onClick={() => {
-              setShowDealsModal(false);
-              setShowCreateDealModal(true);
-            }}>
+            <Button
+              onClick={() => {
+                setShowDealsModal(false);
+                setShowCreateDealModal(true);
+              }}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Nuevo negocio
             </Button>
@@ -584,7 +631,9 @@ export function WhatsApp() {
               <input
                 type="number"
                 value={newDeal.value}
-                onChange={(e) => setNewDeal({ ...newDeal, value: e.target.value })}
+                onChange={(e) =>
+                  setNewDeal({ ...newDeal, value: e.target.value })
+                }
                 className="block w-full pl-7 pr-12 rounded-md border-gray-300 focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
                 placeholder="0.00"
               />
@@ -596,7 +645,9 @@ export function WhatsApp() {
             </label>
             <select
               value={newDeal.stage}
-              onChange={(e) => setNewDeal({ ...newDeal, stage: e.target.value })}
+              onChange={(e) =>
+                setNewDeal({ ...newDeal, stage: e.target.value })
+              }
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
             >
               <option value="Lead">Lead</option>
@@ -613,7 +664,9 @@ export function WhatsApp() {
             </label>
             <textarea
               value={newDeal.description}
-              onChange={(e) => setNewDeal({ ...newDeal, description: e.target.value })}
+              onChange={(e) =>
+                setNewDeal({ ...newDeal, description: e.target.value })
+              }
               rows={3}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-action focus:ring focus:ring-action focus:ring-opacity-50"
               placeholder="Describe los detalles del negocio..."

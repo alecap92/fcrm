@@ -1,15 +1,15 @@
-import { Check } from 'lucide-react';
-import { Message } from '../../types/chat';
+import { Check } from "lucide-react";
+import { Message } from "../../../types/chat";
 
 interface MessageStatusProps {
-  status: Message['status'];
+  status: Message["status"];
 }
 
 export function MessageStatus({ status }: MessageStatusProps) {
-  if (status === 'sent') {
+  if (status === "sent") {
     return <Check className="w-4 h-4 text-gray-400" />;
   }
-  if (status === 'delivered') {
+  if (status === "delivered") {
     return (
       <div className="flex">
         <Check className="w-4 h-4 text-gray-400" />

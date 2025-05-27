@@ -22,8 +22,6 @@ import {
   X,
   DollarSign,
   Zap,
-  Notebook,
-  NotebookPen,
   File,
   Brain,
 } from "lucide-react";
@@ -88,7 +86,7 @@ const menuItems: MenuItem[] = [
     items: [
       {
         label: "WhatsApp",
-        href: "/whatsapp",
+        href: "/conversations",
         icon: <MessageSquare className="w-4 h-4" />,
       },
       {
