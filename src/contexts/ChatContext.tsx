@@ -19,6 +19,7 @@ import { Message } from "../types/chat";
 import { ApiMessage } from "../types/conversations";
 import type { FileDocument } from "../services/filesService";
 import { groupMessagesByDate, getHoursDifference } from "../lib";
+import { useAuth } from "./AuthContext";
 
 // Interfaces para conversaciones y pipelines
 interface ApiConversation {
@@ -110,10 +111,6 @@ interface Pipeline {
   stages: PipelineStage[];
 }
 
-// Constantes
-const PIPELINE_ID = "6814ef02e3de1af46109d105";
-const ORGANIZATION_ID = "659d89b73c6aa865f1e7d6fb";
-
 interface ChatContextType {
   // Estado del chat individual
   message: string;
@@ -203,6 +200,9 @@ interface ChatProviderProps {
 }
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
+  // Obtener información del usuario autenticado
+  const { user } = useAuth();
+
   // Estado del chat individual
   const [message, setMessage] = useState("");
   const [conversationDetail, setConversationDetail] = useState<any | null>(
@@ -345,8 +345,19 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     setHasAttemptedPipelineLoad(true);
 
     try {
+      // Primero obtener el pipeline predeterminado
+      const defaultPipelineResponse =
+        await conversationService.getDefaultPipeline();
+
+      if (!defaultPipelineResponse.success || !defaultPipelineResponse.data) {
+        throw new Error("No se pudo obtener el pipeline predeterminado");
+      }
+
+      const defaultPipelineId = defaultPipelineResponse.data._id;
+
+      // Luego obtener los datos completos del pipeline con conversaciones
       const pipelineResponse = await conversationService.getPipelineById(
-        PIPELINE_ID,
+        defaultPipelineId,
         { page: 1, limit: 10 }
       );
 
@@ -522,7 +533,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   // Función para editar columna
   const editColumn = useCallback(
     async (columnId: string, title: string, color: string) => {
-      if (!pipeline) return;
+      if (!pipeline || !user?.organizationId) return;
 
       const stageIndex = pipeline.stages.findIndex(
         (stage) => stage.stageId === columnId
@@ -541,7 +552,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
         const pipelineUpdateData = {
           name: pipeline.pipeline.name,
-          organization: ORGANIZATION_ID,
+          organization: user.organizationId,
           stages: updatedStages.map((stage) => ({
             name: stage.stageName,
             order: stage.stageOrder,
@@ -568,7 +579,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         throw error; // Re-lanzar para que el componente pueda manejar el error
       }
     },
-    [pipeline, convertTailwindBgClassToHex]
+    [pipeline, convertTailwindBgClassToHex, user?.organizationId]
   );
 
   // Función para remover columna
@@ -987,10 +998,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
   // Efecto para manejar la suscripción a eventos de socket
   useEffect(() => {
-    if (!currentChatId) return;
+    if (!currentChatId || !user?.organizationId) return;
 
     // Suscribirse a la sala de la organización
-    const organizationId = ORGANIZATION_ID;
+    const organizationId = user.organizationId;
     const orgRoom = `organization_${organizationId}`;
 
     console.log("[Socket] Suscribiéndose a salas:", {
@@ -1065,7 +1076,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       socket.emit("leaveRoom", orgRoom);
       unsubscribeFromConversation(currentChatId);
     };
-  }, [currentChatId, refreshConversations]);
+  }, [currentChatId, refreshConversations, user?.organizationId]);
 
   // Nueva función para cargar más conversaciones para una columna
   const loadMoreConversationsForColumn = useCallback(

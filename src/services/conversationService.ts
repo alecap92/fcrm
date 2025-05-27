@@ -153,10 +153,27 @@ const searchConversations = async (searchTerm: string) => {
   }
 };
 
+const getDefaultPipeline = async () => {
+  try {
+    const response: any = await apiService.get(
+      "/conversation/pipelines/default"
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error en getDefaultPipeline:", error);
+    return {
+      success: false,
+      error: "Error de conexión al servidor",
+      data: null,
+    };
+  }
+};
+
 export const conversationService = {
   getConversations,
   getConversationById,
   getPipelineById,
+  getDefaultPipeline,
   getConversationsByStage,
   sendMessage,
   editConversation,
