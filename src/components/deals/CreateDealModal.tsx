@@ -21,6 +21,7 @@ import { dealsService } from "../../services/dealsService";
 import { normalizeContact } from "../../lib/parseContacts";
 import type { Contact } from "../../types/contact";
 import { ProductModal } from "./ProductModal";
+import { useDeals } from "../../contexts/DealsContext";
 
 interface CreateDealModalProps {
   isOpen: boolean;
@@ -54,6 +55,9 @@ export function CreateDealModal({
   initialStage = "",
   initialData = null,
 }: CreateDealModalProps) {
+  // Usar el contexto para obtener datos compartidos
+  const { columns: stages, pipelineId } = useDeals();
+
   const [formData, setFormData] = useState({
     name: "",
     value: "",
@@ -72,7 +76,6 @@ export function CreateDealModal({
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [showContactResults, setShowContactResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [stages, setStages] = useState<any[]>([]);
   const [customFields, setCustomFields] = useState<DealField[]>([]);
   const [products, setProducts] = useState<productAcquisition[]>([]);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -82,14 +85,9 @@ export function CreateDealModal({
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadCustomFields = async () => {
       try {
-        const [stagesResponse, fieldsResponse] = await Promise.all([
-          dealsService.getStatuses("66c6370ad573dacc51e620f0"),
-          dealsService.getDealsFields("66c6370ad573dacc51e620f0"),
-        ]);
-
-        setStages(stagesResponse.data || []);
+        const fieldsResponse = await dealsService.getDealsFields(pipelineId);
         setCustomFields(fieldsResponse.data || []);
 
         // Initialize fields in formData
@@ -106,12 +104,14 @@ export function CreateDealModal({
           fields: initialFields,
         }));
       } catch (error) {
-        console.error("Error loading form data:", error);
+        console.error("Error loading custom fields:", error);
       }
     };
 
-    loadData();
-  }, []);
+    if (pipelineId) {
+      loadCustomFields();
+    }
+  }, [pipelineId]);
 
   useEffect(() => {
     if (initialData && isOpen) {
@@ -204,6 +204,20 @@ export function CreateDealModal({
     } else {
       // Si no es modo edición, resetear estado
       setIsEditMode(false);
+      // Resetear formulario cuando se abre el modal para crear
+      if (isOpen && !initialData) {
+        setFormData({
+          name: "",
+          value: "",
+          stage: initialStage,
+          expectedCloseDate: format(new Date(), "yyyy-MM-dd"),
+          contact: { id: "", name: "", email: "", phone: "" },
+          fields: {} as Record<string, string>,
+        });
+        setSearchTerm("");
+        setProducts([]);
+        setAdditionalFields([]);
+      }
     }
   }, [initialData, isOpen, initialStage]);
 
@@ -275,6 +289,8 @@ export function CreateDealModal({
       };
       console.log(formDataToSubmit);
       onSubmit(formDataToSubmit);
+
+      // Limpiar formulario después del submit
       setProducts([]);
       setAdditionalFields([]);
       setFormData({

@@ -6,6 +6,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { WorkflowProvider } from "./contexts/WorkflowContext";
 import { LoadingProvider } from "./contexts/LoadingContext";
 import { ChatProvider } from "./contexts/ChatContext";
+import { DealsProvider } from "./contexts/DealsContext";
 import { AuthInitializer } from "./components/auth/AuthInitializer";
 import App from "./App.tsx";
 import "./index.css";
@@ -19,7 +20,9 @@ createRoot(document.getElementById("root")!).render(
             <WorkflowProvider>
               <LoadingProvider>
                 <ChatProvider>
-                  <App />
+                  <DealsProvider>
+                    <App />
+                  </DealsProvider>
                 </ChatProvider>
               </LoadingProvider>
             </WorkflowProvider>

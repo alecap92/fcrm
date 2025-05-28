@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -14,37 +14,42 @@ import { Button } from "../components/ui/button";
 import { DealFilters } from "../components/deals/DealFilters";
 import { CreateDealModal } from "../components/deals/CreateDealModal";
 import { DealDetailsModal } from "../components/deals/DealDetailsModal";
-import { useToast } from "../components/ui/toast";
 import { DealColumn } from "../components/deals/DealColumn";
 import { DealCard } from "../components/deals/DealCard";
-import { dealsService } from "../services/dealsService";
+import { useDeals } from "../contexts/DealsContext";
 
 // Importamos los tipos que asumo tienes en tu proyecto
 import type { Deal } from "../types/deal";
-import { useLoading } from "../contexts/LoadingContext";
-
-interface DealFormData {
-  name: string;
-  value: number;
-  expectedCloseDate: string;
-  contact: { id: string };
-  stage: string;
-  fields: Array<{ field: any; value: string }>;
-  products: Array<{ id: string; quantity: number }>;
-}
 
 export function Deals() {
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [columns, setColumns] = useState<any[]>([]);
-  const [showCreateDealModal, setShowCreateDealModal] = useState(false);
-  const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
-  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
-  const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
-  const toast = useToast();
-  const { showLoading, hideLoading } = useLoading();
+  const {
+    // Estado del contexto
+    deals,
+    columns,
+    activeDeal,
+    selectedDeal,
+    editingDeal,
+    showCreateDealModal,
 
-  // Ejemplo de pipelineId
-  const pipelineId = "66c6370ad573dacc51e620f0";
+    // Setters del contexto
+    setActiveDeal,
+    setDeals,
+
+    // Acciones del contexto
+    fetchDeals,
+    createDeal,
+    updateDeal,
+    deleteDeal,
+    updateDealStatus,
+
+    // Handlers para modales
+    openCreateDealModal,
+    closeCreateDealModal,
+    openEditDealModal,
+    closeEditDealModal,
+    openDealDetailsModal,
+    closeDealDetailsModal,
+  } = useDeals();
 
   // Creamos un sensor para manejar press delay en móviles
   const pointerSensor = useSensor(PointerSensor, {
@@ -56,35 +61,6 @@ export function Deals() {
 
   // Agrupamos nuestros sensores
   const sensors = useSensors(pointerSensor);
-
-  const fetchDeals = async () => {
-    try {
-      showLoading("Cargando negocios...");
-      const response = await dealsService.getDeals(pipelineId);
-      const statuses = await dealsService.getStatuses(pipelineId);
-
-      // Ordenamos las columnas por la propiedad 'order'
-      const orderedStatuses = [...(statuses.data || [])].sort(
-        (a, b) => a.order - b.order
-      );
-
-      setColumns(orderedStatuses);
-      setDeals(response.data || []);
-    } catch (error) {
-      console.error("Error fetching deals:", error);
-      toast.show({
-        title: "Error",
-        description: "No se pudieron cargar los negocios",
-        type: "error",
-      });
-    } finally {
-      hideLoading();
-    }
-  };
-
-  useEffect(() => {
-    fetchDeals();
-  }, [pipelineId, toast]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const draggedDeal = deals.find((deal) => deal._id === event.active.id);
@@ -107,171 +83,18 @@ export function Deals() {
 
     if (targetColumn) {
       // Significa que se soltó directamente sobre la columna
-      // Aquí puedes actualizar el estado del deal en el backend y en el estado local
-      try {
-        const updated = await dealsService.updateDealStatus(
-          draggedDeal._id as string,
-          {
-            status: targetColumn._id,
-          }
-        );
-
-        if (!updated) throw new Error("No response");
-
-        setDeals((current) =>
-          current.map((deal) =>
-            deal._id === draggedDeal._id
-              ? { ...deal, status: targetColumn }
-              : deal
-          )
-        );
-
-        toast.show({
-          title: "Estado actualizado",
-          description: `El negocio se movió a "${targetColumn.name}"`,
-          type: "success",
-        });
-      } catch {
-        toast.show({
-          title: "Error",
-          description: "No se pudo actualizar el negocio",
-          type: "error",
-        });
-      }
+      await updateDealStatus(
+        draggedDeal._id as string,
+        targetColumn._id,
+        targetColumn.name
+      );
     } else if (overDeal) {
       // Significa que se soltó sobre otro DealCard
-      // Aquí puedes actualizar el estado del deal en el backend y en el estado local
-      try {
-        const updated = await dealsService.updateDealStatus(
-          draggedDeal._id as string,
-          {
-            status: overDeal.status._id,
-          }
-        );
-
-        if (!updated) throw new Error("No response");
-
-        setDeals((current) =>
-          current.map((deal) =>
-            deal._id === draggedDeal._id
-              ? { ...deal, status: overDeal.status }
-              : deal
-          )
-        );
-
-        toast.show({
-          title: "Estado actualizado",
-          description: `El negocio se movió a "${overDeal.status.name}"`,
-          type: "success",
-        });
-      } catch {
-        toast.show({
-          title: "Error",
-          description: "No se pudo actualizar el negocio",
-          type: "error",
-        });
-      }
-    }
-  };
-
-  const handleCreateDeal = async (dealData: DealFormData) => {
-    try {
-      const form = {
-        title: dealData.name,
-        amount: Number(dealData.value),
-        closingDate: dealData.expectedCloseDate,
-        associatedContactId: dealData.contact.id,
-        pipeline: pipelineId,
-        status: dealData.stage,
-        fields: dealData.fields,
-        products: dealData.products,
-      };
-
-      const response = await dealsService.createDeal(form as any);
-      setDeals((prev) => [...prev, response.deal]);
-
-      toast.show({
-        title: "Negocio creado",
-        description: "El nuevo negocio se ha creado exitosamente",
-        type: "success",
-      });
-
-      setShowCreateDealModal(false);
-      setEditingDeal(null);
-      setSelectedDeal(null);
-      setActiveDeal(null);
-    } catch (error) {
-      console.error("Error creating deal:", error);
-      toast.show({
-        title: "Error",
-        description: "No se pudo crear el negocio",
-        type: "error",
-      });
-    }
-  };
-
-  const handleUpdateDeal = async (dealData: DealFormData) => {
-    if (!editingDeal?._id) return;
-
-    try {
-      console.log("Productos a actualizar:", dealData.products);
-
-      const form = {
-        title: dealData.name,
-        amount: Number(dealData.value),
-        closingDate: dealData.expectedCloseDate,
-        associatedContactId: dealData.contact.id,
-        status: dealData.stage,
-        fields: dealData.fields,
-        dealProducts: dealData.products,
-      };
-
-      console.log("Enviando al backend:", form);
-
-      const response: Deal = await dealsService.updateDeal(
-        editingDeal._id,
-        form as any
+      await updateDealStatus(
+        draggedDeal._id as string,
+        overDeal.status._id,
+        overDeal.status.name
       );
-
-      console.log("Respuesta del backend:", response);
-
-      setDeals((prev) =>
-        prev.map((deal) => (deal._id === editingDeal._id ? response : deal))
-      );
-
-      toast.show({
-        title: "Negocio actualizado",
-        description: "El negocio se ha actualizado exitosamente",
-        type: "success",
-      });
-
-      setEditingDeal(null);
-    } catch (error) {
-      console.error("Error updating deal:", error);
-      toast.show({
-        title: "Error",
-        description: "No se pudo actualizar el negocio",
-        type: "error",
-      });
-    }
-  };
-
-  const handleDeleteDeal = async (dealId: string) => {
-    try {
-      await dealsService.deleteDeal(dealId);
-      setDeals((prev) => prev.filter((deal) => deal._id !== dealId));
-      toast.show({
-        title: "Negocio eliminado",
-        description: "El negocio se ha eliminado exitosamente",
-        type: "success",
-      });
-    } catch (error) {
-      console.error("Error deleting deal:", error);
-      toast.show({
-        title: "Error",
-        description: "No se pudo eliminar el negocio",
-        type: "error",
-      });
     }
   };
 
@@ -286,7 +109,7 @@ export function Deals() {
                 Gestiona tus oportunidades de venta
               </p>
             </div>
-            <Button onClick={() => setShowCreateDealModal(true)}>
+            <Button onClick={openCreateDealModal}>
               <Plus className="w-4 h-4 mr-2" />
               Nuevo Negocio
             </Button>
@@ -324,9 +147,9 @@ export function Deals() {
                       key={column._id}
                       column={column}
                       deals={columnDeals}
-                      onDealClick={(deal) => setSelectedDeal(deal)}
-                      onEditDeal={(deal) => setEditingDeal(deal)}
-                      handleDeleteDeal={handleDeleteDeal}
+                      onDealClick={openDealDetailsModal}
+                      onEditDeal={openEditDealModal}
+                      handleDeleteDeal={deleteDeal}
                     />
                   );
                 })}
@@ -337,8 +160,8 @@ export function Deals() {
                   <div style={{ opacity: 0.9 }}>
                     <DealCard
                       deal={activeDeal}
-                      onView={setSelectedDeal}
-                      onEdit={setEditingDeal}
+                      onView={openDealDetailsModal}
+                      onEdit={openEditDealModal}
                     />
                   </div>
                 )}
@@ -351,12 +174,9 @@ export function Deals() {
       {/* Modal para crear/editar Deal */}
       <CreateDealModal
         isOpen={showCreateDealModal || Boolean(editingDeal)}
-        onClose={() => {
-          setShowCreateDealModal(false);
-          setEditingDeal(null);
-        }}
-        onSubmit={editingDeal ? handleUpdateDeal : handleCreateDeal}
-        initialStage={pipelineId}
+        onClose={closeCreateDealModal}
+        onSubmit={editingDeal ? updateDeal : createDeal}
+        initialStage={""} // El contexto maneja el pipelineId internamente
         initialData={editingDeal}
       />
 
@@ -364,10 +184,10 @@ export function Deals() {
       {selectedDeal && (
         <DealDetailsModal
           deal={selectedDeal}
-          onClose={() => setSelectedDeal(null)}
+          onClose={closeDealDetailsModal}
           onEdit={() => {
-            setEditingDeal(selectedDeal);
-            setSelectedDeal(null);
+            openEditDealModal(selectedDeal);
+            closeDealDetailsModal();
           }}
         />
       )}
