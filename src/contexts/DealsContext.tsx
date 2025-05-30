@@ -29,6 +29,8 @@ interface DealsContextType {
   editingDeal: Deal | null;
   showCreateDealModal: boolean;
   pipelineId: string;
+  currentDeal: Deal | null;
+  relatedDeals: Deal[];
 
   // Setters
   setDeals: React.Dispatch<React.SetStateAction<Deal[]>>;
@@ -37,11 +39,19 @@ interface DealsContextType {
   setSelectedDeal: React.Dispatch<React.SetStateAction<Deal | null>>;
   setEditingDeal: React.Dispatch<React.SetStateAction<Deal | null>>;
   setShowCreateDealModal: React.Dispatch<React.SetStateAction<boolean>>;
+  setCurrentDeal: React.Dispatch<React.SetStateAction<Deal | null>>;
+  setRelatedDeals: React.Dispatch<React.SetStateAction<Deal[]>>;
 
   // Acciones
   fetchDeals: () => Promise<void>;
+  fetchDealById: (dealId: string) => Promise<Deal | null>;
+  fetchRelatedDeals: (
+    contactId: string,
+    excludeDealId?: string
+  ) => Promise<Deal[]>;
   createDeal: (dealData: DealFormData) => Promise<void>;
   updateDeal: (dealData: DealFormData) => Promise<void>;
+  updateDealById: (dealId: string, dealData: any) => Promise<void>;
   deleteDeal: (dealId: string) => Promise<void>;
   updateDealStatus: (
     dealId: string,
@@ -72,6 +82,8 @@ export function DealsProvider({ children }: DealsProviderProps) {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [showCreateDealModal, setShowCreateDealModal] = useState(false);
+  const [currentDeal, setCurrentDeal] = useState<Deal | null>(null);
+  const [relatedDeals, setRelatedDeals] = useState<Deal[]>([]);
 
   // Pipeline ID - esto podría venir de props o de otro contexto
   const pipelineId = "66c6370ad573dacc51e620f0";
@@ -114,6 +126,57 @@ export function DealsProvider({ children }: DealsProviderProps) {
       setDeals([]);
     } finally {
       hideLoading();
+    }
+  };
+
+  // Función para obtener un deal individual
+  const fetchDealById = async (dealId: string): Promise<Deal | null> => {
+    try {
+      const response = await dealsService.getDealById(dealId);
+
+      // Parsear la respuesta para unir deal y fields si es necesario
+      if (response.data && response.data.deal) {
+        const dealData = {
+          ...response.data.deal,
+          fields: response.data.fields || [],
+        };
+        return dealData;
+      } else {
+        return response.data;
+      }
+    } catch (error) {
+      console.error("Error fetching deal by ID:", error);
+      toast.show({
+        title: "Error",
+        description: "Error al cargar los detalles del negocio",
+        type: "error",
+      });
+      return null;
+    }
+  };
+
+  // Función para obtener deals relacionados (usando contactsService)
+  const fetchRelatedDeals = async (
+    contactId: string,
+    excludeDealId?: string
+  ): Promise<Deal[]> => {
+    try {
+      // Importar contactsService aquí para evitar dependencias circulares
+      const { contactsService } = await import("../services/contactsService");
+      const contactResponse = await contactsService.getContactById(contactId);
+
+      if (contactResponse.data.deals) {
+        const filteredDeals = excludeDealId
+          ? contactResponse.data.deals.filter(
+              (deal: Deal) => deal._id !== excludeDealId
+            )
+          : contactResponse.data.deals;
+        return filteredDeals;
+      }
+      return [];
+    } catch (error) {
+      console.error("Error fetching related deals:", error);
+      return [];
     }
   };
 
@@ -187,6 +250,35 @@ export function DealsProvider({ children }: DealsProviderProps) {
       closeEditDealModal();
     } catch (error) {
       console.error("Error updating deal:", error);
+      toast.show({
+        title: "Error",
+        description: "No se pudo actualizar el negocio",
+        type: "error",
+      });
+    }
+  };
+
+  // Función para actualizar deal por ID
+  const updateDealById = async (dealId: string, dealData: any) => {
+    try {
+      await dealsService.updateDeal(dealId, dealData);
+
+      // Actualizar el currentDeal si es el mismo que se está editando
+      if (currentDeal?._id === dealId) {
+        const updatedDeal = await fetchDealById(dealId);
+        setCurrentDeal(updatedDeal);
+      }
+
+      // También actualizar la lista general si es necesario
+      await fetchDeals();
+
+      toast.show({
+        title: "Negocio actualizado",
+        description: "El negocio se ha actualizado exitosamente",
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Error updating deal by ID:", error);
       toast.show({
         title: "Error",
         description: "No se pudo actualizar el negocio",
@@ -292,6 +384,8 @@ export function DealsProvider({ children }: DealsProviderProps) {
     editingDeal,
     showCreateDealModal,
     pipelineId,
+    currentDeal,
+    relatedDeals,
 
     // Setters
     setDeals,
@@ -300,11 +394,16 @@ export function DealsProvider({ children }: DealsProviderProps) {
     setSelectedDeal,
     setEditingDeal,
     setShowCreateDealModal,
+    setCurrentDeal,
+    setRelatedDeals,
 
     // Acciones
     fetchDeals,
+    fetchDealById,
+    fetchRelatedDeals,
     createDeal,
     updateDeal,
+    updateDealById,
     deleteDeal,
     updateDealStatus,
 

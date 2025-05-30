@@ -36,6 +36,9 @@ const getNodeIcon = (type: string) => {
       return <Zap className="w-4 h-4" />;
     case "manual_trigger":
       return <Play className="w-4 h-4" />;
+    case "whatsapp_trigger":
+    case "whatsapp_message_trigger":
+      return <MessageSquare className="w-4 h-4 text-green-600" />;
     case "webhook":
     case "http_request":
       return <Activity className="w-4 h-4" />;
@@ -120,13 +123,74 @@ export const Sidebar = () => {
     isLoadingNodeTypes,
     availableModules,
     isLoadingModules,
+    automationType,
   } = useWorkflowStore();
 
   // Convertir tipos de nodos de la API al formato que necesitamos para mostrar
   const getNodeItems = (): NodeItemProps[] => {
-    // Si aún estamos cargando, mostrar algunos nodos estándar
-    if (isLoadingNodeTypes || availableNodeTypes.length === 0) {
-      // Nodos predeterminados mientras cargamos
+    // Si es una automatización de conversación, mostrar nodos específicos de WhatsApp
+    if (automationType === "conversation") {
+      return [
+        {
+          type: "whatsapp_trigger",
+          label: "WhatsApp Trigger",
+          description: "Inicia cuando se recibe un mensaje de WhatsApp",
+          icon: getNodeIcon("whatsapp_trigger"),
+          category: "trigger",
+        },
+        {
+          type: "whatsapp_message_trigger",
+          label: "Mensaje de WhatsApp",
+          description:
+            "Trigger específico para mensajes de WhatsApp con filtros avanzados",
+          icon: getNodeIcon("whatsapp_message_trigger"),
+          category: "trigger",
+        },
+        {
+          type: "send_whatsapp",
+          label: "Enviar WhatsApp",
+          description: "Envía un mensaje de WhatsApp",
+          icon: getNodeIcon("whatsapp"),
+          category: "action",
+        },
+        {
+          type: "delay",
+          label: "Esperar",
+          description: "Espera un tiempo antes de continuar",
+          icon: getNodeIcon("delay"),
+          category: "action",
+        },
+        {
+          type: "condition",
+          label: "Condición",
+          description: "Evalúa el mensaje y toma decisiones",
+          icon: getNodeIcon("condition"),
+          category: "condition",
+        },
+        {
+          type: "send_email",
+          label: "Enviar Email",
+          description: "Envía un email de notificación",
+          icon: getNodeIcon("email"),
+          category: "action",
+        },
+        {
+          type: "http_request",
+          label: "Webhook",
+          description: "Envía datos a un servicio externo",
+          icon: getNodeIcon("webhook"),
+          category: "action",
+        },
+      ];
+    }
+
+    // Validar que availableNodeTypes sea un array antes de usarlo
+    if (
+      isLoadingNodeTypes ||
+      !Array.isArray(availableNodeTypes) ||
+      availableNodeTypes.length === 0
+    ) {
+      // Nodos predeterminados mientras cargamos o si no hay datos
       return [
         {
           type: "deals_trigger",
@@ -147,6 +211,21 @@ export const Sidebar = () => {
           label: "Webhook Trigger",
           description: "Start when external data is received",
           icon: getNodeIcon("webhook_trigger"),
+          category: "trigger",
+        },
+        {
+          type: "whatsapp_trigger",
+          label: "WhatsApp Trigger",
+          description: "Inicia cuando se recibe un mensaje de WhatsApp",
+          icon: getNodeIcon("whatsapp_trigger"),
+          category: "trigger",
+        },
+        {
+          type: "whatsapp_message_trigger",
+          label: "Mensaje de WhatsApp",
+          description:
+            "Trigger específico para mensajes de WhatsApp con filtros avanzados",
+          icon: getNodeIcon("whatsapp_message_trigger"),
           category: "trigger",
         },
         {
@@ -213,7 +292,11 @@ export const Sidebar = () => {
 
   // Obtener módulos y eventos para nodos tipo trigger
   const getTriggerNodes = (): NodeItemProps[] => {
-    if (isLoadingModules || availableModules.length === 0) {
+    if (
+      isLoadingModules ||
+      !Array.isArray(availableModules) ||
+      availableModules.length === 0
+    ) {
       return [];
     }
 
@@ -230,7 +313,7 @@ export const Sidebar = () => {
   const allNodes = [...getNodeItems()];
 
   // Asegurar que manual_trigger siempre esté disponible
-  if (!allNodes.some(node => node.type === "manual_trigger")) {
+  if (!allNodes.some((node) => node.type === "manual_trigger")) {
     allNodes.push({
       type: "manual_trigger",
       label: "Manual Trigger",
@@ -241,7 +324,7 @@ export const Sidebar = () => {
   }
 
   // Asegurar que massiveMail siempre esté disponible
-  if (!allNodes.some(node => node.type === "send_mass_email")) {
+  if (!allNodes.some((node) => node.type === "send_mass_email")) {
     allNodes.push({
       type: "send_mass_email",
       label: "Massive Mail",
@@ -283,91 +366,66 @@ export const Sidebar = () => {
   );
 
   return (
-    <div className="w-64 border-r bg-gray-50 flex flex-col h-full">
-      <div className="p-4 border-b bg-white">
-        <h2 className="font-semibold mb-4">Available Nodes</h2>
+    <div className="w-60 bg-gray-50 border-r p-4 overflow-y-auto">
+      <h2 className="text-lg font-semibold mb-4">
+        {automationType === "conversation" ? "Nodos WhatsApp" : "Node Library"}
+      </h2>
+      <div className="mb-4">
         <div className="relative">
-          <Search className="w-4 h-4 absolute left-2.5 top-2.5 text-gray-400" />
+          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <Input
             type="text"
-            placeholder="Search nodes..."
-            className="pl-9"
+            placeholder={
+              automationType === "conversation"
+                ? "Buscar nodos..."
+                : "Search nodes..."
+            }
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setSearchTerm(e.target.value)
+            }
+            className="pl-8"
           />
-        </div>
-        <div className="flex mt-3 space-x-2">
-          <button
-            className={`text-xs px-2 py-1 rounded-full ${
-              filter === "all" ? "bg-gray-200" : "bg-gray-100"
-            }`}
-            onClick={() => setFilter("all")}
-          >
-            All
-          </button>
-          <button
-            className={`text-xs px-2 py-1 rounded-full ${
-              filter === "trigger"
-                ? "bg-violet-200 text-violet-800"
-                : "bg-violet-50 text-violet-600"
-            }`}
-            onClick={() => setFilter("trigger")}
-          >
-            Triggers
-          </button>
-          <button
-            className={`text-xs px-2 py-1 rounded-full ${
-              filter === "action"
-                ? "bg-emerald-200 text-emerald-800"
-                : "bg-emerald-50 text-emerald-600"
-            }`}
-            onClick={() => setFilter("action")}
-          >
-            Actions
-          </button>
-          <button
-            className={`text-xs px-2 py-1 rounded-full ${
-              filter === "condition"
-                ? "bg-amber-200 text-amber-800"
-                : "bg-amber-50 text-amber-600"
-            }`}
-            onClick={() => setFilter("condition")}
-          >
-            Conditions
-          </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        {isLoadingNodeTypes || isLoadingModules ? (
-          <div className="flex flex-col items-center justify-center h-32">
-            <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-2" />
-            <p className="text-sm text-gray-500">Loading available nodes...</p>
-          </div>
-        ) : filteredNodes.length === 0 ? (
-          <div className="text-center text-gray-500 mt-8">
-            No nodes found matching your search
-          </div>
-        ) : (
-          sortedCategories.map((category) => (
-            <div key={category} className="mb-6">
-              <h3 className="text-sm font-semibold mb-2 text-gray-600">
-                {category.charAt(0).toUpperCase() + category.slice(1)}
-              </h3>
-              {groupedNodes[category].map((node, index) => (
-                <NodeItem
-                  key={`${node.type}-${index}`}
-                  type={node.type}
-                  label={node.label}
-                  description={node.description}
-                  icon={node.icon}
-                  category={node.category}
-                />
-              ))}
-            </div>
-          ))
-        )}
+      {automationType === "conversation" && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+          <p className="text-sm text-green-800">
+            💡 <strong>Tip:</strong> Estas automatizaciones se ejecutan cuando
+            llegan mensajes de WhatsApp. Comienza con un WhatsApp Trigger.
+          </p>
+        </div>
+      )}
+
+      <div className="mb-4">
+        <select
+          className="w-full rounded-md border-gray-300"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        >
+          <option value="all">All Categories</option>
+          <option value="trigger">Triggers</option>
+          <option value="action">Actions</option>
+          <option value="condition">Conditions</option>
+        </select>
       </div>
+
+      {isLoadingNodeTypes ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+        </div>
+      ) : (
+        <div>
+          {filteredNodes.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">
+              No nodes found
+            </p>
+          ) : (
+            filteredNodes.map((node) => <NodeItem key={node.type} {...node} />)
+          )}
+        </div>
+      )}
     </div>
   );
 };

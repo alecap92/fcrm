@@ -77,6 +77,8 @@ const WorkflowCanvas = () => {
     isActive,
     isLoading,
     isSaving,
+    automationType,
+    setAutomationType,
   } = useWorkflowStore();
 
   // Cargar datos iniciales
@@ -279,26 +281,45 @@ const WorkflowCanvas = () => {
                 </h1>
               )}
               {isEditMode && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={undo}
-                    disabled={!canUndo()}
-                    title="Undo"
-                  >
-                    <Undo2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={redo}
-                    disabled={!canRedo()}
-                    title="Redo"
-                  >
-                    <Redo2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                <>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={undo}
+                      disabled={!canUndo()}
+                      title="Undo"
+                    >
+                      <Undo2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={redo}
+                      disabled={!canRedo()}
+                      title="Redo"
+                    >
+                      <Redo2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    <label className="text-sm text-gray-600">Tipo:</label>
+                    <select
+                      value={automationType}
+                      onChange={(e) =>
+                        setAutomationType(
+                          e.target.value as "workflow" | "conversation"
+                        )
+                      }
+                      className="text-sm border rounded px-2 py-1"
+                    >
+                      <option value="workflow">Workflow Visual</option>
+                      <option value="conversation">
+                        Automatización WhatsApp
+                      </option>
+                    </select>
+                  </div>
+                </>
               )}
             </div>
             <div className="flex gap-2">
@@ -374,7 +395,7 @@ const WorkflowCanvas = () => {
               )}
             </div>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center justify-between">
             {isEditingDescription ? (
               <input
                 type="text"
@@ -395,6 +416,11 @@ const WorkflowCanvas = () => {
               >
                 {description || "Add a description..."}
               </p>
+            )}
+            {automationType === "conversation" && !isEditMode && (
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                Automatización WhatsApp
+              </span>
             )}
           </div>
         </div>

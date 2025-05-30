@@ -6,6 +6,7 @@ import { TagsSection } from "./sidebar/TagsSection";
 import { AssignmentSection } from "./sidebar/AssignmentSection";
 import { ContactInfo } from "./sidebar/ContactInfo";
 import { DealsSection } from "./sidebar/DealsSection";
+import AutomationsSection from "./sidebar/AutomationsSection";
 
 interface ConversationData {
   _id: string;
@@ -95,6 +96,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ chatId, conversation }) => {
 
   return (
     <div className="w-80 border-l border-gray-200 flex flex-col">
+      <AutomationsSection conversationId={conversation._id} />
+
       <TagsSection
         tags={tags}
         newTag={newTag}

@@ -26,6 +26,7 @@ import {
   Brain,
 } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
+import { useAuth } from "../contexts/AuthContext";
 import { useState, useEffect, useRef } from "react";
 import { SearchModal } from "./search/SearchModal";
 
@@ -244,6 +245,7 @@ function MobileMenu({
 function TopBar() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const { organization } = useAuth();
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -392,10 +394,10 @@ function TopBar() {
                 >
                   <img
                     src={
-                      user?.avatar ||
+                      organization?.logoUrl ||
                       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
                     }
-                    alt={user?.name || "User"}
+                    alt={organization?.companyName || "Organization"}
                     className="w-8 h-8 rounded-full ring-2 ring-transparent group-hover:ring-action transition-all duration-200"
                   />
                   <ChevronDown
@@ -411,9 +413,11 @@ function TopBar() {
                     <div className="py-1">
                       <div className="px-4 py-2 border-b">
                         <p className="text-sm font-medium text-gray-900">
-                          {user?.name}
+                          {organization?.companyName}
                         </p>
-                        <p className="text-xs text-gray-500">{user?.email}</p>
+                        <p className="text-xs text-gray-500">
+                          {organization?.email}
+                        </p>
                       </div>
                       {userMenuItems.map((item) => (
                         <Link

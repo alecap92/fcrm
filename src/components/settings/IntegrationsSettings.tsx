@@ -73,6 +73,11 @@ const availableProviders = [
       { key: "accessToken", label: "Access Token", type: "password" },
       { key: "numberIdIdentifier", label: "Number ID", type: "text" },
       { key: "phoneNumber", label: "Número de Teléfono", type: "text" },
+      {
+        key: "whatsappAccountBusinessIdentifier",
+        label: "Whatsapp Business Account Identifier",
+        type: "text",
+      },
     ],
   },
 ];
@@ -512,7 +517,7 @@ export function IntegrationsSettings() {
                       ) : field.type === "password" ? (
                         <div className="flex">
                           <input
-                            type="password"
+                            type="text"
                             value={
                               selectedProvider.credentials[field.key] || ""
                             }

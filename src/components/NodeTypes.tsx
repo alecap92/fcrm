@@ -22,7 +22,7 @@ import {
   Users,
 } from "lucide-react";
 import { NodeEditor } from "./NodeEditor";
-import { useWorkflowStore } from "../store/workflow";
+import { useAutomation } from "../contexts/AutomationContext";
 
 const baseNodeStyle =
   "relative px-4 py-2 rounded-lg shadow-lg border min-w-[180px] cursor-pointer group";
@@ -59,6 +59,7 @@ const NodeActions = ({
     </button>
     <button
       onClick={(e) => {
+        console.log("🖱️ Delete button clicked for node");
         e.stopPropagation();
         onDelete();
       }}
@@ -82,10 +83,13 @@ const NodeWrapper = ({
   id: string;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const { deleteNode, duplicateNode } = useWorkflowStore();
+  const { deleteNode, duplicateNode } = useAutomation();
 
   const handleDelete = () => {
+    console.log("🗑️ NodeTypes handleDelete called for node:", id);
+    console.log("📊 deleteNode function:", deleteNode);
     deleteNode(id);
+    console.log("✅ deleteNode called with id:", id);
   };
 
   const handleDuplicate = () => {
@@ -205,7 +209,9 @@ const ManualTriggerNode = ({ id, data }: { id: string; data: any }) => (
       <Play className="w-4 h-4" />
       <div>
         <p className="font-semibold">Manual Trigger</p>
-        <p className="text-sm">{data.description || "Run workflow manually..."}</p>
+        <p className="text-sm">
+          {data.description || "Run workflow manually..."}
+        </p>
       </div>
     </div>
   </NodeWrapper>
@@ -241,7 +247,7 @@ const Contacts = ({ id, data }: { id: string; data: any }) => (
 );
 
 const EmailNode = ({ id, data }: { id: string; data: any }) => {
-  const { updateNode } = useWorkflowStore();
+  const { updateNode } = useAutomation();
 
   // Asegurarnos de que los campos requeridos estén configurados
   useEffect(() => {
@@ -253,7 +259,7 @@ const EmailNode = ({ id, data }: { id: string; data: any }) => {
         emailBody: data.emailBody || "<p>Default email content</p>",
       });
     }
-  // Eliminar data de las dependencias para evitar bucles infinitos
+    // Eliminar data de las dependencias para evitar bucles infinitos
   }, [id, updateNode]);
 
   return (
@@ -273,7 +279,7 @@ const EmailNode = ({ id, data }: { id: string; data: any }) => {
 
 // Nodo para email masivo
 const MassiveMailNode = ({ id, data }: { id: string; data: any }) => {
-  const { updateNode } = useWorkflowStore();
+  const { updateNode } = useAutomation();
 
   // Asegurarnos de que los campos requeridos estén configurados
   useEffect(() => {
@@ -286,7 +292,7 @@ const MassiveMailNode = ({ id, data }: { id: string; data: any }) => {
         emailBody: data.emailBody || "<p>Default massive email content</p>",
       });
     }
-  // Eliminar data de las dependencias para evitar bucles infinitos
+    // Eliminar data de las dependencias para evitar bucles infinitos
   }, [id, updateNode]);
 
   return (
@@ -420,7 +426,7 @@ const DateTimeNode = ({ id, data }: { id: string; data: any }) => (
 
 // Nodos adicionales para manejar otros tipos
 const WhatsappNode = ({ id, data }: { id: string; data: any }) => {
-  const { updateNode } = useWorkflowStore();
+  const { updateNode } = useAutomation();
 
   // Asegurarnos de que los campos requeridos estén configurados
   useEffect(() => {
@@ -430,7 +436,7 @@ const WhatsappNode = ({ id, data }: { id: string; data: any }) => {
         message: data.message || "Default WhatsApp message",
       });
     }
-  // Eliminar data de las dependencias para evitar bucles infinitos
+    // Eliminar data de las dependencias para evitar bucles infinitos
   }, [id, updateNode]);
 
   return (
@@ -449,7 +455,7 @@ const WhatsappNode = ({ id, data }: { id: string; data: any }) => {
 };
 
 const DelayNode = ({ id, data }: { id: string; data: any }) => {
-  const { updateNode } = useWorkflowStore();
+  const { updateNode } = useAutomation();
 
   useEffect(() => {
     // Asegurar que duration sea un número entero
@@ -465,7 +471,7 @@ const DelayNode = ({ id, data }: { id: string; data: any }) => {
         delayMinutes: duration,
       });
     }
-  // Eliminar data de las dependencias para evitar bucles infinitos
+    // Eliminar data de las dependencias para evitar bucles infinitos
   }, [id, updateNode]);
 
   // Convertir duration a número para la visualización
@@ -479,9 +485,7 @@ const DelayNode = ({ id, data }: { id: string; data: any }) => {
         <Clock className="w-4 h-4" />
         <div>
           <p className="font-semibold">Delay</p>
-          <p className="text-sm">
-            {displayDuration} minutes
-          </p>
+          <p className="text-sm">{displayDuration} minutes</p>
         </div>
       </div>
     </NodeWrapper>
@@ -489,7 +493,7 @@ const DelayNode = ({ id, data }: { id: string; data: any }) => {
 };
 
 const TransformNode = ({ id, data }: { id: string; data: any }) => {
-  const { updateNode } = useWorkflowStore();
+  const { updateNode } = useAutomation();
 
   useEffect(() => {
     if (!data.transformations) {
@@ -497,7 +501,7 @@ const TransformNode = ({ id, data }: { id: string; data: any }) => {
         transformations: data.transformations || [],
       });
     }
-  // Eliminar data de las dependencias para evitar bucles infinitos
+    // Eliminar data de las dependencias para evitar bucles infinitos
   }, [id, updateNode]);
 
   return (
@@ -515,11 +519,36 @@ const TransformNode = ({ id, data }: { id: string; data: any }) => {
   );
 };
 
+// Nuevo nodo específico para Mensaje de WhatsApp
+const WhatsAppMessageTriggerNode = ({
+  id,
+  data,
+}: {
+  id: string;
+  data: any;
+}) => (
+  <NodeWrapper type="whatsapp_message_trigger" data={data} id={id}>
+    <Handle type="source" position={Position.Bottom} />
+    <div className="flex items-center gap-2">
+      <MessageSquare className="w-4 h-4 text-green-600" />
+      <div>
+        <p className="font-semibold">Mensaje de WhatsApp</p>
+        <p className="text-sm">
+          {data.keywords
+            ? `Palabras clave: ${data.keywords.join(", ")}`
+            : "Cuando se reciba un mensaje..."}
+        </p>
+      </div>
+    </div>
+  </NodeWrapper>
+);
+
 export const nodeTypes = {
   // Triggers - adaptados a los nombres que usa el backend/sidebar
   deals_trigger: DealTriggerNode,
   deal_trigger: DealTriggerNode, // Alias para compatibilidad
   webhook_trigger: WebhookTriggerNode,
+  whatsapp_trigger: WhatsAppTriggerNode, // Trigger general de WhatsApp
   contacts_trigger: ContactTriggerNode,
   contact_trigger: ContactTriggerNode, // Alias para compatibilidad
   tasks_trigger: TaskTriggerNode,
@@ -535,7 +564,7 @@ export const nodeTypes = {
   send_email: EmailNode, // Alias para compatibilidad con el backend
   mass_email: MassiveMailNode,
   send_mass_email: MassiveMailNode, // Alias para compatibilidad con el backend
-  massiveMail: MassiveMailNode,  // Nuevo nodo para correo masivo
+  massiveMail: MassiveMailNode, // Nuevo nodo para correo masivo
   webhook: WebhookNode,
   http_request: WebhookNode, // Alias para compatibilidad con el backend
   create_deal: CreateDealNode,
@@ -551,6 +580,9 @@ export const nodeTypes = {
   send_whatsapp: WhatsappNode, // Alias para compatibilidad con el backend
   delay: DelayNode,
   transform: TransformNode,
+
+  // Nuevo nodo específico para Mensaje de WhatsApp
+  whatsapp_message_trigger: WhatsAppMessageTriggerNode,
 };
 
 // Add the missing edgeTypes export

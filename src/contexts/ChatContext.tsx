@@ -20,6 +20,7 @@ import { ApiMessage } from "../types/conversations";
 import type { FileDocument } from "../services/filesService";
 import { groupMessagesByDate, getHoursDifference } from "../lib";
 import { useAuth } from "./AuthContext";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 // Interfaces para conversaciones y pipelines
 interface ApiConversation {
@@ -203,6 +204,13 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   // Obtener información del usuario autenticado
   const { user } = useAuth();
 
+  // Hook para manejar el título de la página
+  const { showNewMessageNotification, restoreTitle } = usePageTitle({
+    defaultTitle: "FusionCRM",
+    blinkInterval: 2000,
+    blinkDuration: 15000,
+  });
+
   // Estado del chat individual
   const [message, setMessage] = useState("");
   const [conversationDetail, setConversationDetail] = useState<any | null>(
@@ -241,6 +249,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
   // Referencias
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Efecto para resetear el estado cuando no hay chat activo
   useEffect(() => {
@@ -622,9 +631,18 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     setUploadError(null);
   }, []);
 
-  // Función para refrescar conversaciones
+  // Función para refrescar conversaciones con debounce
   const refreshConversations = useCallback(() => {
-    fetchConversations();
+    // Limpiar timeout anterior si existe
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
+
+    // Establecer nuevo timeout para evitar múltiples llamadas
+    refreshTimeoutRef.current = setTimeout(() => {
+      console.log("[ChatContext] Refrescando conversaciones...");
+      fetchConversations();
+    }, 500); // Debounce de 500ms
   }, [fetchConversations]);
 
   // Función para cargar mensajes con paginación
@@ -962,6 +980,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       console.log("initializeChat llamado con:", { chatId, isOpen });
       if (isOpen && chatId) {
         console.log("Inicializando chat:", chatId);
+
+        // Restaurar el título cuando el usuario abre una conversación
+        restoreTitle();
+
         setCurrentChatId(chatId);
         setPage(1);
         setHasMore(true);
@@ -977,7 +999,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         });
       }
     },
-    [loadMessages]
+    [loadMessages, restoreTitle]
   );
 
   // Función para limpiar el chat
@@ -996,7 +1018,64 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     setHasMore(true);
   }, [currentChatId]);
 
-  // Efecto para manejar la suscripción a eventos de socket
+  // Efecto separado para manejar notificaciones globales (independiente de currentChatId)
+  useEffect(() => {
+    if (!user?.organizationId) return;
+
+    const organizationId = user.organizationId;
+    const orgRoom = `organization_${organizationId}`;
+
+    // Suscribirse a la sala de la organización para notificaciones globales
+    socket.emit("joinRoom", orgRoom);
+
+    // Función para manejar notificaciones de WhatsApp globales
+    const handleGlobalNewNotification = (notification: any) => {
+      // Si es una notificación de WhatsApp, mostrar notificación en el título
+      if (notification.type === "whatsapp") {
+        // Extraer el nombre del contacto del título o usar el número
+        let senderName = "Contacto";
+
+        // Intentar obtener el nombre desde las conversaciones existentes
+        const existingConversation = conversations.find(
+          (conv) =>
+            conv.mobile === notification.contact ||
+            conv.id.includes(notification.contact)
+        );
+
+        if (existingConversation) {
+          senderName = existingConversation.title;
+        } else if (notification.contact) {
+          // Formatear el número de teléfono para que sea más legible
+          const formattedPhone = notification.contact.replace(
+            /(\d{3})(\d{3})(\d{4})/,
+            "$1-$2-$3"
+          );
+          senderName = `WhatsApp (${formattedPhone})`;
+        }
+
+        showNewMessageNotification(senderName);
+      }
+
+      // Refrescar la lista de conversaciones para mostrar nuevos mensajes
+      refreshConversations();
+    };
+
+    // Suscribirse solo al evento de notificaciones globales
+    socket.on("newNotification", handleGlobalNewNotification);
+
+    // Limpiar suscripciones
+    return () => {
+      socket.off("newNotification", handleGlobalNewNotification);
+      // No hacer leaveRoom aquí porque puede estar siendo usado por el otro useEffect
+    };
+  }, [
+    user?.organizationId,
+    showNewMessageNotification,
+    conversations,
+    refreshConversations,
+  ]);
+
+  // Efecto para manejar la suscripción a eventos de socket específicos de conversación
   useEffect(() => {
     if (!currentChatId || !user?.organizationId) return;
 
@@ -1004,7 +1083,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     const organizationId = user.organizationId;
     const orgRoom = `organization_${organizationId}`;
 
-    console.log("[Socket] Suscribiéndose a salas:", {
+    console.log("[Socket] Suscribiéndose a salas de conversación:", {
       conversationId: currentChatId,
       organizationId,
       orgRoom,
@@ -1014,7 +1093,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     // Suscribirse a la conversación
     subscribeToConversation(currentChatId);
 
-    // Suscribirse a la sala de la organización
+    // Suscribirse a la sala de la organización (por si no está ya suscrito)
     socket.emit("joinRoom", orgRoom);
 
     // Función para manejar nuevos mensajes
@@ -1025,8 +1104,27 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         currentChatId: currentChatId,
         messageType: newMessage.type,
         direction: newMessage.direction,
-        rawMessage: newMessage,
       });
+
+      // Si el mensaje es entrante y no pertenece a la conversación actual, mostrar notificación en el título
+      if (
+        newMessage.direction === "incoming" &&
+        newMessage.conversation !== currentChatId
+      ) {
+        // Obtener el nombre del remitente desde el título de la conversación o usar el número de teléfono
+        const senderName =
+          newMessage.possibleName ||
+          conversations.find((conv) => conv.id === newMessage.conversation)
+            ?.title ||
+          newMessage.from ||
+          "Contacto";
+
+        console.log(
+          "[Socket] Mostrando notificación en título para:",
+          senderName
+        );
+        showNewMessageNotification(senderName);
+      }
 
       // Verificar si el mensaje pertenece a esta conversación
       if (newMessage.conversation === currentChatId) {
@@ -1061,22 +1159,35 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       refreshConversations();
     };
 
-    // Suscribirse a eventos de socket
+    // Función para manejar notificaciones de WhatsApp (específicas de conversación)
+    const handleNewNotification = (notification: any) => {
+      // Refrescar la lista de conversaciones para mostrar nuevos mensajes
+      refreshConversations();
+    };
+
+    // Suscribirse a eventos de socket específicos de conversación
     socket.on("new_message", handleNewMessage);
     socket.on("whatsapp_message", handleNewMessage);
+    socket.on("newNotification", handleNewNotification);
 
     // Limpiar suscripciones
     return () => {
-      console.log(`[Socket] Limpiando suscripciones`, {
+      console.log(`[Socket] Limpiando suscripciones de conversación`, {
         conversationId: currentChatId,
         orgRoom,
       });
       socket.off("new_message", handleNewMessage);
       socket.off("whatsapp_message", handleNewMessage);
-      socket.emit("leaveRoom", orgRoom);
+      socket.off("newNotification", handleNewNotification);
       unsubscribeFromConversation(currentChatId);
     };
-  }, [currentChatId, refreshConversations, user?.organizationId]);
+  }, [
+    currentChatId,
+    refreshConversations,
+    user?.organizationId,
+    showNewMessageNotification,
+    conversations,
+  ]);
 
   // Nueva función para cargar más conversaciones para una columna
   const loadMoreConversationsForColumn = useCallback(
@@ -1154,6 +1265,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     return () => {
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
+      }
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
       }
     };
   }, []);

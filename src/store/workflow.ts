@@ -6,6 +6,7 @@ import {
   NodeType,
   ModuleEvent,
   Automation,
+  automationSystemService,
 } from "../services/automationService";
 import { webhookService } from "../services/webhookService";
 
@@ -27,6 +28,7 @@ interface WorkflowState {
   description: string;
   isEditMode: boolean;
   hasUnsavedChanges: boolean;
+  automationType: "workflow" | "conversation";
 
   // Estado de la API
   workflowId: string | null;
@@ -52,6 +54,7 @@ interface WorkflowState {
   deleteNode: (nodeId: string) => void;
   duplicateNode: (nodeId: string) => void;
   removeEdge: (edgeId: string) => void;
+  setAutomationType: (type: "workflow" | "conversation") => void;
 
   // Métodos para interactuar con la API
   saveWorkflow: () => Promise<Automation | undefined>;
@@ -113,6 +116,7 @@ const initialState = {
   isLoadingModules: false,
   history: [],
   currentHistoryIndex: -1,
+  automationType: "workflow" as "workflow" | "conversation",
 };
 
 // Convertir de nodos de ReactFlow a formato de API
@@ -146,6 +150,36 @@ const formatNodeForBackend = (node: Node, nextNodes: string[]) => {
         module: "webhook",
         event: node.data?.event || "contact_form",
         webhookId: node.data?.webhookId || "",
+        payloadMatch: node.data?.payloadMatch || {},
+      };
+    }
+
+    // Caso especial para WhatsApp message trigger
+    if (module === "whatsapp_message") {
+      return {
+        ...baseNode,
+        type: "trigger",
+        module: "whatsapp",
+        event: "whatsapp_message",
+        data: {
+          keywords: node.data?.keywords || [],
+          ...node.data,
+        },
+        payloadMatch: node.data?.payloadMatch || {},
+      };
+    }
+
+    // Caso especial para WhatsApp trigger general
+    if (module === "whatsapp") {
+      return {
+        ...baseNode,
+        type: "trigger",
+        module: "whatsapp",
+        event: node.data?.event || "message_received",
+        data: {
+          keywords: node.data?.keywords || [],
+          ...node.data,
+        },
         payloadMatch: node.data?.payloadMatch || {},
       };
     }
@@ -216,7 +250,10 @@ const formatNodeForBackend = (node: Node, nextNodes: string[]) => {
         type: "send_email",
         to: node.data?.to || node.data?.recipient || "{{contact.email}}",
         subject: node.data?.subject || "Email notification",
-        emailBody: node.data?.emailBody || node.data?.content || "<p>Default email content</p>",
+        emailBody:
+          node.data?.emailBody ||
+          node.data?.content ||
+          "<p>Default email content</p>",
       };
 
       console.log("Email node complete data:", emailData);
@@ -249,13 +286,13 @@ const formatNodeForBackend = (node: Node, nextNodes: string[]) => {
     case "contacts":
       // Obtener contactData y manejar la transformación de companyName a company
       const contactData = { ...node.data?.contactData };
-      
+
       // Si existe companyName pero no company, actualizar
       if (contactData.companyName && !contactData.company) {
         contactData.company = contactData.companyName;
         delete contactData.companyName;
       }
-      
+
       return {
         ...baseNode,
         type: "contacts",
@@ -265,10 +302,10 @@ const formatNodeForBackend = (node: Node, nextNodes: string[]) => {
 
     case "delay":
       // Convertir la duración a un número entero
-      const duration = node.data?.duration 
+      const duration = node.data?.duration
         ? parseInt(node.data.duration, 10)
         : 5;
-        
+
       return {
         ...baseNode,
         type: "delay",
@@ -323,7 +360,7 @@ const formatNodeFromBackend = (
           },
         };
       }
-      
+
       // Caso especial para webhook trigger
       if (apiNode.module === "webhook") {
         return {
@@ -340,7 +377,36 @@ const formatNodeFromBackend = (
           },
         };
       }
-      
+
+      // Caso especial para WhatsApp triggers
+      if (apiNode.module === "whatsapp") {
+        if (apiNode.event === "whatsapp_message") {
+          return {
+            ...baseNode,
+            type: "whatsapp_message_trigger",
+            data: {
+              ...baseNode.data,
+              module: apiNode.module,
+              event: apiNode.event,
+              keywords: apiNode.data?.keywords || [],
+              label: "Mensaje de WhatsApp",
+            },
+          };
+        } else {
+          return {
+            ...baseNode,
+            type: "whatsapp_trigger",
+            data: {
+              ...baseNode.data,
+              module: apiNode.module,
+              event: apiNode.event,
+              keywords: apiNode.data?.keywords || [],
+              label: "WhatsApp Trigger",
+            },
+          };
+        }
+      }
+
       return {
         ...baseNode,
         type: `${apiNode.module}_trigger`,
@@ -425,7 +491,7 @@ const formatNodeFromBackend = (
         contactData.companyName = contactData.company;
         delete contactData.company;
       }
-      
+
       return {
         ...baseNode,
         type: "contacts",
@@ -579,13 +645,33 @@ const layoutNodes = (nodes: Node[], edges: Edge[]): Node[] => {
   return nodes;
 };
 
+// Función para detectar si es una automatización de conversación
+const detectAutomationType = (nodes: Node[]): "workflow" | "conversation" => {
+  const hasWhatsAppNodes = nodes.some(
+    (node) =>
+      node.type === "whatsapp_trigger" ||
+      node.type === "whatsapp_message_trigger" ||
+      node.type === "send_whatsapp" ||
+      (node.data && node.data.module === "whatsapp")
+  );
+
+  return hasWhatsAppNodes ? "conversation" : "workflow";
+};
+
 export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   ...initialState,
 
   setNodes: (nodes) => {
     set((state) => {
       const newNodes = Array.isArray(nodes) ? nodes : nodes(state.nodes);
-      return { nodes: newNodes, error: null, hasUnsavedChanges: true };
+      // Detectar automáticamente el tipo cuando se agregan nodos
+      const automationType = detectAutomationType(newNodes);
+      return {
+        nodes: newNodes,
+        error: null,
+        hasUnsavedChanges: true,
+        automationType,
+      };
     });
     get().addToHistory();
   },
@@ -636,11 +722,15 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       }
     }
 
-    set((state) => ({
-      nodes: [...state.nodes, node],
+    const newNodes = [...state.nodes, node];
+    const automationType = detectAutomationType(newNodes);
+
+    set({
+      nodes: newNodes,
       error: null,
       hasUnsavedChanges: true,
-    }));
+      automationType,
+    });
     get().addToHistory();
     return true;
   },
@@ -769,6 +859,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   setWorkflowId: (id: string | null) => set({ workflowId: id }),
 
+  setAutomationType: (type: "workflow" | "conversation") => {
+    set({ automationType: type, hasUnsavedChanges: true });
+  },
+
   saveWorkflow: async () => {
     const state = get();
     if (!state.validateWorkflow()) {
@@ -796,78 +890,92 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
     console.log("All formatted nodes:", formattedNodes);
 
+    // Detectar tipo de automatización y trigger
+    const automationType =
+      state.automationType || detectAutomationType(state.nodes);
+
     const workflowData = {
       name: state.name || "Untitled Workflow",
       description: state.description || "",
       isActive: state.isActive,
       nodes: formattedNodes,
+      edges: state.edges, // Incluir edges para el sistema visual
+      automationType,
+      // El triggerType se detectará automáticamente en el backend
     };
 
     console.log("Saving workflow with data:", workflowData);
 
     try {
       set({ isSaving: true, error: null });
-      
+
       const { nodes } = state;
       const updateNodeMethod = get().updateNode;
-      
+
       // Preparar los nodos para el backend
       const webhookTriggerNodes: Node[] = [];
-      
+
       // Buscar nodos de tipo webhook_trigger que necesiten crear webhook
-      nodes.forEach(node => {
-        if (node.type === 'webhook_trigger' && !node.data.webhookId) {
+      nodes.forEach((node) => {
+        if (node.type === "webhook_trigger" && !node.data.webhookId) {
           webhookTriggerNodes.push(node);
         }
       });
-      
+
       // Crear webhooks para los nodos que lo necesiten
       if (webhookTriggerNodes.length > 0) {
         for (const node of webhookTriggerNodes) {
           try {
             // Crear webhook usando webhookService
             const webhookData = {
-              name: node.data.webhookName || "Webhook para creación de contactos",
-              description: node.data.webhookDescription || "Recibe datos de formularios externos y crea contactos",
+              name:
+                node.data.webhookName || "Webhook para creación de contactos",
+              description:
+                node.data.webhookDescription ||
+                "Recibe datos de formularios externos y crea contactos",
               module: "webhook",
               event: node.data.event || "contact_form",
               isActive: true,
               organizationId: "659d89b73c6aa865f1e7d6fb", // Debe ser dinámico en producción
-              createdBy: "6594a74983de58ca5547b945"  // Debe ser dinámico en producción
+              createdBy: "6594a74983de58ca5547b945", // Debe ser dinámico en producción
             };
-            
-            const webhook = await webhookService.createWebhookEndpoint(webhookData);
-            
+
+            const webhook = await webhookService.createWebhookEndpoint(
+              webhookData
+            );
+
             // Actualizar el nodo con el ID del webhook creado
-            updateNodeMethod(node.id, { 
+            updateNodeMethod(node.id, {
               webhookId: webhook.id,
-              webhookUrl: `http://localhost:3001/api/v1/webhooks/id/${webhook.id}`
+              webhookUrl: `http://localhost:3001/api/v1/webhooks/id/${webhook.id}`,
             });
           } catch (err) {
             const error = err as Error;
-            console.error('Error creating webhook:', error);
-            set({ 
-              error: `Error al crear webhook: ${error.message || "Error desconocido"}`,
-              isSaving: false 
+            console.error("Error creating webhook:", error);
+            set({
+              error: `Error al crear webhook: ${
+                error.message || "Error desconocido"
+              }`,
+              isSaving: false,
             });
             return;
           }
         }
       }
-      
+
       // Continuar con el guardado normal de la automatización
-      let result;
+      let result: any;
       if (state.workflowId) {
-        // Actualizar workflow existente
-        result = await automationService.updateAutomation(
+        // Actualizar workflow existente - usar el servicio unificado
+        result = await automationSystemService.updateAutomation(
           state.workflowId,
           workflowData
         );
       } else {
-        // Crear nuevo workflow
-        result = await automationService.createAutomation(workflowData);
+        // Crear nuevo workflow - usar el servicio unificado
+        result = await automationSystemService.createAutomation(workflowData);
         // Guardar el ID del nuevo workflow
-        set({ workflowId: result.id });
+        set({ workflowId: (result as any)._id || result.id });
       }
 
       set({ hasUnsavedChanges: false, isSaving: false });
@@ -884,31 +992,44 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
 
-      const automation = await automationService.getAutomation(id);
+      // Usar el servicio unificado
+      const automation: any = await automationSystemService.getAutomation(id);
 
       // Posicionar los nodos visualmente
       const reactFlowNodes = automation.nodes.map(
         (node: any, index: number) => {
-          // Posición inicial en cascada, luego se ajustará con layoutNodes
-          const position = { x: 100, y: 100 + index * 100 };
+          // Si el nodo ya tiene posición, usarla
+          const position = node.position || { x: 100, y: 100 + index * 100 };
           return formatNodeFromBackend(node, position);
         }
       );
 
-      const reactFlowEdges = generateEdgesFromNodes(automation.nodes);
+      // Usar edges existentes o generarlos
+      const reactFlowEdges =
+        automation.edges || generateEdgesFromNodes(automation.nodes);
 
-      // Aplicar layout automático a los nodos
-      const positionedNodes = layoutNodes(reactFlowNodes, reactFlowEdges);
+      // Aplicar layout automático a los nodos si no tienen posición
+      const needsLayout = automation.nodes.some((node: any) => !node.position);
+      const positionedNodes = needsLayout
+        ? layoutNodes(reactFlowNodes, reactFlowEdges)
+        : reactFlowNodes;
+
+      // Validar automationType
+      const validAutomationType =
+        automation.automationType === "conversation"
+          ? "conversation"
+          : "workflow";
 
       set({
         nodes: positionedNodes,
         edges: reactFlowEdges,
         name: automation.name,
         description: automation.description,
-        isActive: automation.status === "active",
+        isActive: automation.isActive || automation.status === "active",
         workflowId: id,
         isLoading: false,
         hasUnsavedChanges: false,
+        automationType: validAutomationType,
         history: [
           {
             nodes: positionedNodes,
@@ -948,7 +1069,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
     try {
       set({ isLoading: true, error: null });
-      const result = await automationService.executeAutomation(workflowId);
+      // Usar el servicio unificado
+      const result = await automationSystemService.executeAutomation(
+        workflowId
+      );
       set({ isLoading: false });
       return result;
     } catch (error: any) {
@@ -964,12 +1088,40 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   loadNodeTypes: async () => {
     try {
       set({ isLoadingNodeTypes: true, error: null });
-      const nodeTypes = await automationService.getNodeTypes();
+      console.log("🔄 Cargando tipos de nodos...");
+
+      const response: any = await automationService.getNodeTypes();
+      console.log("✅ Respuesta de tipos de nodos:", response);
+
+      // Extraer el array de la respuesta
+      let nodeTypes = response;
+      if (response && typeof response === "object" && response.data) {
+        nodeTypes = response.data;
+      }
+
+      console.log("✅ Tipos de nodos procesados:", nodeTypes);
+
+      // Validar que nodeTypes sea un array
+      if (!Array.isArray(nodeTypes)) {
+        console.error(
+          "❌ nodeTypes no es un array después del procesamiento:",
+          nodeTypes
+        );
+        set({
+          availableNodeTypes: [],
+          isLoadingNodeTypes: false,
+          error: "Los tipos de nodos no se cargaron correctamente",
+        });
+        return;
+      }
+
       set({ availableNodeTypes: nodeTypes, isLoadingNodeTypes: false });
     } catch (error: any) {
+      console.error("❌ Error cargando tipos de nodos:", error);
       set({
         error: `Failed to load node types: ${error.message || "Unknown error"}`,
         isLoadingNodeTypes: false,
+        availableNodeTypes: [], // Asegurar que sea un array vacío en caso de error
       });
     }
   },
@@ -977,12 +1129,40 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   loadAvailableModules: async () => {
     try {
       set({ isLoadingModules: true, error: null });
-      const modules = await automationService.getAvailableModules();
+      console.log("🔄 Cargando módulos disponibles...");
+
+      const response: any = await automationService.getAvailableModules();
+      console.log("✅ Respuesta de módulos:", response);
+
+      // Extraer el array de la respuesta
+      let modules = response;
+      if (response && typeof response === "object" && response.data) {
+        modules = response.data;
+      }
+
+      console.log("✅ Módulos procesados:", modules);
+
+      // Validar que modules sea un array
+      if (!Array.isArray(modules)) {
+        console.error(
+          "❌ modules no es un array después del procesamiento:",
+          modules
+        );
+        set({
+          availableModules: [],
+          isLoadingModules: false,
+          error: "Los módulos no se cargaron correctamente",
+        });
+        return;
+      }
+
       set({ availableModules: modules, isLoadingModules: false });
     } catch (error: any) {
+      console.error("❌ Error cargando módulos:", error);
       set({
         error: `Failed to load modules: ${error.message || "Unknown error"}`,
         isLoadingModules: false,
+        availableModules: [], // Asegurar que sea un array vacío en caso de error
       });
     }
   },
