@@ -393,6 +393,7 @@ export function DealsProvider({ children }: DealsProviderProps) {
       currentPage: pagination.currentPage,
       totalPages: pagination.totalPages,
       dealsCount: deals.length,
+      pipelineId,
     });
 
     if (pagination.isLoadingMore || !pagination.hasNextPage) {
@@ -406,33 +407,45 @@ export function DealsProvider({ children }: DealsProviderProps) {
 
     try {
       const nextPage = pagination.currentPage + 1;
-      console.log(`📥 Solicitando página ${nextPage}`);
+      console.log(
+        `📥 Solicitando página ${nextPage} para pipeline ${pipelineId}`
+      );
 
       const response = await dealsService.getDeals(pipelineId, {
         page: nextPage,
         limit: DEALS_PER_PAGE,
       });
 
-      console.log("📦 Respuesta del servidor:", {
+      console.log("📦 Respuesta del servidor para loadMoreDeals:", {
         page: response?.page,
         totalPages: response?.totalPages,
+        total: response?.total,
+        limit: response?.limit,
         dataLength: response?.data?.length,
         hasNextPage:
           (response?.page || nextPage) <
           (response?.totalPages || pagination.totalPages),
+        responseStructure: response ? Object.keys(response) : [],
       });
+
+      // Verificar que la respuesta tiene la estructura esperada
+      if (!response || !Array.isArray(response.data)) {
+        console.error("❌ Respuesta inválida en loadMoreDeals:", response);
+        setPagination((prev) => ({ ...prev, isLoadingMore: false }));
+        return;
+      }
 
       // Usar el callback de setDeals para acceder al estado más reciente
       setDeals((prevDeals) => {
         // Solo agregar deals que no existan ya en el estado actual
         const existingDealIds = new Set(prevDeals.map((deal) => deal._id));
-        const newDeals = (response?.data || []).filter(
+        const newDeals = response.data.filter(
           (deal) => !existingDealIds.has(deal._id)
         );
 
         console.log("🔍 Análisis de duplicados:");
         console.log("  - Deals existentes:", prevDeals.length);
-        console.log("  - Nuevos deals recibidos:", response?.data?.length || 0);
+        console.log("  - Nuevos deals recibidos:", response.data.length);
         console.log("  - Nuevos deals únicos a agregar:", newDeals.length);
         console.log(
           "  - IDs existentes (primeros 5):",
@@ -440,7 +453,7 @@ export function DealsProvider({ children }: DealsProviderProps) {
         );
         console.log(
           "  - IDs nuevos recibidos:",
-          (response?.data || []).map((d) => d._id).slice(0, 5)
+          response.data.map((d) => d._id).slice(0, 5)
         );
 
         const finalDeals = [...prevDeals, ...newDeals];
@@ -450,17 +463,26 @@ export function DealsProvider({ children }: DealsProviderProps) {
       });
 
       setPagination({
-        currentPage: response?.page || nextPage,
-        totalPages: response?.totalPages || pagination.totalPages,
+        currentPage: response.page || nextPage,
+        totalPages: response.totalPages || pagination.totalPages,
         hasNextPage:
-          (response?.page || nextPage) <
-          (response?.totalPages || pagination.totalPages),
+          (response.page || nextPage) <
+          (response.totalPages || pagination.totalPages),
         isLoadingMore: false,
       });
 
       console.log("✅ loadMoreDeals completado exitosamente");
     } catch (error) {
-      console.error("❌ Error loading more deals:", error);
+      console.error("❌ Error loading more deals:", {
+        error,
+        errorMessage:
+          error instanceof Error ? error.message : "Error desconocido",
+        errorCode: (error as any)?.code,
+        errorStatus: (error as any)?.status,
+        pipelineId,
+        currentPage: pagination.currentPage,
+        nextPage: pagination.currentPage + 1,
+      });
       setPagination((prev) => ({ ...prev, isLoadingMore: false }));
     }
   };
@@ -530,7 +552,13 @@ export function DealsProvider({ children }: DealsProviderProps) {
           })
           .catch((error) => {
             console.error("Error cargando deals:", error);
-            return { data: [], page: 1, totalPages: 1 }; // Valor por defecto si falla
+            return {
+              data: [],
+              page: 1,
+              totalPages: 1,
+              total: 0,
+              limit: DEALS_PER_PAGE,
+            }; // Valor por defecto si falla
           }),
         dealsService.getStatuses(targetPipelineId).catch((error) => {
           console.error("Error cargando statuses:", error);
@@ -542,8 +570,14 @@ export function DealsProvider({ children }: DealsProviderProps) {
         pipelineId: targetPipelineId,
         page: dealsResponse?.page,
         totalPages: dealsResponse?.totalPages,
+        total: dealsResponse?.total,
+        limit: dealsResponse?.limit,
         dataLength: dealsResponse?.data?.length,
         statusesLength: statusesResponse?.data?.length,
+        dealsResponseStructure: dealsResponse ? Object.keys(dealsResponse) : [],
+        statusesResponseStructure: statusesResponse
+          ? Object.keys(statusesResponse)
+          : [],
       });
 
       // Verificar que statuses.data existe y es un array
@@ -560,27 +594,33 @@ export function DealsProvider({ children }: DealsProviderProps) {
         console.log("✅ Columnas cargadas:", orderedStatuses.length);
       }
 
-      // Establecer deals (puede ser array vacío si falló la carga)
-      setDeals(dealsResponse?.data || []);
-      console.log(
-        "✅ Deals cargados para pipeline:",
-        dealsResponse?.data?.length || 0
-      );
+      // Verificar que deals.data existe y es un array
+      const dealsData = dealsResponse?.data || [];
+      if (!Array.isArray(dealsData)) {
+        console.error("deals.data is not an array:", dealsData);
+        setDeals([]);
+      } else {
+        setDeals(dealsData);
+        console.log("✅ Deals cargados para pipeline:", dealsData.length);
+      }
 
-      // Actualizar información de paginación
+      // Actualizar información de paginación con valores por defecto seguros
+      const currentPage = dealsResponse?.page || 1;
+      const totalPages = dealsResponse?.totalPages || 1;
+      const hasNextPage = currentPage < totalPages;
+
       setPagination({
-        currentPage: dealsResponse?.page || 1,
-        totalPages: dealsResponse?.totalPages || 1,
-        hasNextPage:
-          (dealsResponse?.page || 1) < (dealsResponse?.totalPages || 1),
+        currentPage,
+        totalPages,
+        hasNextPage,
         isLoadingMore: false,
       });
 
       console.log("📊 Paginación para nuevo pipeline:", {
-        currentPage: dealsResponse?.page || 1,
-        totalPages: dealsResponse?.totalPages || 1,
-        hasNextPage:
-          (dealsResponse?.page || 1) < (dealsResponse?.totalPages || 1),
+        currentPage,
+        totalPages,
+        hasNextPage,
+        total: dealsResponse?.total || 0,
       });
     } catch (error) {
       console.error("❌ Error fetching deals for pipeline:", error);

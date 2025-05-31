@@ -22,17 +22,48 @@ class DealsService {
     pagination: PaginationParams = { limit: 20, page: 1 }
   ): Promise<PaginatedResponse<Deal>> {
     try {
+      console.log("🚀 dealsService.getDeals - Iniciando solicitud:", {
+        pipelineId,
+        pagination,
+        url: `${this.baseUrl}?limit=${pagination?.limit}&page=${pagination?.page}&pipelineId=${pipelineId}`,
+        environment: import.meta.env.MODE,
+        apiBaseUrl: import.meta.env.VITE_API_BASE_URL,
+      });
+
       const response = await apiService.get<PaginatedResponse<Deal>>(
         `${this.baseUrl}?limit=${pagination?.limit}&page=${pagination?.page}&pipelineId=${pipelineId}`
       );
+
+      console.log("✅ dealsService.getDeals - Respuesta exitosa:", {
+        status: response.status,
+        dataLength: response.data?.data?.length,
+        page: response.data?.page,
+        totalPages: response.data?.totalPages,
+        total: response.data?.total,
+        hasData: !!response.data,
+        responseStructure: Object.keys(response.data || {}),
+      });
+
       return response.data;
     } catch (error) {
-      console.error("Error getting deals:", error);
+      console.error("❌ dealsService.getDeals - Error detallado:", {
+        error,
+        errorMessage:
+          error instanceof Error ? error.message : "Error desconocido",
+        errorCode: (error as any)?.code,
+        errorStatus: (error as any)?.status,
+        pipelineId,
+        pagination,
+        environment: import.meta.env.MODE,
+        apiBaseUrl: import.meta.env.VITE_API_BASE_URL,
+      });
+
+      // Devolver estructura consistente en caso de error
       return {
         data: [],
         total: 0,
-        page: 1,
-        limit: pagination.limit,
+        page: pagination.page || 1,
+        limit: pagination.limit || 20,
         totalPages: 0,
       };
     }
