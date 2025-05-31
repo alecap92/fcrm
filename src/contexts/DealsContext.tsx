@@ -10,7 +10,6 @@ import { dealsService } from "../services/dealsService";
 import { useToast } from "../components/ui/toast";
 import { useLoading } from "./LoadingContext";
 import type { Deal } from "../types/deal";
-import type { PaginationParams, PaginatedResponse } from "../types/contact";
 
 interface DealFormData {
   name: string;

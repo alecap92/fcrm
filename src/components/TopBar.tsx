@@ -281,7 +281,9 @@ function TopBar() {
             <div className="flex-shrink-0">
               <Link to="/" className="flex items-center group">
                 <img
-                  src={"/src/images/logo-white.png"}
+                  src={
+                    "https://res.cloudinary.com/db6izsiwj/image/upload/v1748697006/logo-white_yyhsi9.png"
+                  }
                   alt={"Fusion CRM"}
                   className="w-full h-20 object-contain ring-2 ring-transparent"
                 />
