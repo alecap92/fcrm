@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Zap, Play, Edit2, Trash2, MoreVertical } from "lucide-react";
+import { Zap, Play, Edit2, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import { Automation } from "../../services/automationService";
