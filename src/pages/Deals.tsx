@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -9,19 +8,22 @@ import {
   useSensors,
   closestCenter,
 } from "@dnd-kit/core";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
+import { useState } from "react";
 import { Button } from "../components/ui/button";
 import { DealFilters } from "../components/deals/DealFilters";
 import { CreateDealModal } from "../components/deals/CreateDealModal";
 import { DealDetailsModal } from "../components/deals/DealDetailsModal";
 import { DealColumn } from "../components/deals/DealColumn";
 import { DealCard } from "../components/deals/DealCard";
+import { SearchDealsModal } from "../components/deals/SearchDealsModal";
 import { useDeals } from "../contexts/DealsContext";
 
 // Importamos los tipos que asumo tienes en tu proyecto
-import type { Deal } from "../types/deal";
 
 export function Deals() {
+  const [showSearchModal, setShowSearchModal] = useState(false);
+
   const {
     // Estado del contexto
     deals,
@@ -30,6 +32,8 @@ export function Deals() {
     selectedDeal,
     editingDeal,
     showCreateDealModal,
+    pagination,
+    searchResults,
 
     // Setters del contexto
     setActiveDeal,
@@ -37,16 +41,17 @@ export function Deals() {
 
     // Acciones del contexto
     fetchDeals,
+    loadMoreDeals,
     createDeal,
     updateDeal,
     deleteDeal,
     updateDealStatus,
+    searchDeals,
 
     // Handlers para modales
     openCreateDealModal,
     closeCreateDealModal,
     openEditDealModal,
-    closeEditDealModal,
     openDealDetailsModal,
     closeDealDetailsModal,
   } = useDeals();
@@ -98,28 +103,55 @@ export function Deals() {
     }
   };
 
+  // Función para manejar el scroll infinito por columna
+  const handleLoadMoreForColumn = () => {
+    // Solo cargar más si hay más páginas disponibles y no se está cargando ya
+    if (pagination.hasNextPage && !pagination.isLoadingMore) {
+      loadMoreDeals();
+    }
+  };
+
+  const handleSearchDeal = (deal: any) => {
+    openDealDetailsModal(deal);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex flex-col h-screen">
         <div className="bg-white border-b">
-          <div className="p-4 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-900">Negocios</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Gestiona tus oportunidades de venta
-              </p>
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  Negocios
+                </h1>
+                <p className="mt-1 text-sm text-gray-500">
+                  Gestiona tus oportunidades de venta
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowSearchModal(true)}
+                  className="flex items-center"
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  Buscar
+                </Button>
+                <div className="relative">
+                  <DealFilters
+                    onFilterChange={() => {}}
+                    setDeals={setDeals}
+                    fetchDeals={fetchDeals}
+                  />
+                </div>
+                <Button onClick={openCreateDealModal}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nuevo Negocio
+                </Button>
+              </div>
             </div>
-            <Button onClick={openCreateDealModal}>
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Negocio
-            </Button>
           </div>
-          {/* Filtros */}
-          <DealFilters
-            onFilterChange={() => {}}
-            setDeals={setDeals}
-            fetchDeals={fetchDeals}
-          />
         </div>
 
         <div className="flex-1 overflow-x-auto p-6">
@@ -150,6 +182,9 @@ export function Deals() {
                       onDealClick={openDealDetailsModal}
                       onEditDeal={openEditDealModal}
                       handleDeleteDeal={deleteDeal}
+                      onLoadMore={() => handleLoadMoreForColumn()}
+                      isLoadingMore={pagination.isLoadingMore}
+                      hasNextPage={pagination.hasNextPage}
                     />
                   );
                 })}
@@ -191,6 +226,15 @@ export function Deals() {
           }}
         />
       )}
+
+      {/* Modal de búsqueda */}
+      <SearchDealsModal
+        isOpen={showSearchModal}
+        onClose={() => setShowSearchModal(false)}
+        onSubmit={searchDeals}
+        searchResults={searchResults}
+        onDealClick={handleSearchDeal}
+      />
     </div>
   );
 }

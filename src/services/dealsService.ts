@@ -19,16 +19,22 @@ class DealsService {
 
   public async getDeals(
     pipelineId: string,
-    pagination: PaginationParams = { limit: 10, page: 1 }
-  ): Promise<any> {
+    pagination: PaginationParams = { limit: 20, page: 1 }
+  ): Promise<PaginatedResponse<Deal>> {
     try {
       const response = await apiService.get<PaginatedResponse<Deal>>(
         `${this.baseUrl}?limit=${pagination?.limit}&page=${pagination?.page}&pipelineId=${pipelineId}`
       );
-      return { data: response.data };
+      return response.data;
     } catch (error) {
       console.error("Error getting deals:", error);
-      return { data: [] };
+      return {
+        data: [],
+        total: 0,
+        page: 1,
+        limit: pagination.limit,
+        totalPages: 0,
+      };
     }
   }
 

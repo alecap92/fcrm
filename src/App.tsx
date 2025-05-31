@@ -35,82 +35,73 @@ import Analytics from "./pages/Analytics";
 import Strategy from "./pages/Strategy";
 import Conversations from "./pages/Conversations";
 import DealDetails from "./pages/DealDetails";
-import { AutomationProvider } from "./contexts/AutomationContext";
 
 function App() {
   return (
-    <AutomationProvider>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route
-          path="/*"
-          element={
-            <PrivateRoute>
-              <>
-                <TopBar />
-                <Routes>
-                  <Route path="/" element={<Navigate to="/deals" replace />} />
-                  <Route path="/workflow/new" element={<WorkflowEditor />} />
-                  <Route path="/workflow/:id" element={<WorkflowEditor />} />
-                  <Route path="/contacts" element={<ContactsDirectory />} />
-                  <Route path="/contacts/:id" element={<ContactDetails />} />
-                  <Route path="/contacts/lists" element={<ContactLists />} />
-                  <Route
-                    path="/contacts/lists/new"
-                    element={<CreateContactList />}
-                  />
-                  <Route
-                    path="/contacts/lists/:id"
-                    element={<CreateContactList />}
-                  />
-                  <Route path="/whatsapp" element={<WhatsApp />} />
-                  <Route path="/whatsapp/:contactId" element={<WhatsApp />} />
-                  <Route path="/mass-whatsapp" element={<WhatsAppMass />} />
-                  <Route
-                    path="/mass-whatsapp/new"
-                    element={<WhatsAppMassNew />}
-                  />
-                  <Route path="/mass-email" element={<EmailMass />} />
-                  <Route path="/documents" element={<Documents />} />
-                  <Route path="/mass-email/new" element={<EmailMassNew />} />
-                  <Route path="/deals" element={<Deals />} />
-                  <Route path="/deals/:id" element={<DealDetails />} />
-                  <Route path="/quotes" element={<Quotes />} />
-                  <Route path="/quotes/new" element={<QuoteEditor />} />
-                  <Route path="/quotes/:id" element={<QuoteEditor />} />
-                  <Route path="/reports" element={<Reports />} />
-                  <Route path="/snippets" element={<Fragments />} />
-                  <Route path="/email" element={<Email />} />
-                  <Route path="/projects" element={<Projects />} />
-                  <Route path="/social-media" element={<SocialMedia />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/products" element={<Products />} />
-                  <Route path="/automations" element={<Automations />} />
-                  <Route
-                    path="/automations/sequences"
-                    element={<Sequences />}
-                  />
-                  <Route
-                    path="/automations/templates"
-                    element={<Templates />}
-                  />
-                  <Route path="/invoices" element={<Invoices />} />
-                  <Route path="/invoices/new" element={<CreateInvoice />} />
-                  <Route
-                    path="/invoices/settings"
-                    element={<InvoiceConfiguration />}
-                  />
-                  <Route path="/notas-credito" element={<NotasCredito />} />
-                  <Route path="/analytics" element={<Analytics />} />
-                  <Route path="/strategy" element={<Strategy />} />
-                  <Route path="/conversations" element={<Conversations />} />
-                </Routes>
-              </>
-            </PrivateRoute>
-          }
-        />
-      </Routes>
-    </AutomationProvider>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route
+        path="/*"
+        element={
+          <PrivateRoute>
+            <>
+              <TopBar />
+              <Routes>
+                <Route path="/" element={<Navigate to="/deals" replace />} />
+                <Route path="/workflow/new" element={<WorkflowEditor />} />
+                <Route path="/workflow/:id" element={<WorkflowEditor />} />
+                <Route path="/contacts" element={<ContactsDirectory />} />
+                <Route path="/contacts/:id" element={<ContactDetails />} />
+                <Route path="/contacts/lists" element={<ContactLists />} />
+                <Route
+                  path="/contacts/lists/new"
+                  element={<CreateContactList />}
+                />
+                <Route
+                  path="/contacts/lists/:id"
+                  element={<CreateContactList />}
+                />
+                <Route path="/whatsapp" element={<WhatsApp />} />
+                <Route path="/whatsapp/:contactId" element={<WhatsApp />} />
+                <Route path="/mass-whatsapp" element={<WhatsAppMass />} />
+                <Route
+                  path="/mass-whatsapp/new"
+                  element={<WhatsAppMassNew />}
+                />
+                <Route path="/mass-email" element={<EmailMass />} />
+                <Route path="/documents" element={<Documents />} />
+                <Route path="/mass-email/new" element={<EmailMassNew />} />
+                <Route path="/deals" element={<Deals />} />
+                <Route path="/deals/:id" element={<DealDetails />} />
+                <Route path="/quotes" element={<Quotes />} />
+                <Route path="/quotes/new" element={<QuoteEditor />} />
+                <Route path="/quotes/:id" element={<QuoteEditor />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/snippets" element={<Fragments />} />
+                <Route path="/email" element={<Email />} />
+                <Route path="/projects" element={<Projects />} />
+                <Route path="/social-media" element={<SocialMedia />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/automations" element={<Automations />} />
+                <Route path="/automations/sequences" element={<Sequences />} />
+                <Route path="/automations/templates" element={<Templates />} />
+                <Route path="/invoices" element={<Invoices />} />
+                <Route path="/invoices/new" element={<CreateInvoice />} />
+                <Route
+                  path="/invoices/settings"
+                  element={<InvoiceConfiguration />}
+                />
+                <Route path="/notas-credito" element={<NotasCredito />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/strategy" element={<Strategy />} />
+                <Route path="/conversations" element={<Conversations />} />
+              </Routes>
+            </>
+          </PrivateRoute>
+        }
+      />
+    </Routes>
   );
 }
 

@@ -49,6 +49,18 @@ class ApiService {
           config.headers = config.headers || {};
           config.headers.Authorization = `Bearer ${token}`;
         }
+
+        // Log para debug
+        if (import.meta.env.DEV) {
+          console.log(
+            `🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`,
+            {
+              hasToken: !!token,
+              tokenLength: token?.length || 0,
+            }
+          );
+        }
+
         return config;
       },
       (error) => {
@@ -58,12 +70,43 @@ class ApiService {
 
     // Response interceptor with auth handling
     this.api.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        // Log para debug de respuestas exitosas
+        if (import.meta.env.DEV) {
+          console.log(
+            `✅ API Response: ${response.config.method?.toUpperCase()} ${
+              response.config.url
+            } - ${response.status}`
+          );
+        }
+        return response;
+      },
       async (error: AxiosError) => {
         const originalConfig = error.config as any;
 
+        // Log para debug de errores
+        if (import.meta.env.DEV) {
+          console.log(
+            `❌ API Error: ${originalConfig?.method?.toUpperCase()} ${
+              originalConfig?.url
+            } - ${error.response?.status}`,
+            {
+              isAuthEndpoint: originalConfig?.url?.includes("/auth/"),
+              hasRetry: !!originalConfig?._retry,
+              isValidatingSession: this.isValidatingSession,
+            }
+          );
+        }
+
+        // Evitar bucles infinitos en endpoints de autenticación
+        const isAuthEndpoint = originalConfig?.url?.includes("/auth/");
+
         // Special handling for 401 Unauthorized errors
-        if (error.response?.status === 401 && !originalConfig?._retry) {
+        if (
+          error.response?.status === 401 &&
+          !originalConfig?._retry &&
+          !isAuthEndpoint
+        ) {
           // Only attempt to refresh session once
           originalConfig._retry = true;
 
@@ -72,7 +115,7 @@ class ApiService {
             this.isValidatingSession = true;
 
             try {
-              console.log("Trying to validate session after 401 error");
+              console.log("🔄 Trying to validate session after 401 error");
               // Attempt to validate the session with the server
               await authService.validateSession();
 
@@ -82,12 +125,13 @@ class ApiService {
                 throw new Error("Failed to get new token");
               }
 
+              console.log("✅ Session validated, retrying original request");
               // Update the header and retry the request
               originalConfig.headers.Authorization = `Bearer ${newToken}`;
               return this.api(originalConfig);
             } catch (refreshError) {
               console.error(
-                "Session validation failed after 401:",
+                "❌ Session validation failed after 401:",
                 refreshError
               );
               // Notify all tabs about the logout
@@ -97,9 +141,20 @@ class ApiService {
               this.isValidatingSession = false;
             }
           } else {
+            console.log(
+              "⏳ Session validation already in progress, rejecting request"
+            );
             // If we're already validating the session, just reject
             return Promise.reject(this.handleError(error));
           }
+        }
+
+        // Para endpoints de autenticación que fallan, no reintentar
+        if (isAuthEndpoint && error.response?.status === 401) {
+          console.log("🚫 Auth endpoint failed, clearing session");
+          // Notify all tabs about the logout
+          window.dispatchEvent(new Event("auth:logout"));
+          return Promise.reject(this.handleError(error));
         }
 
         // Handle retries for network errors or 5xx server errors

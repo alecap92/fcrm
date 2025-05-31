@@ -14,6 +14,7 @@ import {
 } from "../services/automationService";
 import { webhookService } from "../services/webhookService";
 import { useToast } from "../components/ui/toast";
+import { useAuthStore } from "../store/authStore";
 
 // Tipos para el contexto
 interface AutomationState {
@@ -1009,11 +1010,60 @@ export function AutomationProvider({
     return true;
   }, [state.currentWorkflow, handleError]);
 
-  // Cargar catálogos al inicializar
+  // Cargar catálogos solo cuando el usuario esté autenticado
   useEffect(() => {
-    loadNodeTypes();
-    loadModules();
+    const { isAuthenticated, user } = useAuthStore.getState();
+
+    // Solo cargar si el usuario está autenticado y tiene datos válidos
+    if (isAuthenticated && user) {
+      console.log(
+        "🔄 AutomationProvider: Loading catalogs for authenticated user"
+      );
+      loadNodeTypes();
+      loadModules();
+    } else {
+      console.log(
+        "⏳ AutomationProvider: Waiting for authentication before loading catalogs"
+      );
+    }
   }, [loadNodeTypes, loadModules]);
+
+  // Escuchar cambios en el estado de autenticación
+  useEffect(() => {
+    const unsubscribe = useAuthStore.subscribe((authState) => {
+      // Si el usuario se autentica y no tenemos catálogos cargados, cargarlos
+      if (
+        authState.isAuthenticated &&
+        authState.user &&
+        state.catalogs.nodeTypes.length === 0 &&
+        state.catalogs.modules.length === 0
+      ) {
+        console.log(
+          "🔄 AutomationProvider: User authenticated, loading catalogs"
+        );
+        loadNodeTypes();
+        loadModules();
+      }
+
+      // Si el usuario se desautentica, limpiar los catálogos
+      if (!authState.isAuthenticated) {
+        console.log(
+          "🧹 AutomationProvider: User logged out, clearing catalogs"
+        );
+        dispatch({
+          type: "SET_CATALOGS",
+          payload: { nodeTypes: [], modules: [] },
+        });
+      }
+    });
+
+    return unsubscribe;
+  }, [
+    loadNodeTypes,
+    loadModules,
+    state.catalogs.nodeTypes.length,
+    state.catalogs.modules.length,
+  ]);
 
   const contextValue: AutomationContextType = {
     state,

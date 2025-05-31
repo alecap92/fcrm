@@ -9,6 +9,8 @@ class AuthService {
   private userKey = "auth_user";
   private tokenExpiryKey = "auth_token_expiry";
   private sessionValidationInProgress = false;
+  private refreshTokenInProgress = false;
+  private maxRetries = 1; // Máximo número de reintentos para evitar bucles
 
   private constructor() {
     // Sincronizar localStorage con Zustand al inicio
@@ -105,6 +107,7 @@ class AuthService {
       const tokenExpiry = this.getTokenExpiry();
       const now = new Date().getTime();
       if (tokenExpiry && now > tokenExpiry) {
+        console.log("Token expired locally, attempting refresh");
         return await this.refreshToken();
       }
 
@@ -131,12 +134,21 @@ class AuthService {
 
       return response;
     } catch (error) {
-      try {
-        return await this.refreshToken();
-      } catch (refreshError) {
-        console.error("AuthService - Refresh also failed:", refreshError);
+      console.error("AuthService - Session validation error:", error);
+
+      // Solo intentar refresh si no estamos ya en un proceso de refresh
+      if (!this.refreshTokenInProgress) {
+        try {
+          return await this.refreshToken();
+        } catch (refreshError) {
+          console.error("AuthService - Refresh also failed:", refreshError);
+          this.clearSession();
+          throw this.handleAuthError(refreshError as AxiosError);
+        }
+      } else {
+        // Si ya estamos refrescando, fallar inmediatamente
         this.clearSession();
-        throw this.handleAuthError(refreshError as AxiosError);
+        throw this.handleAuthError(error as AxiosError);
       }
     } finally {
       this.sessionValidationInProgress = false;
@@ -144,6 +156,13 @@ class AuthService {
   }
 
   public async refreshToken(): Promise<any> {
+    // Evitar múltiples llamadas simultáneas de refresh
+    if (this.refreshTokenInProgress) {
+      throw new Error("Token refresh already in progress");
+    }
+
+    this.refreshTokenInProgress = true;
+
     try {
       const token = this.getToken();
       if (!token) {
@@ -170,6 +189,8 @@ class AuthService {
       useAuthStore.getState().logout();
 
       throw this.handleAuthError(error as AxiosError);
+    } finally {
+      this.refreshTokenInProgress = false;
     }
   }
 

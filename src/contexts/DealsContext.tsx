@@ -3,12 +3,14 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
 } from "react";
 import { dealsService } from "../services/dealsService";
 import { useToast } from "../components/ui/toast";
 import { useLoading } from "./LoadingContext";
 import type { Deal } from "../types/deal";
+import type { PaginationParams, PaginatedResponse } from "../types/contact";
 
 interface DealFormData {
   name: string;
@@ -18,6 +20,13 @@ interface DealFormData {
   stage: string;
   fields: Array<{ field: any; value: string }>;
   products: Array<{ id: string; quantity: number }>;
+}
+
+interface PaginationState {
+  currentPage: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  isLoadingMore: boolean;
 }
 
 interface DealsContextType {
@@ -31,6 +40,8 @@ interface DealsContextType {
   pipelineId: string;
   currentDeal: Deal | null;
   relatedDeals: Deal[];
+  pagination: PaginationState;
+  searchResults: Deal[];
 
   // Setters
   setDeals: React.Dispatch<React.SetStateAction<Deal[]>>;
@@ -43,7 +54,8 @@ interface DealsContextType {
   setRelatedDeals: React.Dispatch<React.SetStateAction<Deal[]>>;
 
   // Acciones
-  fetchDeals: () => Promise<void>;
+  fetchDeals: (reset?: boolean) => Promise<void>;
+  loadMoreDeals: () => Promise<void>;
   fetchDealById: (dealId: string) => Promise<Deal | null>;
   fetchRelatedDeals: (
     contactId: string,
@@ -58,6 +70,7 @@ interface DealsContextType {
     statusId: string,
     statusName: string
   ) => Promise<void>;
+  searchDeals: (query: string) => Promise<void>;
 
   // Handlers para modales
   openCreateDealModal: () => void;
@@ -75,6 +88,9 @@ interface DealsProviderProps {
 }
 
 export function DealsProvider({ children }: DealsProviderProps) {
+  // Configuración de paginación
+  const DEALS_PER_PAGE = 50; // Cambia este número según tus necesidades
+
   // Estado
   const [deals, setDeals] = useState<Deal[]>([]);
   const [columns, setColumns] = useState<any[]>([]);
@@ -84,6 +100,13 @@ export function DealsProvider({ children }: DealsProviderProps) {
   const [showCreateDealModal, setShowCreateDealModal] = useState(false);
   const [currentDeal, setCurrentDeal] = useState<Deal | null>(null);
   const [relatedDeals, setRelatedDeals] = useState<Deal[]>([]);
+  const [pagination, setPagination] = useState<PaginationState>({
+    currentPage: 1,
+    totalPages: 1,
+    hasNextPage: true,
+    isLoadingMore: false,
+  });
+  const [searchResults, setSearchResults] = useState<Deal[]>([]);
 
   // Pipeline ID - esto podría venir de props o de otro contexto
   const pipelineId = "66c6370ad573dacc51e620f0";
@@ -92,11 +115,41 @@ export function DealsProvider({ children }: DealsProviderProps) {
   const { showLoading, hideLoading } = useLoading();
 
   // Función para obtener deals
-  const fetchDeals = async () => {
+  const fetchDeals = async (reset?: boolean) => {
+    console.log("🚀 fetchDeals llamado", { reset });
+
     try {
+      if (reset) {
+        console.log("🔄 Reseteando paginación");
+        setPagination({
+          currentPage: 1,
+          totalPages: 1,
+          hasNextPage: true,
+          isLoadingMore: false,
+        });
+      } else {
+        // Si no es reset, no hacer nada - usar loadMoreDeals en su lugar
+        console.warn(
+          "fetchDeals llamado sin reset - usar loadMoreDeals en su lugar"
+        );
+        return;
+      }
+
       showLoading("Cargando negocios...");
-      const response = await dealsService.getDeals(pipelineId);
+      console.log("📥 Solicitando página inicial (1)");
+
+      const response = await dealsService.getDeals(pipelineId, {
+        page: 1,
+        limit: DEALS_PER_PAGE,
+      });
       const statuses = await dealsService.getStatuses(pipelineId);
+
+      console.log("📦 Respuesta inicial del servidor:", {
+        page: response?.page,
+        totalPages: response?.totalPages,
+        dataLength: response?.data?.length,
+        statusesLength: statuses?.data?.length,
+      });
 
       // Verificar que statuses.data existe y es un array
       const statusesData = statuses?.data || [];
@@ -114,8 +167,24 @@ export function DealsProvider({ children }: DealsProviderProps) {
 
       setColumns(orderedStatuses);
       setDeals(response?.data || []);
+
+      console.log("✅ Deals iniciales cargados:", response?.data?.length || 0);
+
+      // Actualizar información de paginación
+      setPagination({
+        currentPage: response?.page || 1,
+        totalPages: response?.totalPages || 1,
+        hasNextPage: (response?.page || 1) < (response?.totalPages || 1),
+        isLoadingMore: false,
+      });
+
+      console.log("📊 Paginación inicial:", {
+        currentPage: response?.page || 1,
+        totalPages: response?.totalPages || 1,
+        hasNextPage: (response?.page || 1) < (response?.totalPages || 1),
+      });
     } catch (error) {
-      console.error("Error fetching deals:", error);
+      console.error("❌ Error fetching deals:", error);
       toast.show({
         title: "Error",
         description: "No se pudieron cargar los negocios",
@@ -124,6 +193,12 @@ export function DealsProvider({ children }: DealsProviderProps) {
       // Establecer valores por defecto en caso de error
       setColumns([]);
       setDeals([]);
+      setPagination({
+        currentPage: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        isLoadingMore: false,
+      });
     } finally {
       hideLoading();
     }
@@ -194,11 +269,11 @@ export function DealsProvider({ children }: DealsProviderProps) {
         products: dealData.products,
       };
 
-      const response = await dealsService.createDeal(form as any);
+      await dealsService.createDeal(form as any);
 
       // En lugar de intentar agregar el deal incompleto al estado,
       // refrescamos toda la lista para obtener los deals con todas las relaciones pobladas
-      await fetchDeals();
+      await fetchDeals(true);
 
       toast.show({
         title: "Negocio creado",
@@ -239,7 +314,7 @@ export function DealsProvider({ children }: DealsProviderProps) {
       await dealsService.updateDeal(editingDeal._id, form as any);
 
       // Refrescar la lista completa para obtener los deals actualizados con todas las relaciones pobladas
-      await fetchDeals();
+      await fetchDeals(true);
 
       toast.show({
         title: "Negocio actualizado",
@@ -261,16 +336,20 @@ export function DealsProvider({ children }: DealsProviderProps) {
   // Función para actualizar deal por ID
   const updateDealById = async (dealId: string, dealData: any) => {
     try {
-      await dealsService.updateDeal(dealId, dealData);
+      const updatedDeal = await dealsService.updateDeal(dealId, dealData);
 
       // Actualizar el currentDeal si es el mismo que se está editando
       if (currentDeal?._id === dealId) {
-        const updatedDeal = await fetchDealById(dealId);
-        setCurrentDeal(updatedDeal);
+        const updatedDealDetails = await fetchDealById(dealId);
+        setCurrentDeal(updatedDealDetails);
       }
 
-      // También actualizar la lista general si es necesario
-      await fetchDeals();
+      // Actualizar el deal en la lista local sin resetear la paginación
+      setDeals((prev) =>
+        prev.map((deal) =>
+          deal._id === dealId ? { ...deal, ...updatedDeal } : deal
+        )
+      );
 
       toast.show({
         title: "Negocio actualizado",
@@ -344,6 +423,25 @@ export function DealsProvider({ children }: DealsProviderProps) {
     }
   };
 
+  // Función para buscar deals
+  const searchDeals = useCallback(
+    async (query: string) => {
+      try {
+        const response = await dealsService.searchDeals(query);
+        setSearchResults(response.data || []);
+      } catch (error) {
+        console.error("Error searching deals:", error);
+        setSearchResults([]);
+        toast.show({
+          title: "Error",
+          description: "No se pudieron buscar los negocios",
+          type: "error",
+        });
+      }
+    },
+    [toast]
+  );
+
   // Handlers para modales
   const openCreateDealModal = () => setShowCreateDealModal(true);
   const closeCreateDealModal = () => {
@@ -370,9 +468,90 @@ export function DealsProvider({ children }: DealsProviderProps) {
     setSelectedDeal(null);
   };
 
+  // Función para cargar más deals (scroll infinito)
+  const loadMoreDeals = async () => {
+    console.log("🔄 loadMoreDeals llamado");
+    console.log("📊 Estado actual:", {
+      isLoadingMore: pagination.isLoadingMore,
+      hasNextPage: pagination.hasNextPage,
+      currentPage: pagination.currentPage,
+      totalPages: pagination.totalPages,
+      dealsCount: deals.length,
+    });
+
+    if (pagination.isLoadingMore || !pagination.hasNextPage) {
+      console.log(
+        "❌ Cancelando loadMoreDeals - ya cargando o no hay más páginas"
+      );
+      return;
+    }
+
+    setPagination((prev) => ({ ...prev, isLoadingMore: true }));
+
+    try {
+      const nextPage = pagination.currentPage + 1;
+      console.log(`📥 Solicitando página ${nextPage}`);
+
+      const response = await dealsService.getDeals(pipelineId, {
+        page: nextPage,
+        limit: DEALS_PER_PAGE,
+      });
+
+      console.log("📦 Respuesta del servidor:", {
+        page: response?.page,
+        totalPages: response?.totalPages,
+        dataLength: response?.data?.length,
+        hasNextPage:
+          (response?.page || nextPage) <
+          (response?.totalPages || pagination.totalPages),
+      });
+
+      // Usar el callback de setDeals para acceder al estado más reciente
+      setDeals((prevDeals) => {
+        // Solo agregar deals que no existan ya en el estado actual
+        const existingDealIds = new Set(prevDeals.map((deal) => deal._id));
+        const newDeals = (response?.data || []).filter(
+          (deal) => !existingDealIds.has(deal._id)
+        );
+
+        console.log("🔍 Análisis de duplicados:");
+        console.log("  - Deals existentes:", prevDeals.length);
+        console.log("  - Nuevos deals recibidos:", response?.data?.length || 0);
+        console.log("  - Nuevos deals únicos a agregar:", newDeals.length);
+        console.log(
+          "  - IDs existentes (primeros 5):",
+          Array.from(existingDealIds).slice(0, 5)
+        );
+        console.log(
+          "  - IDs nuevos recibidos:",
+          (response?.data || []).map((d) => d._id).slice(0, 5)
+        );
+
+        const finalDeals = [...prevDeals, ...newDeals];
+        console.log("✅ Total deals después de agregar:", finalDeals.length);
+
+        return finalDeals;
+      });
+
+      setPagination({
+        currentPage: response?.page || nextPage,
+        totalPages: response?.totalPages || pagination.totalPages,
+        hasNextPage:
+          (response?.page || nextPage) <
+          (response?.totalPages || pagination.totalPages),
+        isLoadingMore: false,
+      });
+
+      console.log("✅ loadMoreDeals completado exitosamente");
+    } catch (error) {
+      console.error("❌ Error loading more deals:", error);
+      setPagination((prev) => ({ ...prev, isLoadingMore: false }));
+    }
+  };
+
   // Cargar deals al montar el componente
   useEffect(() => {
-    fetchDeals();
+    fetchDeals(true); // Reset = true para cargar desde la primera página
   }, [pipelineId]);
 
   const value: DealsContextType = {
@@ -386,6 +565,8 @@ export function DealsProvider({ children }: DealsProviderProps) {
     pipelineId,
     currentDeal,
     relatedDeals,
+    pagination,
+    searchResults,
 
     // Setters
     setDeals,
@@ -399,6 +580,7 @@ export function DealsProvider({ children }: DealsProviderProps) {
 
     // Acciones
     fetchDeals,
+    loadMoreDeals,
     fetchDealById,
     fetchRelatedDeals,
     createDeal,
@@ -406,6 +588,7 @@ export function DealsProvider({ children }: DealsProviderProps) {
     updateDealById,
     deleteDeal,
     updateDealStatus,
+    searchDeals,
 
     // Handlers para modales
     openCreateDealModal,

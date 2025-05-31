@@ -3,6 +3,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import { useCallback, useRef, useEffect } from "react";
 
 import type { Deal } from "../../types/deal";
 import { DraggableDealCard } from "./DraggableDealCard";
@@ -20,6 +21,9 @@ interface DealColumnProps {
   onEditDeal?: (deal: Deal) => void;
   onViewDeal?: (deal: Deal) => void;
   handleDeleteDeal?: (dealId: string) => void;
+  onLoadMore?: () => void;
+  isLoadingMore?: boolean;
+  hasNextPage?: boolean;
 }
 
 export function DealColumn({
@@ -28,11 +32,16 @@ export function DealColumn({
   onEditDeal,
   onDealClick,
   handleDeleteDeal,
+  onLoadMore,
+  isLoadingMore = false,
+  hasNextPage = false,
 }: DealColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column._id,
     data: { type: "column" },
   });
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const totalValue = deals.reduce((sum, deal) => sum + deal.amount, 0);
 
@@ -40,21 +49,54 @@ export function DealColumn({
     transition: "transform 0.2s ease",
   };
 
+  // Función para detectar cuando se llega al final del scroll
+  const handleScroll = useCallback(() => {
+    if (
+      !scrollContainerRef.current ||
+      !onLoadMore ||
+      !hasNextPage ||
+      isLoadingMore
+    ) {
+      return;
+    }
+
+    const { scrollTop, scrollHeight, clientHeight } =
+      scrollContainerRef.current;
+    const threshold = 100; // Cargar más cuando falten 100px para llegar al final
+
+    if (scrollTop + clientHeight >= scrollHeight - threshold) {
+      onLoadMore();
+    }
+  }, [onLoadMore, hasNextPage, isLoadingMore]);
+
+  // Agregar event listener para el scroll
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (scrollContainer) {
+      scrollContainer.addEventListener("scroll", handleScroll);
+      return () => scrollContainer.removeEventListener("scroll", handleScroll);
+    }
+  }, [handleScroll]);
+
   return (
     <div
       ref={setNodeRef}
       className={`
-        flex flex-col h-full min-w-[320px] max-w-[320px] rounded-lg transition-all
+        flex flex-col min-w-[320px] max-w-[320px] rounded-lg transition-all
         ${
           isOver
             ? "bg-blue-50 border-blue-300 border-2 scale-105"
             : "bg-gray-50"
         }
       `}
-      style={columnStyle}
+      style={{
+        ...columnStyle,
+        height: "calc(100vh - 200px)", // Altura máxima basada en el viewport
+        maxHeight: "calc(100vh - 200px)",
+      }}
     >
       {/* Encabezado de la columna */}
-      <div className="p-3 bg-white rounded-t-lg border-b">
+      <div className="p-3 bg-white rounded-t-lg border-b flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <div
@@ -72,8 +114,12 @@ export function DealColumn({
         </div>
       </div>
 
-      {/* Contenido (tarjetas) */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+      {/* Contenido (tarjetas) con scroll */}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto p-2 space-y-2 min-h-0"
+        style={{ scrollBehavior: "smooth" }}
+      >
         <SortableContext
           items={deals.map((deal) => deal._id as string)}
           strategy={verticalListSortingStrategy}
@@ -88,6 +134,14 @@ export function DealColumn({
             />
           ))}
         </SortableContext>
+
+        {/* Indicador de carga */}
+        {isLoadingMore && (
+          <div className="flex items-center justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+            <span className="ml-2 text-sm text-gray-500">Cargando más...</span>
+          </div>
+        )}
 
         {/* Zona final o "placeholder" cuando la columna está vacía */}
         <div
@@ -104,6 +158,13 @@ export function DealColumn({
             <p className="text-sm text-gray-500">Arrastra un negocio aquí</p>
           )}
         </div>
+
+        {/* Mensaje cuando no hay más deals para cargar */}
+        {!hasNextPage && deals.length > 0 && (
+          <div className="flex items-center justify-center py-4">
+            <span className="text-sm text-gray-400">No hay más negocios</span>
+          </div>
+        )}
       </div>
     </div>
   );
