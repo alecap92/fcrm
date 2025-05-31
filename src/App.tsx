@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { PrivateRoute } from "./components/auth/PrivateRoute";
 import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
 import { WorkflowEditor } from "./pages/WorkflowEditor";
 import { Home } from "./pages/Home";
 import { TopBar } from "./components/TopBar";
@@ -40,6 +41,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
       <Route
         path="/*"
         element={

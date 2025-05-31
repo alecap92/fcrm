@@ -8,6 +8,7 @@ import {
 } from "../types/social";
 import socialMediaService from "../services/SocialMediaService";
 import { useToast } from "../components/ui/toast";
+import { useAuth } from "../contexts/AuthContext";
 
 export const useSocialMediaAPI = () => {
   const [accounts, setAccounts] = useState<SocialAccount[]>([]);
@@ -18,8 +19,18 @@ export const useSocialMediaAPI = () => {
   >([]);
   const [isLoading, setIsLoading] = useState(true);
   const toast = useToast();
+  const { organization } = useAuth();
 
   const handleConnect = () => {
+    if (!organization?._id) {
+      toast.show({
+        title: "Error",
+        description: "No se pudo obtener la información de la organización",
+        type: "error",
+      });
+      return;
+    }
+
     const apiUrl = `https://1djx7r34-3001.use2.devtunnels.ms/api/v1/social/accounts/callback`; // url donde facebook responde
     const url = `https://www.facebook.com/v22.0/dialog/oauth?client_id=1604566880934254&redirect_uri=${apiUrl}&scope=email,public_profile,pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish&state=${organization._id}`;
 

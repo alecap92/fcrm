@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Settings } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { format } from "date-fns";
 import type { Quote, QuoteItem } from "../types/quote";
@@ -19,9 +19,59 @@ import { QuoteHeader } from "../components/quotes/QuoteHeader";
 
 export function QuoteEditor() {
   const { organization } = useAuth();
-  console.log("organization", organization.settings.quotations.quotationNumber);
+  const navigate = useNavigate();
+
+  // Verificar si las configuraciones de cotizaciones están disponibles
+  const hasQuotationSettings = organization?.settings?.quotations;
+
+  // Validaciones defensivas para usuarios nuevos
+  const quotationSettings = hasQuotationSettings
+    ? organization.settings.quotations
+    : {
+        quotationNumber: "COT-001",
+        notes: "",
+        paymentTerms: ["Contado"],
+        shippingTerms: ["FOB"],
+      };
+
+  console.log("organization", quotationSettings.quotationNumber);
+
+  // Si no hay configuraciones, mostrar mensaje de configuración requerida
+  if (!hasQuotationSettings) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full mx-4">
+          <div className="text-center">
+            <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Configuración Requerida
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Para crear cotizaciones necesitas configurar primero los ajustes
+              de cotización como numeración, términos de pago y envío.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => navigate("/quotes")}
+                className="flex-1"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Volver
+              </Button>
+              <Button onClick={() => navigate("/settings")} className="flex-1">
+                <Settings className="w-4 h-4 mr-2" />
+                Configurar
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const [quote, setQuote] = useState<Quote>({
-    quotationNumber: organization.settings.quotations.quotationNumber,
+    quotationNumber: quotationSettings.quotationNumber || "COT-001",
     expirationDate: format(
       new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       "yyyy-MM-dd"
@@ -32,7 +82,7 @@ export function QuoteEditor() {
       firstName: "",
       lastName: "",
       email: "",
-    _id: "",
+      _id: "",
       taxId: "",
       createdAt: "",
       updatedAt: "",
@@ -42,9 +92,9 @@ export function QuoteEditor() {
     discount: 0,
     taxes: 0,
     total: 0,
-    observaciones: organization.settings.quotations.notes || "",
-    paymentTerms: organization.settings.quotations.paymentTerms[0] || "",
-    shippingTerms: organization.settings.quotations.shippingTerms[0] || "",
+    observaciones: quotationSettings.notes || "",
+    paymentTerms: quotationSettings.paymentTerms?.[0] || "Contado",
+    shippingTerms: quotationSettings.shippingTerms?.[0] || "FOB",
     creationDate: format(new Date(), "yyyy-MM-dd"),
     lastModified: format(new Date(), "yyyy-MM-dd"),
     optionalItems: [],
@@ -55,7 +105,6 @@ export function QuoteEditor() {
   const [showContactModal, setShowContactModal] = useState(false);
   const id = useParams().id;
   const toast = useToast();
-  const navigate = useNavigate();
 
   const getQuote = async () => {
     if (id) {
@@ -81,13 +130,15 @@ export function QuoteEditor() {
   }, [id]);
 
   useEffect(() => {
-    if (organization.settings.quotations.quotationNumber) {
+    const currentQuotationNumber =
+      organization?.settings?.quotations?.quotationNumber;
+    if (currentQuotationNumber) {
       setQuote((prev) => ({
         ...prev,
-        quotationNumber: organization.settings.quotations.quotationNumber,
+        quotationNumber: currentQuotationNumber,
       }));
     }
-  }, [organization.settings.quotations.quotationNumber]);
+  }, [organization?.settings?.quotations?.quotationNumber]);
 
   const handleSelectContact = (contact: Contact) => {
     console.log("contact2", contact);
@@ -167,7 +218,7 @@ export function QuoteEditor() {
 
   const handleUpdateItemField = (
     index: number,
-    field: keyof QuoteItem,
+    field: string | number | symbol,
     value: string | number
   ) => {
     const updatedItems = [...(quote.items || [])];
@@ -228,11 +279,13 @@ export function QuoteEditor() {
         taxes: Number(quote.taxes),
         total: Number(quote.total),
         lastModified: format(new Date(), "yyyy-MM-dd"),
-        name: `${organization.settings.quotations.quotationNumber} - ${quote.contact.firstName}`,
-        paymentTerms: organization.settings.quotations.paymentTerms[0] || "", // Asignar valor por defecto
-        shippingTerms: organization.settings.quotations.shippingTerms[0] || "", // Asignar valor por defecto
-        notes: organization.settings.quotations.notes || "",
-        observaciones: organization.settings.quotations.notes || "",
+        name: `${quotationSettings.quotationNumber || "COT-001"} - ${
+          quote.contact.firstName
+        }`,
+        paymentTerms: quotationSettings.paymentTerms?.[0] || "Contado",
+        shippingTerms: quotationSettings.shippingTerms?.[0] || "FOB",
+        notes: quotationSettings.notes || "",
+        observaciones: quotationSettings.notes || "",
       };
 
       if (id) {

@@ -1,5 +1,5 @@
 import { AxiosError } from "axios";
-import { apiService } from "./apiConfig";
+import { apiService } from "../config/apiConfig";
 import { useAuthStore } from "../store/authStore"; // Importar Zustand store
 import type { LoginCredentials, AuthResponse, User } from "../types/auth";
 
@@ -48,6 +48,26 @@ class AuthService {
       const response = await apiService.post<AuthResponse>(
         "/auth/login",
         credentials
+      );
+
+      this.setSession(response);
+      return response;
+    } catch (error) {
+      throw this.handleAuthError(error as AxiosError);
+    }
+  }
+
+  public async register(userData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    password: string;
+  }): Promise<AuthResponse> {
+    try {
+      const response = await apiService.post<AuthResponse>(
+        "/auth/register",
+        userData
       );
 
       this.setSession(response);
@@ -226,17 +246,26 @@ class AuthService {
   }
 
   private setSession(response: AuthResponse): void {
-    // Guardar en localStorage
+    console.log("🔐 AuthService.setSession - Almacenando sesión:", {
+      hasToken: !!response.token,
+      hasUser: !!response.user,
+      hasOrganization: !!response.organization,
+    });
+
+    // Guardar en localStorage PRIMERO
     if (response.token) {
       localStorage.setItem(this.tokenKey, response.token);
 
       const expiresIn = 29 * 24 * 60 * 60 * 1000; // 29 días
       const expiryTime = new Date().getTime() + expiresIn;
       localStorage.setItem(this.tokenExpiryKey, expiryTime.toString());
+
+      console.log("✅ Token almacenado en localStorage");
     }
 
     if (response.user) {
       localStorage.setItem(this.userKey, JSON.stringify(response.user));
+      console.log("✅ Usuario almacenado en localStorage");
     }
 
     // Store organization data separately
@@ -245,13 +274,29 @@ class AuthService {
         this.organizationKey,
         JSON.stringify(response.organization)
       );
+      console.log("✅ Organización almacenada en localStorage");
     }
 
-    // Actualizar Zustand
+    // Actualizar Zustand DESPUÉS de localStorage
     useAuthStore.setState({
       user: response.user,
       token: response.token,
       isAuthenticated: true,
+    });
+
+    console.log("✅ Estado de Zustand actualizado");
+
+    // Verificar que todo se almacenó correctamente
+    const storedToken = localStorage.getItem(this.tokenKey);
+    const storedUser = localStorage.getItem(this.userKey);
+    const zustandState = useAuthStore.getState();
+
+    console.log("🔍 Verificación post-almacenamiento:", {
+      localStorageToken: !!storedToken,
+      localStorageUser: !!storedUser,
+      zustandToken: !!zustandState.token,
+      zustandUser: !!zustandState.user,
+      zustandAuthenticated: zustandState.isAuthenticated,
     });
 
     // Notificar a otras pestañas

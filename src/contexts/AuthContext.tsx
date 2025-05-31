@@ -6,7 +6,7 @@ import {
   useCallback,
 } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { authService } from "../config/authConfig";
+import { authService } from "../services/authConfig";
 import { useAuthStore } from "../store/authStore"; // Importar Zustand store
 import { useSettingsStore } from "../store/settingsStore";
 import { useToast } from "../components/ui/toast";
@@ -18,6 +18,13 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
+  register: (userData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    password: string;
+  }) => Promise<void>;
   logout: () => Promise<void>;
   organization: Organization;
 }
@@ -88,16 +95,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const toast = useToast();
   const { resetSettings } = useSettingsStore();
 
-  // Sincronizar el estado interno con Zustand cuando cambie
+  // Sincronizar con Zustand store
   useEffect(() => {
     setUser(zustandAuth.user);
   }, [zustandAuth.user]);
+
   // Modificar la función validateSession en AuthContext.tsx
   const validateSession = useCallback(async () => {
     try {
       setIsLoading(true);
 
-      // Verificar el estado del store de Zustand antes de hacer petición API
+      // Verificar si ya tenemos un usuario autenticado en Zustand
+      const zustandState = useAuthStore.getState();
+      if (
+        zustandState.isAuthenticated &&
+        zustandState.user &&
+        zustandState.token
+      ) {
+        console.log(
+          "✅ Usuario ya autenticado en Zustand, no necesita validación"
+        );
+        setUser(zustandState.user);
+
+        // Obtener organización del localStorage si existe
+        const orgStr = localStorage.getItem("auth_organization");
+        if (orgStr) {
+          try {
+            const org = JSON.parse(orgStr);
+            setOrganization({
+              ...org,
+              employees: org.employees || [],
+              iconUrl: org.iconUrl || "",
+            });
+          } catch (e) {
+            console.error("Error parsing organization:", e);
+          }
+        }
+
+        return true;
+      }
 
       const res = await authService.validateSession();
 
@@ -124,12 +160,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Log estado actual antes de limpiar (solo para errores reales)
-
       // Solo limpiar estado y redirigir para errores reales de autenticación
       setUser(null);
       resetSettings();
-      if (location.pathname !== "/login") {
+
+      // No redirigir si estamos en rutas públicas
+      const publicRoutes = ["/login", "/register"];
+      if (!publicRoutes.includes(location.pathname)) {
         navigate("/login", { state: { from: location.pathname } });
       }
       return false;
@@ -137,13 +174,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }
   }, [location.pathname, navigate, resetSettings]);
-  // Inicialización
-  useEffect(() => {
-    const initializeAuth = async () => {
-      const isValid = await validateSession();
 
-      if (isValid) {
+  // Inicialización - SOLO se ejecuta una vez al montar el componente
+  useEffect(() => {
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      // No validar sesión en rutas públicas
+      const publicRoutes = ["/login", "/register"];
+      if (publicRoutes.includes(location.pathname)) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Verificar primero si ya tenemos datos de autenticación válidos
+      const zustandState = useAuthStore.getState();
+      if (
+        zustandState.isAuthenticated &&
+        zustandState.user &&
+        zustandState.token
+      ) {
+        console.log(
+          "✅ Datos de autenticación ya disponibles, omitiendo validación"
+        );
+        setUser(zustandState.user);
+        setIsLoading(false);
+
+        // Obtener organización del localStorage si existe
+        const orgStr = localStorage.getItem("auth_organization");
+        if (orgStr) {
+          try {
+            const org = JSON.parse(orgStr);
+            setOrganization({
+              ...org,
+              employees: org.employees || [],
+              iconUrl: org.iconUrl || "",
+            });
+          } catch (e) {
+            console.error("Error parsing organization:", e);
+          }
+        }
+
         setupTokenRefresh();
+        return;
+      }
+
+      if (isMounted) {
+        const isValid = await validateSession();
+        if (isValid && isMounted) {
+          setupTokenRefresh();
+        }
       }
     };
 
@@ -151,11 +231,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setupStorageSync();
 
     return () => {
+      isMounted = false;
       if (refreshInterval) {
         clearInterval(refreshInterval);
       }
     };
-  }, [validateSession]);
+  }, []); // Dependencias vacías - solo se ejecuta al montar
 
   const setupTokenRefresh = () => {
     if (refreshInterval) {
@@ -272,6 +353,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const register = async (userData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    password: string;
+  }) => {
+    try {
+      setIsLoading(true);
+      const response = await authService.register(userData);
+
+      console.log("Register response:", response);
+
+      // Los cambios en user y token ya deberían estar hechos por AuthService
+      // sólo actualizamos el organization en el contexto
+
+      console.log(response.organization.employees, "EMPLOYEES");
+      setUser(response.user);
+      if (response.organization) {
+        setOrganization({
+          ...response.organization,
+          employees: response.organization.employees || [],
+          iconUrl: response.organization.iconUrl || "",
+        });
+      }
+
+      setupTokenRefresh();
+
+      const from = location.state?.from || "/";
+      navigate(from);
+    } catch (error) {
+      toast.show({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Register failed",
+        type: "error",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (isLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -289,6 +412,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         organization,
+        register,
       }}
     >
       {children}

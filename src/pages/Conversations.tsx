@@ -6,6 +6,7 @@ import React, {
   useRef,
 } from "react";
 import { Plus, Settings, AlertCircle, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import ChatModal from "../components/chat/modal/ChatModal";
 import { Button } from "../components/ui/button";
 import ManageColumnsModal from "../components/chat/modal/ManageColumnsModal";
@@ -18,6 +19,8 @@ import { ITemplate } from "../types/templates";
 import { useToast } from "../components/ui/toast";
 import { useLoading } from "../contexts/LoadingContext";
 import { useChatContext } from "../contexts/ChatContext";
+import { useAuth } from "../contexts/AuthContext";
+import integrationService from "../services/integrationService";
 
 // Componente separado para cada columna que maneja su propio scroll infinito
 const ConversationColumn: React.FC<{
@@ -187,9 +190,17 @@ const Conversations: React.FC = () => {
   const [selectedChat, setSelectedChat] = useState<any | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
 
+  // Estado para verificación de WhatsApp
+  const [hasWhatsAppConfig, setHasWhatsAppConfig] = useState<boolean | null>(
+    null
+  );
+  const [isCheckingWhatsApp, setIsCheckingWhatsApp] = useState(true);
+
   // Referencias para evitar dependencias innecesarias
   const toastRef = useRef<any>(null);
   const loadingRef = useRef<any>({ showLoading: null, hideLoading: null });
+  const navigate = useNavigate();
+  const { organization } = useAuth();
 
   // Usar el contexto expandido
   const {
@@ -235,13 +246,31 @@ const Conversations: React.FC = () => {
   // Referencia para evitar múltiples llamadas
   const hasInitialized = useRef(false);
 
+  // Verificar configuración de WhatsApp al cargar el componente
+  useEffect(() => {
+    const checkWhatsAppConfig = async () => {
+      try {
+        setIsCheckingWhatsApp(true);
+        const hasConfig = await integrationService.checkWhatsAppIntegration();
+        setHasWhatsAppConfig(hasConfig);
+      } catch (error) {
+        console.error("Error verificando configuración de WhatsApp:", error);
+        setHasWhatsAppConfig(false);
+      } finally {
+        setIsCheckingWhatsApp(false);
+      }
+    };
+
+    checkWhatsAppConfig();
+  }, []);
+
   // Efecto para cargar pipeline inicial (solo una vez)
   useEffect(() => {
-    if (!hasInitialized.current) {
+    if (!hasInitialized.current && hasWhatsAppConfig === true) {
       hasInitialized.current = true;
       fetchPipeline();
     }
-  }, [fetchPipeline]);
+  }, [fetchPipeline, hasWhatsAppConfig]);
 
   // Handlers para drag and drop (estables)
   const handleDragStart = useCallback((e: React.DragEvent, chatId: string) => {
@@ -474,8 +503,56 @@ const Conversations: React.FC = () => {
 
   // Determinar si mostrar el contenido principal
   const shouldShowMainContent = useMemo(() => {
-    return pipeline && !conversationsError;
-  }, [pipeline, conversationsError]);
+    return pipeline && !conversationsError && hasWhatsAppConfig === true;
+  }, [pipeline, conversationsError, hasWhatsAppConfig]);
+
+  // Mostrar loading mientras se verifica la configuración
+  if (isCheckingWhatsApp) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold mb-2">
+            Verificando configuración
+          </h2>
+          <p className="text-gray-600">
+            Comprobando la integración de WhatsApp...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si no hay configuración de WhatsApp, mostrar mensaje de configuración requerida
+  if (hasWhatsAppConfig === false) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-lg w-full mx-4">
+          <div className="text-center">
+            <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Configuración de WhatsApp Requerida
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Para gestionar conversaciones necesitas configurar primero la
+              integración con WhatsApp Business API. Esto incluye el token de
+              acceso y el ID del número de teléfono.
+            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-gray-500">
+                Configura la API de WhatsApp para empezar a recibir y enviar
+                mensajes
+              </p>
+              <Button onClick={() => navigate("/settings")} className="w-full">
+                <Settings className="w-4 h-4 mr-2" />
+                Configurar WhatsApp API
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Si hay error, mostrar estado de error
   if (errorState) {

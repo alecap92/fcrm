@@ -8,8 +8,9 @@ import {
   useSensors,
   closestCenter,
 } from "@dnd-kit/core";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Settings } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { PipelineSelect } from "../components/deals/PipelineSelect";
 import { CreateDealModal } from "../components/deals/CreateDealModal";
@@ -18,11 +19,14 @@ import { DealColumn } from "../components/deals/DealColumn";
 import { DealCard } from "../components/deals/DealCard";
 import { SearchDealsModal } from "../components/deals/SearchDealsModal";
 import { useDeals } from "../contexts/DealsContext";
+import { useAuth } from "../contexts/AuthContext";
 
 // Importamos los tipos que asumo tienes en tu proyecto
 
 export function Deals() {
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const navigate = useNavigate();
+  const { organization } = useAuth();
 
   const {
     // Estado del contexto
@@ -57,6 +61,39 @@ export function Deals() {
     openDealDetailsModal,
     closeDealDetailsModal,
   } = useDeals();
+
+  // Verificar si hay configuraciones básicas de organización
+  const hasBasicConfig = organization?.companyName && organization?.settings;
+
+  // Si no hay configuraciones básicas, mostrar mensaje de configuración
+  if (!hasBasicConfig) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-lg w-full mx-4">
+          <div className="text-center">
+            <Settings className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Configuración Requerida
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Para gestionar negocios necesitas configurar primero tu
+              organización y crear pipelines de ventas. Esto te permitirá
+              organizar y hacer seguimiento a tus oportunidades de negocio.
+            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-gray-500">
+                Configura la organización y el pipeline para empezar
+              </p>
+              <Button onClick={() => navigate("/settings")} className="w-full">
+                <Settings className="w-4 h-4 mr-2" />
+                Ir a Configuración
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Creamos un sensor para manejar press delay en móviles
   const pointerSensor = useSensor(PointerSensor, {
@@ -170,9 +207,19 @@ export function Deals() {
         <div className="flex-1 overflow-x-auto p-6">
           {!columns.length ? (
             <div className="flex items-center justify-center h-full">
-              <p className="text-sm text-gray-500">
-                No hay columnas configuradas para este pipeline
-              </p>
+              <div className="text-center">
+                <Settings className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-lg font-medium text-gray-900 mb-2">
+                  No hay pipelines configurados
+                </p>
+                <p className="text-sm text-gray-500 mb-4">
+                  Configura pipelines en ajustes para organizar tus negocios
+                </p>
+                <Button onClick={() => navigate("/settings")} size="sm">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Configurar Pipelines
+                </Button>
+              </div>
             </div>
           ) : (
             <>

@@ -1012,38 +1012,39 @@ export function AutomationProvider({
 
   // Cargar catálogos solo cuando el usuario esté autenticado
   useEffect(() => {
-    const { isAuthenticated, user } = useAuthStore.getState();
-
-    // Solo cargar si el usuario está autenticado y tiene datos válidos
-    if (isAuthenticated && user) {
-      console.log(
-        "🔄 AutomationProvider: Loading catalogs for authenticated user"
-      );
-      loadNodeTypes();
-      loadModules();
-    } else {
-      console.log(
-        "⏳ AutomationProvider: Waiting for authentication before loading catalogs"
-      );
-    }
+    // Comentar la carga automática para evitar errores en login/registro
+    // const { isAuthenticated, user } = useAuthStore.getState();
+    // // Solo cargar si el usuario está autenticado y tiene datos válidos
+    // if (isAuthenticated && user) {
+    //   console.log(
+    //     "🔄 AutomationProvider: Loading catalogs for authenticated user"
+    //   );
+    //   loadNodeTypes();
+    //   loadModules();
+    // } else {
+    //   console.log(
+    //     "⏳ AutomationProvider: Waiting for authentication before loading catalogs"
+    //   );
+    // }
   }, [loadNodeTypes, loadModules]);
 
   // Escuchar cambios en el estado de autenticación
   useEffect(() => {
     const unsubscribe = useAuthStore.subscribe((authState) => {
-      // Si el usuario se autentica y no tenemos catálogos cargados, cargarlos
-      if (
-        authState.isAuthenticated &&
-        authState.user &&
-        state.catalogs.nodeTypes.length === 0 &&
-        state.catalogs.modules.length === 0
-      ) {
-        console.log(
-          "🔄 AutomationProvider: User authenticated, loading catalogs"
-        );
-        loadNodeTypes();
-        loadModules();
-      }
+      // Comentar la carga automática para evitar errores en login/registro
+      // // Si el usuario se autentica y no tenemos catálogos cargados, cargarlos
+      // if (
+      //   authState.isAuthenticated &&
+      //   authState.user &&
+      //   state.catalogs.nodeTypes.length === 0 &&
+      //   state.catalogs.modules.length === 0
+      // ) {
+      //   console.log(
+      //     "🔄 AutomationProvider: User authenticated, loading catalogs"
+      //   );
+      //   loadNodeTypes();
+      //   loadModules();
+      // }
 
       // Si el usuario se desautentica, limpiar los catálogos
       if (!authState.isAuthenticated) {
