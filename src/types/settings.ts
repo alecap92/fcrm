@@ -25,6 +25,7 @@ export interface Organization {
   idNumber: string;
   idType: string;
   logoUrl: string;
+  iconUrl: string;
   phone: string;
   settings: IOrganizationSettings;
   whatsapp: string;

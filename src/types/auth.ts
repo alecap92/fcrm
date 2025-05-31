@@ -48,6 +48,7 @@ export interface AuthResponse {
     idNumber: string;
     idType: string;
     logoUrl: string;
+    iconUrl?: string;
     phone: string;
     settings: any;
     updatedAt: string;

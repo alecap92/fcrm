@@ -142,11 +142,7 @@ const userMenuItems: MenuItem[] = [
     href: "/products",
     icon: <Package className="w-4 h-4" />,
   },
-  {
-    label: "Proveedores",
-    href: "/suppliers",
-    icon: <Truck className="w-4 h-4" />,
-  },
+
   {
     label: "Cerrar Sesión",
     href: "/logout",
@@ -284,8 +280,11 @@ function TopBar() {
             {/* Logo */}
             <div className="flex-shrink-0">
               <Link to="/" className="flex items-center group">
-                <Building2 className="w-8 h-8 transition-transform group-hover:scale-110" />
-                <span className="ml-2 text-xl font-bold">CRM Pro</span>
+                <img
+                  src={"/src/images/logo-white.png"}
+                  alt={"Fusion CRM"}
+                  className="w-full h-20 object-contain ring-2 ring-transparent"
+                />
               </Link>
             </div>
 
@@ -394,11 +393,11 @@ function TopBar() {
                 >
                   <img
                     src={
-                      organization?.logoUrl ||
+                      organization?.iconUrl ||
                       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
                     }
                     alt={organization?.companyName || "Organization"}
-                    className="w-8 h-8 rounded-full ring-2 ring-transparent group-hover:ring-action transition-all duration-200"
+                    className="w-10 h-8 rounded-full ring-2 ring-transparent group-hover:ring-action transition-all duration-200"
                   />
                   <ChevronDown
                     className={`

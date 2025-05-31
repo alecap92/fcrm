@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email: "",
     idNumber: "",
     logoUrl: "",
+    iconUrl: "",
     phone: "",
     settings: {
       formuapp: {},
@@ -106,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setOrganization({
           ...res.organization,
           employees: res.organization.employees || [],
+          iconUrl: res.organization.iconUrl || "",
         });
       }
 
@@ -174,7 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }, REFRESH_INTERVAL);
 
-    setRefreshInterval(interval);
+    setRefreshInterval(interval as any);
     return () => clearInterval(interval);
   };
 
@@ -227,6 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setOrganization({
           ...response.organization,
           employees: response.organization.employees || [],
+          iconUrl: response.organization.iconUrl || "",
         });
       }
 

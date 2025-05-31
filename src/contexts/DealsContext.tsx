@@ -71,6 +71,7 @@ interface DealsContextType {
     statusName: string
   ) => Promise<void>;
   searchDeals: (query: string) => Promise<void>;
+  changePipeline: (newPipelineId: string) => Promise<void>;
 
   // Handlers para modales
   openCreateDealModal: () => void;
@@ -108,100 +109,15 @@ export function DealsProvider({ children }: DealsProviderProps) {
   });
   const [searchResults, setSearchResults] = useState<Deal[]>([]);
 
-  // Pipeline ID - esto podría venir de props o de otro contexto
-  const pipelineId = "66c6370ad573dacc51e620f0";
+  // Pipeline ID - ahora es dinámico
+  const [pipelineId, setPipelineId] = useState("66c6370ad573dacc51e620f0");
 
   const toast = useToast();
   const { showLoading, hideLoading } = useLoading();
 
   // Función para obtener deals
   const fetchDeals = async (reset?: boolean) => {
-    console.log("🚀 fetchDeals llamado", { reset });
-
-    try {
-      if (reset) {
-        console.log("🔄 Reseteando paginación");
-        setPagination({
-          currentPage: 1,
-          totalPages: 1,
-          hasNextPage: true,
-          isLoadingMore: false,
-        });
-      } else {
-        // Si no es reset, no hacer nada - usar loadMoreDeals en su lugar
-        console.warn(
-          "fetchDeals llamado sin reset - usar loadMoreDeals en su lugar"
-        );
-        return;
-      }
-
-      showLoading("Cargando negocios...");
-      console.log("📥 Solicitando página inicial (1)");
-
-      const response = await dealsService.getDeals(pipelineId, {
-        page: 1,
-        limit: DEALS_PER_PAGE,
-      });
-      const statuses = await dealsService.getStatuses(pipelineId);
-
-      console.log("📦 Respuesta inicial del servidor:", {
-        page: response?.page,
-        totalPages: response?.totalPages,
-        dataLength: response?.data?.length,
-        statusesLength: statuses?.data?.length,
-      });
-
-      // Verificar que statuses.data existe y es un array
-      const statusesData = statuses?.data || [];
-      if (!Array.isArray(statusesData)) {
-        console.error("statuses.data is not an array:", statusesData);
-        setColumns([]);
-        setDeals(response?.data || []);
-        return;
-      }
-
-      // Ordenamos las columnas por la propiedad 'order'
-      const orderedStatuses = [...statusesData].sort(
-        (a, b) => a.order - b.order
-      );
-
-      setColumns(orderedStatuses);
-      setDeals(response?.data || []);
-
-      console.log("✅ Deals iniciales cargados:", response?.data?.length || 0);
-
-      // Actualizar información de paginación
-      setPagination({
-        currentPage: response?.page || 1,
-        totalPages: response?.totalPages || 1,
-        hasNextPage: (response?.page || 1) < (response?.totalPages || 1),
-        isLoadingMore: false,
-      });
-
-      console.log("📊 Paginación inicial:", {
-        currentPage: response?.page || 1,
-        totalPages: response?.totalPages || 1,
-        hasNextPage: (response?.page || 1) < (response?.totalPages || 1),
-      });
-    } catch (error) {
-      console.error("❌ Error fetching deals:", error);
-      toast.show({
-        title: "Error",
-        description: "No se pudieron cargar los negocios",
-        type: "error",
-      });
-      // Establecer valores por defecto en caso de error
-      setColumns([]);
-      setDeals([]);
-      setPagination({
-        currentPage: 1,
-        totalPages: 1,
-        hasNextPage: false,
-        isLoadingMore: false,
-      });
-    } finally {
-      hideLoading();
-    }
+    await fetchDealsForPipeline(pipelineId);
   };
 
   // Función para obtener un deal individual
@@ -549,6 +465,168 @@ export function DealsProvider({ children }: DealsProviderProps) {
     }
   };
 
+  // Función para cambiar pipeline
+  const changePipeline = async (newPipelineId: string) => {
+    console.log("🔄 Cambiando pipeline de", pipelineId, "a", newPipelineId);
+
+    if (newPipelineId === pipelineId) {
+      console.log("❌ El pipeline seleccionado es el mismo, no se hace nada");
+      return;
+    }
+
+    try {
+      setPipelineId(newPipelineId);
+
+      // Resetear estado
+      setDeals([]);
+      setColumns([]);
+      setPagination({
+        currentPage: 1,
+        totalPages: 1,
+        hasNextPage: true,
+        isLoadingMore: false,
+      });
+
+      // Cargar deals del nuevo pipeline
+      await fetchDealsForPipeline(newPipelineId);
+
+      toast.show({
+        title: "Pipeline cambiado",
+        description: "Los negocios se han actualizado correctamente",
+        type: "success",
+      });
+    } catch (error) {
+      console.error("❌ Error cambiando pipeline:", error);
+      toast.show({
+        title: "Error",
+        description: "No se pudo cambiar el pipeline",
+        type: "error",
+      });
+      // Revertir el cambio en caso de error
+      setPipelineId(pipelineId);
+    }
+  };
+
+  // Función auxiliar para obtener deals de un pipeline específico
+  const fetchDealsForPipeline = async (targetPipelineId: string) => {
+    console.log(
+      "🚀 fetchDealsForPipeline llamado para pipeline:",
+      targetPipelineId
+    );
+
+    try {
+      showLoading("Cargando negocios...");
+      console.log(
+        "📥 Solicitando página inicial (1) para pipeline:",
+        targetPipelineId
+      );
+
+      // Hacer ambas llamadas en paralelo
+      const [dealsResponse, statusesResponse] = await Promise.all([
+        dealsService
+          .getDeals(targetPipelineId, {
+            page: 1,
+            limit: DEALS_PER_PAGE,
+          })
+          .catch((error) => {
+            console.error("Error cargando deals:", error);
+            return { data: [], page: 1, totalPages: 1 }; // Valor por defecto si falla
+          }),
+        dealsService.getStatuses(targetPipelineId).catch((error) => {
+          console.error("Error cargando statuses:", error);
+          return { data: [] }; // Valor por defecto si falla
+        }),
+      ]);
+
+      console.log("📦 Respuesta del servidor para pipeline:", {
+        pipelineId: targetPipelineId,
+        page: dealsResponse?.page,
+        totalPages: dealsResponse?.totalPages,
+        dataLength: dealsResponse?.data?.length,
+        statusesLength: statusesResponse?.data?.length,
+      });
+
+      // Verificar que statuses.data existe y es un array
+      const statusesData = statusesResponse?.data || [];
+      if (!Array.isArray(statusesData)) {
+        console.error("statuses.data is not an array:", statusesData);
+        setColumns([]);
+      } else {
+        // Ordenamos las columnas por la propiedad 'order'
+        const orderedStatuses = [...statusesData].sort(
+          (a, b) => a.order - b.order
+        );
+        setColumns(orderedStatuses);
+        console.log("✅ Columnas cargadas:", orderedStatuses.length);
+      }
+
+      // Establecer deals (puede ser array vacío si falló la carga)
+      setDeals(dealsResponse?.data || []);
+      console.log(
+        "✅ Deals cargados para pipeline:",
+        dealsResponse?.data?.length || 0
+      );
+
+      // Actualizar información de paginación
+      setPagination({
+        currentPage: dealsResponse?.page || 1,
+        totalPages: dealsResponse?.totalPages || 1,
+        hasNextPage:
+          (dealsResponse?.page || 1) < (dealsResponse?.totalPages || 1),
+        isLoadingMore: false,
+      });
+
+      console.log("📊 Paginación para nuevo pipeline:", {
+        currentPage: dealsResponse?.page || 1,
+        totalPages: dealsResponse?.totalPages || 1,
+        hasNextPage:
+          (dealsResponse?.page || 1) < (dealsResponse?.totalPages || 1),
+      });
+    } catch (error) {
+      console.error("❌ Error fetching deals for pipeline:", error);
+
+      // Intentar cargar al menos las columnas si todo falla
+      try {
+        console.log("🔄 Intentando cargar solo las columnas...");
+        const statusesResponse = await dealsService.getStatuses(
+          targetPipelineId
+        );
+        const statusesData = statusesResponse?.data || [];
+
+        if (Array.isArray(statusesData)) {
+          const orderedStatuses = [...statusesData].sort(
+            (a, b) => a.order - b.order
+          );
+          setColumns(orderedStatuses);
+          console.log(
+            "✅ Columnas cargadas en fallback:",
+            orderedStatuses.length
+          );
+        }
+      } catch (statusError) {
+        console.error("❌ Error cargando columnas en fallback:", statusError);
+        setColumns([]);
+      }
+
+      toast.show({
+        title: "Error",
+        description: "No se pudieron cargar los negocios",
+        type: "error",
+      });
+
+      // Establecer valores por defecto en caso de error
+      setDeals([]);
+      setPagination({
+        currentPage: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        isLoadingMore: false,
+      });
+    } finally {
+      hideLoading();
+    }
+  };
+
   // Cargar deals al montar el componente
   useEffect(() => {
     fetchDeals(true); // Reset = true para cargar desde la primera página
@@ -589,6 +667,7 @@ export function DealsProvider({ children }: DealsProviderProps) {
     deleteDeal,
     updateDealStatus,
     searchDeals,
+    changePipeline,
 
     // Handlers para modales
     openCreateDealModal,

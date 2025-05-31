@@ -1,4 +1,5 @@
 import { apiService } from "../config/apiConfig";
+import axios from "axios";
 
 const updateOrganization = async (organizationData: any) => {
   try {
@@ -11,6 +12,54 @@ const updateOrganization = async (organizationData: any) => {
   }
 };
 
+const uploadLogo = async (file: File) => {
+  try {
+    const formData = new FormData();
+    formData.append("logo", file);
+
+    const token = localStorage.getItem("auth_token");
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/organizations/upload-logo`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error uploading logo:", error);
+    throw error;
+  }
+};
+
+const uploadIcon = async (file: File) => {
+  try {
+    const formData = new FormData();
+    formData.append("icon", file);
+
+    const token = localStorage.getItem("auth_token");
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_BASE_URL}/organizations/upload-icon`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error uploading icon:", error);
+    throw error;
+  }
+};
+
 export const organizationService = {
   updateOrganization,
+  uploadLogo,
+  uploadIcon,
 };

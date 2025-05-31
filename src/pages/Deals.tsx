@@ -11,7 +11,7 @@ import {
 import { Plus, Search } from "lucide-react";
 import { useState } from "react";
 import { Button } from "../components/ui/button";
-import { DealFilters } from "../components/deals/DealFilters";
+import { PipelineSelect } from "../components/deals/PipelineSelect";
 import { CreateDealModal } from "../components/deals/CreateDealModal";
 import { DealDetailsModal } from "../components/deals/DealDetailsModal";
 import { DealColumn } from "../components/deals/DealColumn";
@@ -34,6 +34,7 @@ export function Deals() {
     showCreateDealModal,
     pagination,
     searchResults,
+    pipelineId,
 
     // Setters del contexto
     setActiveDeal,
@@ -47,6 +48,7 @@ export function Deals() {
     deleteDeal,
     updateDealStatus,
     searchDeals,
+    changePipeline,
 
     // Handlers para modales
     openCreateDealModal,
@@ -115,6 +117,10 @@ export function Deals() {
     openDealDetailsModal(deal);
   };
 
+  const handlePipelineChange = async (newPipelineId: string) => {
+    await changePipeline(newPipelineId);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex flex-col h-screen">
@@ -139,12 +145,19 @@ export function Deals() {
                   Buscar
                 </Button>
                 <div className="relative">
+                  <PipelineSelect
+                    selectedPipelineId={pipelineId}
+                    onPipelineChange={handlePipelineChange}
+                  />
+                </div>
+                {/* Botón de filtros comentado temporalmente */}
+                {/* <div className="relative">
                   <DealFilters
                     onFilterChange={() => {}}
                     setDeals={setDeals}
                     fetchDeals={fetchDeals}
                   />
-                </div>
+                </div> */}
                 <Button onClick={openCreateDealModal}>
                   <Plus className="w-4 h-4 mr-2" />
                   Nuevo Negocio
@@ -155,53 +168,66 @@ export function Deals() {
         </div>
 
         <div className="flex-1 overflow-x-auto p-6">
-          {!deals.length || !columns.length ? (
+          {!columns.length ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-sm text-gray-500">
-                No hay negocios disponibles
+                No hay columnas configuradas para este pipeline
               </p>
             </div>
           ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              <div className="flex gap-6">
-                {columns?.map((column) => {
-                  const columnDeals = deals.filter(
-                    (deal) => deal?.status?._id === column._id
-                  );
+            <>
+              {/* Mensaje informativo cuando hay columnas pero no hay deals */}
+              {columns.length > 0 && deals.length === 0 && (
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    Este pipeline no tiene negocios aún. Puedes crear uno nuevo
+                    haciendo clic en "Nuevo Negocio" o arrastrando deals desde
+                    otros pipelines.
+                  </p>
+                </div>
+              )}
 
-                  return (
-                    <DealColumn
-                      key={column._id}
-                      column={column}
-                      deals={columnDeals}
-                      onDealClick={openDealDetailsModal}
-                      onEditDeal={openEditDealModal}
-                      handleDeleteDeal={deleteDeal}
-                      onLoadMore={() => handleLoadMoreForColumn()}
-                      isLoadingMore={pagination.isLoadingMore}
-                      hasNextPage={pagination.hasNextPage}
-                    />
-                  );
-                })}
-              </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+              >
+                <div className="flex gap-6">
+                  {columns?.map((column) => {
+                    const columnDeals = deals.filter(
+                      (deal) => deal?.status?._id === column._id
+                    );
 
-              <DragOverlay>
-                {activeDeal && (
-                  <div style={{ opacity: 0.9 }}>
-                    <DealCard
-                      deal={activeDeal}
-                      onView={openDealDetailsModal}
-                      onEdit={openEditDealModal}
-                    />
-                  </div>
-                )}
-              </DragOverlay>
-            </DndContext>
+                    return (
+                      <DealColumn
+                        key={column._id}
+                        column={column}
+                        deals={columnDeals}
+                        onDealClick={openDealDetailsModal}
+                        onEditDeal={openEditDealModal}
+                        handleDeleteDeal={deleteDeal}
+                        onLoadMore={() => handleLoadMoreForColumn()}
+                        isLoadingMore={pagination.isLoadingMore}
+                        hasNextPage={pagination.hasNextPage}
+                      />
+                    );
+                  })}
+                </div>
+
+                <DragOverlay>
+                  {activeDeal && (
+                    <div style={{ opacity: 0.9 }}>
+                      <DealCard
+                        deal={activeDeal}
+                        onView={openDealDetailsModal}
+                        onEdit={openEditDealModal}
+                      />
+                    </div>
+                  )}
+                </DragOverlay>
+              </DndContext>
+            </>
           )}
         </div>
       </div>
