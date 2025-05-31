@@ -42,8 +42,36 @@ class DealsService {
         total: response.data?.total,
         hasData: !!response.data,
         responseStructure: Object.keys(response.data || {}),
+        isArray: Array.isArray(response.data),
+        arrayLength: Array.isArray(response.data)
+          ? response.data.length
+          : undefined,
       });
 
+      // Verificar si el backend devolvió un array directamente (formato incorrecto)
+      if (Array.isArray(response.data)) {
+        console.log(
+          "⚠️ Backend devolvió array directo, convirtiendo a formato paginado"
+        );
+        const deals = response.data as Deal[];
+        const currentPage = pagination.page || 1;
+        const limit = pagination.limit || 20;
+
+        // Simular paginación del lado del cliente
+        const startIndex = (currentPage - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedDeals = deals.slice(startIndex, endIndex);
+
+        return {
+          data: paginatedDeals,
+          total: deals.length,
+          page: currentPage,
+          limit: limit,
+          totalPages: Math.ceil(deals.length / limit),
+        };
+      }
+
+      // Si tiene el formato correcto, devolverlo tal como está
       return response.data;
     } catch (error) {
       console.error("❌ dealsService.getDeals - Error detallado:", {
