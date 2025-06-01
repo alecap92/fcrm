@@ -256,9 +256,31 @@ class AuthService {
     if (response.token) {
       localStorage.setItem(this.tokenKey, response.token);
 
-      const expiresIn = 29 * 24 * 60 * 60 * 1000; // 29 días
-      const expiryTime = new Date().getTime() + expiresIn;
-      localStorage.setItem(this.tokenExpiryKey, expiryTime.toString());
+      // Decodificar el token para obtener la información de expiración
+      try {
+        const tokenPayload = JSON.parse(atob(response.token.split(".")[1]));
+        const rememberMe = tokenPayload.rememberMe || false;
+
+        // Calcular expiración basada en rememberMe
+        // Si rememberMe es true: 30 días, si es false: 24 horas
+        const expiresIn = rememberMe
+          ? 30 * 24 * 60 * 60 * 1000
+          : 24 * 60 * 60 * 1000;
+        const expiryTime = new Date().getTime() + expiresIn;
+
+        localStorage.setItem(this.tokenExpiryKey, expiryTime.toString());
+
+        console.log(
+          `✅ Token almacenado con expiración de ${
+            rememberMe ? "30 días" : "24 horas"
+          }`
+        );
+      } catch (error) {
+        console.error("Error decodificando token:", error);
+        // Fallback: usar 24 horas por defecto
+        const expiryTime = new Date().getTime() + 24 * 60 * 60 * 1000;
+        localStorage.setItem(this.tokenExpiryKey, expiryTime.toString());
+      }
 
       console.log("✅ Token almacenado en localStorage");
     }

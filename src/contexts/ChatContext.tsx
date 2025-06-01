@@ -205,10 +205,12 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const { user } = useAuth();
 
   // Hook para manejar el título de la página
-  const { showNewMessageNotification, restoreTitle } = usePageTitle({
+  const { showNewMessageNotification, restoreTitle, testSound } = usePageTitle({
     defaultTitle: "FusionCRM",
     blinkInterval: 2000,
     blinkDuration: 15000,
+    soundEnabled: true, // Habilitar sonidos de notificación
+    soundVolume: 0.6, // Volumen moderado
   });
 
   // Estado del chat individual

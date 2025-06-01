@@ -1,9 +1,13 @@
 import { useEffect, useRef, useCallback } from "react";
+import { useNotificationSound } from "./useNotificationSound";
 
 interface UsePageTitleOptions {
   defaultTitle?: string;
   blinkInterval?: number;
   blinkDuration?: number;
+  soundEnabled?: boolean;
+  soundUrl?: string;
+  soundVolume?: number;
 }
 
 export const usePageTitle = (options: UsePageTitleOptions = {}) => {
@@ -11,12 +15,23 @@ export const usePageTitle = (options: UsePageTitleOptions = {}) => {
     defaultTitle = "FusionCRM",
     blinkInterval = 2000,
     blinkDuration = 10000,
+    soundEnabled = true,
+    soundUrl,
+    soundVolume = 0.5,
   } = options;
 
   const originalTitle = useRef(defaultTitle);
   const blinkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const stopBlinkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isBlinkingRef = useRef(false);
+
+  // Hook para manejar sonidos de notificación
+  const { playNotificationSound, playCustomSound, testSound } =
+    useNotificationSound({
+      soundUrl,
+      volume: soundVolume,
+      enabled: soundEnabled,
+    });
 
   // Función para limpiar timeouts
   const clearTimeouts = useCallback(() => {
@@ -74,8 +89,13 @@ export const usePageTitle = (options: UsePageTitleOptions = {}) => {
     (senderName: string) => {
       const notificationTitle = `💬 ${senderName} envió un nuevo mensaje`;
       startBlinking(notificationTitle);
+
+      // Reproducir sonido de notificación
+      if (soundEnabled) {
+        playNotificationSound();
+      }
     },
-    [startBlinking]
+    [startBlinking, soundEnabled, playNotificationSound]
   );
 
   // Función para establecer un título personalizado
@@ -133,5 +153,9 @@ export const usePageTitle = (options: UsePageTitleOptions = {}) => {
     setTitle,
     setDefaultTitle,
     isBlinking: isBlinkingRef.current,
+    // Funciones de sonido para pruebas y uso personalizado
+    playNotificationSound,
+    playCustomSound,
+    testSound,
   };
 };

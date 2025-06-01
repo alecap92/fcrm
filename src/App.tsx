@@ -1,9 +1,9 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { PrivateRoute } from "./components/auth/PrivateRoute";
+import { PublicRoute } from "./components/auth/PublicRoute";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { WorkflowEditor } from "./pages/WorkflowEditor";
-import { Home } from "./pages/Home";
 import { TopBar } from "./components/TopBar";
 import { ContactsDirectory } from "./pages/ContactsDirectory";
 import { ContactLists } from "./pages/ContactLists";
@@ -40,8 +40,22 @@ import DealDetails from "./pages/DealDetails";
 function App() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <Login />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <PublicRoute>
+            <Register />
+          </PublicRoute>
+        }
+      />
       <Route
         path="/*"
         element={

@@ -183,6 +183,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // No validar sesión en rutas públicas
       const publicRoutes = ["/login", "/register"];
       if (publicRoutes.includes(location.pathname)) {
+        // En rutas públicas, solo verificar si ya hay autenticación válida
+        const zustandState = useAuthStore.getState();
+        const token = localStorage.getItem("auth_token");
+        const userStr = localStorage.getItem("auth_user");
+
+        if (
+          zustandState.isAuthenticated &&
+          zustandState.user &&
+          zustandState.token
+        ) {
+          console.log("✅ Usuario ya autenticado en ruta pública");
+          setUser(zustandState.user);
+
+          // Obtener organización del localStorage si existe
+          const orgStr = localStorage.getItem("auth_organization");
+          if (orgStr) {
+            try {
+              const org = JSON.parse(orgStr);
+              setOrganization({
+                ...org,
+                employees: org.employees || [],
+                iconUrl: org.iconUrl || "",
+              });
+            } catch (e) {
+              console.error("Error parsing organization:", e);
+            }
+          }
+        } else if (token && userStr) {
+          // Sincronizar desde localStorage si no está en Zustand
+          try {
+            const user = JSON.parse(userStr);
+            useAuthStore.setState({
+              user,
+              token,
+              isAuthenticated: true,
+            });
+            setUser(user);
+            console.log("✅ Sesión sincronizada desde localStorage");
+          } catch (e) {
+            console.error("Error parsing user from localStorage:", e);
+          }
+        }
+
         setIsLoading(false);
         return;
       }
@@ -219,6 +262,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      // Solo validar sesión si no tenemos datos válidos
       if (isMounted) {
         const isValid = await validateSession();
         if (isValid && isMounted) {

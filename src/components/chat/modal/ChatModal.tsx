@@ -19,8 +19,8 @@ interface ChatModalProps {
 }
 
 const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, chat }) => {
-  // Hook para pruebas de notificación de título
-  const { showNewMessageNotification } = usePageTitle();
+  // Hook para pruebas de notificación de título y sonido
+  const { showNewMessageNotification, testSound } = usePageTitle();
 
   // Usar el contexto del chat
   const {
@@ -263,6 +263,16 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, chat }) => {
               >
                 <TestTube className="w-4 h-4" />
                 WhatsApp Test
+              </button>
+
+              {/* Botón de prueba para sonido de notificación */}
+              <button
+                onClick={testSound}
+                className="flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm"
+                title="Probar sonido de notificación"
+              >
+                <TestTube className="w-4 h-4" />
+                🔊 Sonido
               </button>
 
               <button

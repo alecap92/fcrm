@@ -20,9 +20,25 @@ const customStorage = {
     // Primero intentar obtener de localStorage directamente para garantizar datos frescos
     const tokenFromLS = localStorage.getItem("auth_token");
     const userFromLS = localStorage.getItem("auth_user");
+    const tokenExpiryFromLS = localStorage.getItem("auth_token_expiry");
 
     if (tokenFromLS && userFromLS) {
       try {
+        // Verificar si el token ha expirado
+        if (tokenExpiryFromLS) {
+          const expiryTime = parseInt(tokenExpiryFromLS, 10);
+          const now = new Date().getTime();
+
+          if (now > expiryTime) {
+            console.log("🕐 Token expirado, limpiando localStorage");
+            localStorage.removeItem("auth_token");
+            localStorage.removeItem("auth_user");
+            localStorage.removeItem("auth_token_expiry");
+            localStorage.removeItem("auth_organization");
+            return null;
+          }
+        }
+
         const user = JSON.parse(userFromLS);
         return JSON.stringify({
           state: {
@@ -34,6 +50,11 @@ const customStorage = {
         });
       } catch (e) {
         console.error("Error parsing user from localStorage", e);
+        // Limpiar datos corruptos
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("auth_user");
+        localStorage.removeItem("auth_token_expiry");
+        localStorage.removeItem("auth_organization");
       }
     }
 
@@ -51,11 +72,20 @@ const customStorage = {
       if (isAuthenticated && user && token) {
         localStorage.setItem("auth_token", token);
         localStorage.setItem("auth_user", JSON.stringify(user));
+
+        // Mantener la expiración existente si ya está configurada
+        const existingExpiry = localStorage.getItem("auth_token_expiry");
+        if (!existingExpiry) {
+          // Si no hay expiración configurada, usar 24 horas por defecto
+          const expiryTime = new Date().getTime() + 24 * 60 * 60 * 1000;
+          localStorage.setItem("auth_token_expiry", expiryTime.toString());
+        }
       } else {
         // Si se hace logout, limpiamos localStorage
         localStorage.removeItem("auth_token");
         localStorage.removeItem("auth_user");
         localStorage.removeItem("auth_token_expiry");
+        localStorage.removeItem("auth_organization");
       }
     } catch (e) {
       console.error("Error updating localStorage from Zustand", e);
@@ -69,6 +99,7 @@ const customStorage = {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("auth_user");
     localStorage.removeItem("auth_token_expiry");
+    localStorage.removeItem("auth_organization");
   },
 };
 
