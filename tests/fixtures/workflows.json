@@ -1,0 +1,164 @@
+{
+  "simpleWorkflow": {
+    "id": "workflow-1",
+    "name": "Workflow de Bienvenida",
+    "description": "Automatización para nuevos usuarios",
+    "isActive": true,
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger",
+        "position": { "x": 100, "y": 100 },
+        "data": {
+          "label": "Nuevo Usuario",
+          "triggerType": "user_created"
+        }
+      },
+      {
+        "id": "email1",
+        "type": "action",
+        "position": { "x": 300, "y": 100 },
+        "data": {
+          "label": "Enviar Email de Bienvenida",
+          "actionType": "send_email",
+          "template": "welcome_email"
+        }
+      },
+      {
+        "id": "delay1",
+        "type": "delay",
+        "position": { "x": 500, "y": 100 },
+        "data": {
+          "label": "Esperar 1 día",
+          "duration": 86400
+        }
+      },
+      {
+        "id": "email2",
+        "type": "action",
+        "position": { "x": 700, "y": 100 },
+        "data": {
+          "label": "Enviar Tips",
+          "actionType": "send_email",
+          "template": "tips_email"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "start",
+        "target": "email1"
+      },
+      {
+        "id": "e2",
+        "source": "email1",
+        "target": "delay1"
+      },
+      {
+        "id": "e3",
+        "source": "delay1",
+        "target": "email2"
+      }
+    ],
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z"
+  },
+  "complexWorkflow": {
+    "id": "workflow-2",
+    "name": "Seguimiento de Ventas",
+    "description": "Automatización para proceso de ventas",
+    "isActive": true,
+    "nodes": [
+      {
+        "id": "trigger1",
+        "type": "trigger",
+        "position": { "x": 100, "y": 100 },
+        "data": {
+          "label": "Lead Creado",
+          "triggerType": "lead_created"
+        }
+      },
+      {
+        "id": "condition1",
+        "type": "condition",
+        "position": { "x": 300, "y": 100 },
+        "data": {
+          "label": "¿Es Lead Calificado?",
+          "field": "score",
+          "operator": "greater_than",
+          "value": 70
+        }
+      },
+      {
+        "id": "action1",
+        "type": "action",
+        "position": { "x": 500, "y": 50 },
+        "data": {
+          "label": "Asignar a Vendedor",
+          "actionType": "assign_user"
+        }
+      },
+      {
+        "id": "action2",
+        "type": "action",
+        "position": { "x": 500, "y": 150 },
+        "data": {
+          "label": "Enviar a Nurturing",
+          "actionType": "add_to_list",
+          "listId": "nurturing"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "trigger1",
+        "target": "condition1"
+      },
+      {
+        "id": "e2",
+        "source": "condition1",
+        "target": "action1",
+        "label": "Sí"
+      },
+      {
+        "id": "e3",
+        "source": "condition1",
+        "target": "action2",
+        "label": "No"
+      }
+    ],
+    "createdAt": "2024-01-02T00:00:00.000Z",
+    "updatedAt": "2024-01-02T00:00:00.000Z"
+  },
+  "workflowsList": [
+    {
+      "id": "workflow-1",
+      "name": "Workflow de Bienvenida",
+      "description": "Automatización para nuevos usuarios",
+      "isActive": true,
+      "nodeCount": 4,
+      "executionCount": 156,
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "workflow-2",
+      "name": "Seguimiento de Ventas",
+      "description": "Automatización para proceso de ventas",
+      "isActive": true,
+      "nodeCount": 4,
+      "executionCount": 89,
+      "createdAt": "2024-01-02T00:00:00.000Z"
+    },
+    {
+      "id": "workflow-3",
+      "name": "Recordatorio de Carrito",
+      "description": "Para carritos abandonados",
+      "isActive": false,
+      "nodeCount": 3,
+      "executionCount": 23,
+      "createdAt": "2024-01-03T00:00:00.000Z"
+    }
+  ]
+}

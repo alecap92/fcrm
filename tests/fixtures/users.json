@@ -1,0 +1,55 @@
+{
+  "testUser": {
+    "id": "user-1",
+    "name": "Usuario Test",
+    "email": "test@example.com",
+    "role": "user",
+    "isActive": true,
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z"
+  },
+  "adminUser": {
+    "id": "admin-1",
+    "name": "Admin Test",
+    "email": "admin@example.com",
+    "role": "admin",
+    "isActive": true,
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z"
+  },
+  "inactiveUser": {
+    "id": "user-2",
+    "name": "Usuario Inactivo",
+    "email": "inactive@example.com",
+    "role": "user",
+    "isActive": false,
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z"
+  },
+  "usersList": [
+    {
+      "id": "user-1",
+      "name": "Juan Pérez",
+      "email": "juan@example.com",
+      "role": "user",
+      "isActive": true,
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "user-2",
+      "name": "María García",
+      "email": "maria@example.com",
+      "role": "user",
+      "isActive": true,
+      "createdAt": "2024-01-02T00:00:00.000Z"
+    },
+    {
+      "id": "user-3",
+      "name": "Carlos López",
+      "email": "carlos@example.com",
+      "role": "admin",
+      "isActive": true,
+      "createdAt": "2024-01-03T00:00:00.000Z"
+    }
+  ]
+}
