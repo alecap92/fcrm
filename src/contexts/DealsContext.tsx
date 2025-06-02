@@ -385,20 +385,7 @@ export function DealsProvider({ children }: DealsProviderProps) {
 
   // Función para cargar más deals (scroll infinito)
   const loadMoreDeals = async () => {
-    console.log("🔄 loadMoreDeals llamado");
-    console.log("📊 Estado actual:", {
-      isLoadingMore: pagination.isLoadingMore,
-      hasNextPage: pagination.hasNextPage,
-      currentPage: pagination.currentPage,
-      totalPages: pagination.totalPages,
-      dealsCount: deals.length,
-      pipelineId,
-    });
-
     if (pagination.isLoadingMore || !pagination.hasNextPage) {
-      console.log(
-        "❌ Cancelando loadMoreDeals - ya cargando o no hay más páginas"
-      );
       return;
     }
 
@@ -406,25 +393,10 @@ export function DealsProvider({ children }: DealsProviderProps) {
 
     try {
       const nextPage = pagination.currentPage + 1;
-      console.log(
-        `📥 Solicitando página ${nextPage} para pipeline ${pipelineId}`
-      );
 
       const response = await dealsService.getDeals(pipelineId, {
         page: nextPage,
         limit: DEALS_PER_PAGE,
-      });
-
-      console.log("📦 Respuesta del servidor para loadMoreDeals:", {
-        page: response?.page,
-        totalPages: response?.totalPages,
-        total: response?.total,
-        limit: response?.limit,
-        dataLength: response?.data?.length,
-        hasNextPage:
-          (response?.page || nextPage) <
-          (response?.totalPages || pagination.totalPages),
-        responseStructure: response ? Object.keys(response) : [],
       });
 
       // Verificar que la respuesta tiene la estructura esperada
@@ -442,21 +414,7 @@ export function DealsProvider({ children }: DealsProviderProps) {
           (deal) => !existingDealIds.has(deal._id)
         );
 
-        console.log("🔍 Análisis de duplicados:");
-        console.log("  - Deals existentes:", prevDeals.length);
-        console.log("  - Nuevos deals recibidos:", response.data.length);
-        console.log("  - Nuevos deals únicos a agregar:", newDeals.length);
-        console.log(
-          "  - IDs existentes (primeros 5):",
-          Array.from(existingDealIds).slice(0, 5)
-        );
-        console.log(
-          "  - IDs nuevos recibidos:",
-          response.data.map((d) => d._id).slice(0, 5)
-        );
-
         const finalDeals = [...prevDeals, ...newDeals];
-        console.log("✅ Total deals después de agregar:", finalDeals.length);
 
         return finalDeals;
       });
@@ -469,8 +427,6 @@ export function DealsProvider({ children }: DealsProviderProps) {
           (response.totalPages || pagination.totalPages),
         isLoadingMore: false,
       });
-
-      console.log("✅ loadMoreDeals completado exitosamente");
     } catch (error) {
       console.error("❌ Error loading more deals:", {
         error,
@@ -488,10 +444,7 @@ export function DealsProvider({ children }: DealsProviderProps) {
 
   // Función para cambiar pipeline
   const changePipeline = async (newPipelineId: string) => {
-    console.log("🔄 Cambiando pipeline de", pipelineId, "a", newPipelineId);
-
     if (newPipelineId === pipelineId) {
-      console.log("❌ El pipeline seleccionado es el mismo, no se hace nada");
       return;
     }
 
@@ -530,17 +483,8 @@ export function DealsProvider({ children }: DealsProviderProps) {
 
   // Función auxiliar para obtener deals de un pipeline específico
   const fetchDealsForPipeline = async (targetPipelineId: string) => {
-    console.log(
-      "🚀 fetchDealsForPipeline llamado para pipeline:",
-      targetPipelineId
-    );
-
     try {
       showLoading("Cargando negocios...");
-      console.log(
-        "📥 Solicitando página inicial (1) para pipeline:",
-        targetPipelineId
-      );
 
       // Hacer ambas llamadas en paralelo
       const [dealsResponse, statusesResponse] = await Promise.all([
@@ -565,20 +509,6 @@ export function DealsProvider({ children }: DealsProviderProps) {
         }),
       ]);
 
-      console.log("📦 Respuesta del servidor para pipeline:", {
-        pipelineId: targetPipelineId,
-        page: dealsResponse?.page,
-        totalPages: dealsResponse?.totalPages,
-        total: dealsResponse?.total,
-        limit: dealsResponse?.limit,
-        dataLength: dealsResponse?.data?.length,
-        statusesLength: statusesResponse?.data?.length,
-        dealsResponseStructure: dealsResponse ? Object.keys(dealsResponse) : [],
-        statusesResponseStructure: statusesResponse
-          ? Object.keys(statusesResponse)
-          : [],
-      });
-
       // Verificar que statuses.data existe y es un array
       const statusesData = statusesResponse?.data || [];
       if (!Array.isArray(statusesData)) {
@@ -590,7 +520,6 @@ export function DealsProvider({ children }: DealsProviderProps) {
           (a, b) => a.order - b.order
         );
         setColumns(orderedStatuses);
-        console.log("✅ Columnas cargadas:", orderedStatuses.length);
       }
 
       // Verificar que deals.data existe y es un array
@@ -600,7 +529,6 @@ export function DealsProvider({ children }: DealsProviderProps) {
         setDeals([]);
       } else {
         setDeals(dealsData);
-        console.log("✅ Deals cargados para pipeline:", dealsData.length);
       }
 
       // Actualizar información de paginación con valores por defecto seguros
@@ -614,19 +542,11 @@ export function DealsProvider({ children }: DealsProviderProps) {
         hasNextPage,
         isLoadingMore: false,
       });
-
-      console.log("📊 Paginación para nuevo pipeline:", {
-        currentPage,
-        totalPages,
-        hasNextPage,
-        total: dealsResponse?.total || 0,
-      });
     } catch (error) {
       console.error("❌ Error fetching deals for pipeline:", error);
 
       // Intentar cargar al menos las columnas si todo falla
       try {
-        console.log("🔄 Intentando cargar solo las columnas...");
         const statusesResponse = await dealsService.getStatuses(
           targetPipelineId
         );
@@ -637,10 +557,6 @@ export function DealsProvider({ children }: DealsProviderProps) {
             (a, b) => a.order - b.order
           );
           setColumns(orderedStatuses);
-          console.log(
-            "✅ Columnas cargadas en fallback:",
-            orderedStatuses.length
-          );
         }
       } catch (statusError) {
         console.error("❌ Error cargando columnas en fallback:", statusError);

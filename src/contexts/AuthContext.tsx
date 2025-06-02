@@ -112,9 +112,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         zustandState.user &&
         zustandState.token
       ) {
-        console.log(
-          "✅ Usuario ya autenticado en Zustand, no necesita validación"
-        );
         setUser(zustandState.user);
 
         // Obtener organización del localStorage si existe
@@ -193,7 +190,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           zustandState.user &&
           zustandState.token
         ) {
-          console.log("✅ Usuario ya autenticado en ruta pública");
           setUser(zustandState.user);
 
           // Obtener organización del localStorage si existe
@@ -220,7 +216,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               isAuthenticated: true,
             });
             setUser(user);
-            console.log("✅ Sesión sincronizada desde localStorage");
           } catch (e) {
             console.error("Error parsing user from localStorage:", e);
           }
@@ -237,9 +232,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         zustandState.user &&
         zustandState.token
       ) {
-        console.log(
-          "✅ Datos de autenticación ya disponibles, omitiendo validación"
-        );
         setUser(zustandState.user);
         setIsLoading(false);
 
@@ -292,11 +284,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const interval = setInterval(async () => {
       try {
         if (user) {
-          console.log("Verificando token...");
           await authService.validateSession();
         }
       } catch (error) {
-        console.error("Token validation failed:", error);
         await logout();
       }
     }, REFRESH_INTERVAL);
@@ -343,12 +333,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       const response = await authService.login(credentials);
 
-      console.log("Login response:", response);
-
-      // Los cambios en user y token ya deberían estar hechos por AuthService
-      // sólo actualizamos el organization en el contexto
-
-      console.log(response.organization.employees, "EMPLOYEES");
       setUser(response.user);
       if (response.organization) {
         setOrganization({
@@ -408,12 +392,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       const response = await authService.register(userData);
 
-      console.log("Register response:", response);
-
-      // Los cambios en user y token ya deberían estar hechos por AuthService
-      // sólo actualizamos el organization en el contexto
-
-      console.log(response.organization.employees, "EMPLOYEES");
       setUser(response.user);
       if (response.organization) {
         setOrganization({

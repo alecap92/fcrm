@@ -22,37 +22,12 @@ class DealsService {
     pagination: PaginationParams = { limit: 20, page: 1 }
   ): Promise<PaginatedResponse<Deal>> {
     try {
-      console.log("🚀 dealsService.getDeals - Iniciando solicitud:", {
-        pipelineId,
-        pagination,
-        url: `${this.baseUrl}?limit=${pagination?.limit}&page=${pagination?.page}&pipelineId=${pipelineId}`,
-        environment: import.meta.env.MODE,
-        apiBaseUrl: import.meta.env.VITE_API_BASE_URL,
-      });
-
       const response = await apiService.get<PaginatedResponse<Deal>>(
         `${this.baseUrl}?limit=${pagination?.limit}&page=${pagination?.page}&pipelineId=${pipelineId}`
       );
 
-      console.log("✅ dealsService.getDeals - Respuesta exitosa:", {
-        status: response.status,
-        dataLength: response.data?.data?.length,
-        page: response.data?.page,
-        totalPages: response.data?.totalPages,
-        total: response.data?.total,
-        hasData: !!response.data,
-        responseStructure: Object.keys(response.data || {}),
-        isArray: Array.isArray(response.data),
-        arrayLength: Array.isArray(response.data)
-          ? response.data.length
-          : undefined,
-      });
-
       // Verificar si el backend devolvió un array directamente (formato incorrecto)
       if (Array.isArray(response.data)) {
-        console.log(
-          "⚠️ Backend devolvió array directo, convirtiendo a formato paginado"
-        );
         const deals = response.data as Deal[];
         const currentPage = pagination.page || 1;
         const limit = pagination.limit || 20;

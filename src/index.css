@@ -24,6 +24,114 @@
   }
 }
 
+/* Email card styles */
+@layer components {
+  .email-card {
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  .email-card:hover {
+    @apply shadow-sm;
+  }
+
+  .email-card-selected {
+    @apply bg-blue-50 border-r-4 border-blue-500;
+  }
+
+  .email-card-unread {
+    @apply bg-blue-25;
+  }
+
+  .email-actions {
+    @apply transition-opacity duration-200 ease-in-out;
+  }
+
+  .email-actions-hidden {
+    @apply opacity-0;
+  }
+
+  .email-actions-visible {
+    @apply opacity-100;
+  }
+
+  /* Email content styles */
+  .email-content {
+    @apply text-gray-800 leading-relaxed;
+  }
+
+  .email-content h1,
+  .email-content h2,
+  .email-content h3,
+  .email-content h4,
+  .email-content h5,
+  .email-content h6 {
+    @apply font-semibold text-gray-900 mt-6 mb-3;
+  }
+
+  .email-content h1 {
+    @apply text-2xl;
+  }
+  .email-content h2 {
+    @apply text-xl;
+  }
+  .email-content h3 {
+    @apply text-lg;
+  }
+  .email-content h4 {
+    @apply text-base;
+  }
+
+  .email-content p {
+    @apply mb-4 leading-relaxed;
+  }
+
+  .email-content a {
+    @apply text-blue-600 hover:text-blue-800 underline;
+  }
+
+  .email-content ul,
+  .email-content ol {
+    @apply mb-4 ml-6;
+  }
+
+  .email-content li {
+    @apply mb-1;
+  }
+
+  .email-content blockquote {
+    @apply border-l-4 border-gray-300 pl-4 italic text-gray-700 my-4;
+  }
+
+  .email-content img {
+    @apply max-w-full h-auto rounded-lg shadow-sm my-4;
+  }
+
+  .email-content table {
+    @apply w-full border-collapse border border-gray-300 my-4;
+  }
+
+  .email-content th,
+  .email-content td {
+    @apply border border-gray-300 px-3 py-2 text-left;
+  }
+
+  .email-content th {
+    @apply bg-gray-50 font-semibold;
+  }
+
+  .email-content code {
+    @apply bg-gray-100 px-2 py-1 rounded text-sm font-mono;
+  }
+
+  .email-content pre {
+    @apply bg-gray-100 p-4 rounded-lg overflow-x-auto my-4;
+  }
+
+  .email-content pre code {
+    @apply bg-transparent p-0;
+  }
+}
+
 .react-flow__node {
   @apply select-none;
 }

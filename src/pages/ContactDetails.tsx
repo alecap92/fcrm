@@ -414,11 +414,34 @@ export function ContactDetails() {
     subject: string;
     content: string;
   }) => {
-    console.log(" click");
-    console.log(form, " form");
+    try {
+      console.log("Enviando correo...", form);
 
-    const response = await emailsService.sendEmail(form);
-    console.log(response, " response");
+      const response = await emailsService.sendEmail(form);
+      console.log("Respuesta del servidor:", response);
+
+      // Mostrar toast de éxito
+      toast.show({
+        title: "Correo enviado exitosamente",
+        description: `El correo fue enviado a ${form.to.join(", ")}`,
+        type: "success",
+        duration: 4000,
+      });
+
+      // Cerrar el modal de email
+      setShowEmailModal(false);
+    } catch (error) {
+      console.error("Error al enviar el correo:", error);
+
+      // Mostrar toast de error
+      toast.show({
+        title: "Error al enviar el correo",
+        description:
+          "Hubo un problema al enviar el correo. Por favor, inténtalo de nuevo.",
+        type: "error",
+        duration: 5000,
+      });
+    }
   };
 
   useEffect(() => {

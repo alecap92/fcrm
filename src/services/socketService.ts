@@ -14,28 +14,19 @@ export const socket = io(SOCKET_URL, {
 });
 
 socket.on("connect", () => {
-  console.log("Conectado al servidor de socket");
-  console.log("[Socket] Conectado al servidor", {
-    socketId: socket.id,
-    timestamp: new Date().toISOString(),
-    auth: socket.auth, // Verificar que el token se está enviando
-  });
+  // Socket conectado
 });
 
-socket.on("disconnect", () => {
-  console.log("Desconectado del servidor de socket");
+socket.on("disconnect", (reason) => {
+  // Socket desconectado
+});
+
+socket.on("connect_error", (error) => {
+  console.error("Error de conexión del socket:", error);
 });
 
 socket.on("error", (error: Error) => {
   console.error("Error en la conexión del socket:", error);
-});
-
-// Agregar listener para todos los eventos
-socket.onAny((eventName, ...args) => {
-  console.log(`[Socket] Evento recibido: ${eventName}`, {
-    args,
-    timestamp: new Date().toISOString(),
-  });
 });
 
 // Función para reconectar con un nuevo token
@@ -52,4 +43,14 @@ export const subscribeToConversation = (conversationId: string) => {
 // Función para desuscribirse de una conversación
 export const unsubscribeFromConversation = (conversationId: string) => {
   socket.emit("unsubscribe_from_conversation", { conversationId });
+};
+
+// Función para verificar el estado del socket
+export const getSocketStatus = () => {
+  return {
+    connected: socket.connected,
+    id: socket.id,
+    auth: socket.auth,
+    url: SOCKET_URL,
+  };
 };
