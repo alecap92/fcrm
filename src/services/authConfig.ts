@@ -2,6 +2,7 @@ import { AxiosError } from "axios";
 import { apiService } from "../config/apiConfig";
 import { useAuthStore } from "../store/authStore"; // Importar Zustand store
 import type { LoginCredentials, AuthResponse, User } from "../types/auth";
+import { signInWithGoogle, signInWithFacebook } from "../config/firebase";
 
 class AuthService {
   private static instance: AuthService;
@@ -355,6 +356,90 @@ class AuthService {
     return new Error(
       error.message || "An error occurred during authentication"
     );
+  }
+
+  // Nuevo método para autenticación con Google
+  public async loginWithGoogle(): Promise<AuthResponse> {
+    try {
+      const result = await signInWithGoogle();
+      const idToken = await result.user.getIdToken();
+
+      const response = await apiService.post<AuthResponse>(
+        "/auth/firebase-login",
+        {
+          idToken,
+          provider: "google",
+        }
+      );
+
+      this.setSession(response);
+      return response;
+    } catch (error) {
+      throw this.handleAuthError(error as AxiosError);
+    }
+  }
+
+  // Nuevo método para autenticación con Facebook
+  public async loginWithFacebook(): Promise<AuthResponse> {
+    try {
+      const result = await signInWithFacebook();
+      const idToken = await result.user.getIdToken();
+
+      const response = await apiService.post<AuthResponse>(
+        "/auth/firebase-login",
+        {
+          idToken,
+          provider: "facebook",
+        }
+      );
+
+      this.setSession(response);
+      return response;
+    } catch (error) {
+      throw this.handleAuthError(error as AxiosError);
+    }
+  }
+
+  // Nuevo método para registro con Google
+  public async registerWithGoogle(): Promise<AuthResponse> {
+    try {
+      const result = await signInWithGoogle();
+      const idToken = await result.user.getIdToken();
+
+      const response = await apiService.post<AuthResponse>(
+        "/auth/firebase-register",
+        {
+          idToken,
+          provider: "google",
+        }
+      );
+
+      this.setSession(response);
+      return response;
+    } catch (error) {
+      throw this.handleAuthError(error as AxiosError);
+    }
+  }
+
+  // Nuevo método para registro con Facebook
+  public async registerWithFacebook(): Promise<AuthResponse> {
+    try {
+      const result = await signInWithFacebook();
+      const idToken = await result.user.getIdToken();
+
+      const response = await apiService.post<AuthResponse>(
+        "/auth/firebase-register",
+        {
+          idToken,
+          provider: "facebook",
+        }
+      );
+
+      this.setSession(response);
+      return response;
+    } catch (error) {
+      throw this.handleAuthError(error as AxiosError);
+    }
   }
 }
 

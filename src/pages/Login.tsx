@@ -138,7 +138,7 @@ const bottomContentMap: Record<FeatureType, BottomContent> = {
 };
 
 export function Login() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle, loginWithFacebook } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -166,14 +166,38 @@ export function Login() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    // TODO: Implementar autenticación con Google Firebase
-    console.log("Google login");
+  const handleGoogleLogin = async () => {
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      await loginWithGoogle();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Error al iniciar sesión con Google"
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleFacebookLogin = () => {
-    // TODO: Implementar autenticación con Facebook Firebase
-    console.log("Facebook login");
+  const handleFacebookLogin = async () => {
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      await loginWithFacebook();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Error al iniciar sesión con Facebook"
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const currentBottomContent = bottomContentMap[selectedFeature];

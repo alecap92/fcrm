@@ -110,7 +110,7 @@ interface RegisterForm {
 }
 
 export function Register() {
-  const { login, register } = useAuth();
+  const { register, registerWithGoogle, registerWithFacebook } = useAuth();
   const [formData, setFormData] = useState<RegisterForm>({
     firstName: "",
     lastName: "",
@@ -184,14 +184,34 @@ export function Register() {
     }
   };
 
-  const handleGoogleRegister = () => {
-    // TODO: Implementar registro con Google Firebase
-    console.log("Google register");
+  const handleGoogleRegister = async () => {
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      await registerWithGoogle();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Error al registrarse con Google"
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleFacebookRegister = () => {
-    // TODO: Implementar registro con Facebook Firebase
-    console.log("Facebook register");
+  const handleFacebookRegister = async () => {
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      await registerWithFacebook();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Error al registrarse con Facebook"
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const currentBottomContent = bottomContentMap[selectedFeature];

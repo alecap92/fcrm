@@ -25,6 +25,10 @@ interface AuthContextType {
     phone: string;
     password: string;
   }) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  loginWithFacebook: () => Promise<void>;
+  registerWithGoogle: () => Promise<void>;
+  registerWithFacebook: () => Promise<void>;
   logout: () => Promise<void>;
   organization: Organization;
 }
@@ -417,6 +421,138 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async () => {
+    try {
+      setIsLoading(true);
+      const response = await authService.loginWithGoogle();
+
+      setUser(response.user);
+      if (response.organization) {
+        setOrganization({
+          ...response.organization,
+          employees: response.organization.employees || [],
+          iconUrl: response.organization.iconUrl || "",
+        });
+      }
+
+      setupTokenRefresh();
+
+      const from = location.state?.from || "/";
+      navigate(from);
+    } catch (error) {
+      toast.show({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Error al iniciar sesión con Google",
+        type: "error",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginWithFacebook = async () => {
+    try {
+      setIsLoading(true);
+      const response = await authService.loginWithFacebook();
+
+      setUser(response.user);
+      if (response.organization) {
+        setOrganization({
+          ...response.organization,
+          employees: response.organization.employees || [],
+          iconUrl: response.organization.iconUrl || "",
+        });
+      }
+
+      setupTokenRefresh();
+
+      const from = location.state?.from || "/";
+      navigate(from);
+    } catch (error) {
+      toast.show({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Error al iniciar sesión con Facebook",
+        type: "error",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const registerWithGoogle = async () => {
+    try {
+      setIsLoading(true);
+      const response = await authService.registerWithGoogle();
+
+      setUser(response.user);
+      if (response.organization) {
+        setOrganization({
+          ...response.organization,
+          employees: response.organization.employees || [],
+          iconUrl: response.organization.iconUrl || "",
+        });
+      }
+
+      setupTokenRefresh();
+
+      const from = location.state?.from || "/";
+      navigate(from);
+    } catch (error) {
+      toast.show({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Error al registrarse con Google",
+        type: "error",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const registerWithFacebook = async () => {
+    try {
+      setIsLoading(true);
+      const response = await authService.registerWithFacebook();
+
+      setUser(response.user);
+      if (response.organization) {
+        setOrganization({
+          ...response.organization,
+          employees: response.organization.employees || [],
+          iconUrl: response.organization.iconUrl || "",
+        });
+      }
+
+      setupTokenRefresh();
+
+      const from = location.state?.from || "/";
+      navigate(from);
+    } catch (error) {
+      toast.show({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Error al registrarse con Facebook",
+        type: "error",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (isLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -435,6 +571,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         organization,
         register,
+        loginWithGoogle,
+        loginWithFacebook,
+        registerWithGoogle,
+        registerWithFacebook,
       }}
     >
       {children}

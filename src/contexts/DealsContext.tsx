@@ -9,6 +9,8 @@ import React, {
 import { dealsService } from "../services/dealsService";
 import { useToast } from "../components/ui/toast";
 import { useLoading } from "./LoadingContext";
+import { useAuth } from "./AuthContext";
+import { useAuthStore } from "../store/authStore";
 import type { Deal } from "../types/deal";
 
 interface DealFormData {
@@ -113,14 +115,32 @@ export function DealsProvider({ children }: DealsProviderProps) {
 
   const toast = useToast();
   const { showLoading, hideLoading } = useLoading();
+  const { isAuthenticated } = useAuth();
+  const storeAuth = useAuthStore((state) => state.isAuthenticated);
+
+  // Verificar si el usuario está autenticado
+  const isUserAuthenticated = isAuthenticated || storeAuth;
 
   // Función para obtener deals
   const fetchDeals = async (reset?: boolean) => {
+    // Solo ejecutar si el usuario está autenticado
+    if (!isUserAuthenticated) {
+      console.log("DealsContext: Usuario no autenticado, saltando fetchDeals");
+      return;
+    }
     await fetchDealsForPipeline(pipelineId);
   };
 
   // Función para obtener un deal individual
   const fetchDealById = async (dealId: string): Promise<Deal | null> => {
+    // Verificar autenticación antes de hacer peticiones
+    if (!isUserAuthenticated) {
+      console.log(
+        "DealsContext: Usuario no autenticado, saltando fetchDealById"
+      );
+      return null;
+    }
+
     try {
       const response = await dealsService.getDealById(dealId);
 
@@ -150,6 +170,14 @@ export function DealsProvider({ children }: DealsProviderProps) {
     contactId: string,
     excludeDealId?: string
   ): Promise<Deal[]> => {
+    // Verificar autenticación antes de hacer peticiones
+    if (!isUserAuthenticated) {
+      console.log(
+        "DealsContext: Usuario no autenticado, saltando fetchRelatedDeals"
+      );
+      return [];
+    }
+
     try {
       // Importar contactsService aquí para evitar dependencias circulares
       const { contactsService } = await import("../services/contactsService");
@@ -172,6 +200,17 @@ export function DealsProvider({ children }: DealsProviderProps) {
 
   // Función para crear deal
   const createDeal = async (dealData: DealFormData) => {
+    // Verificar autenticación antes de hacer peticiones
+    if (!isUserAuthenticated) {
+      console.log("DealsContext: Usuario no autenticado, saltando createDeal");
+      toast.show({
+        title: "Error",
+        description: "Debes estar autenticado para crear un negocio",
+        type: "error",
+      });
+      return;
+    }
+
     try {
       const form = {
         title: dealData.name,
@@ -210,6 +249,17 @@ export function DealsProvider({ children }: DealsProviderProps) {
   // Función para actualizar deal
   const updateDeal = async (dealData: DealFormData) => {
     if (!editingDeal?._id) return;
+
+    // Verificar autenticación antes de hacer peticiones
+    if (!isUserAuthenticated) {
+      console.log("DealsContext: Usuario no autenticado, saltando updateDeal");
+      toast.show({
+        title: "Error",
+        description: "Debes estar autenticado para actualizar un negocio",
+        type: "error",
+      });
+      return;
+    }
 
     try {
       console.log("Productos a actualizar:", dealData.products);
@@ -250,6 +300,19 @@ export function DealsProvider({ children }: DealsProviderProps) {
 
   // Función para actualizar deal por ID
   const updateDealById = async (dealId: string, dealData: any) => {
+    // Verificar autenticación antes de hacer peticiones
+    if (!isUserAuthenticated) {
+      console.log(
+        "DealsContext: Usuario no autenticado, saltando updateDealById"
+      );
+      toast.show({
+        title: "Error",
+        description: "Debes estar autenticado para actualizar un negocio",
+        type: "error",
+      });
+      return;
+    }
+
     try {
       const updatedDeal = await dealsService.updateDeal(dealId, dealData);
 
@@ -283,6 +346,17 @@ export function DealsProvider({ children }: DealsProviderProps) {
 
   // Función para eliminar deal
   const deleteDeal = async (dealId: string) => {
+    // Verificar autenticación antes de hacer peticiones
+    if (!isUserAuthenticated) {
+      console.log("DealsContext: Usuario no autenticado, saltando deleteDeal");
+      toast.show({
+        title: "Error",
+        description: "Debes estar autenticado para eliminar un negocio",
+        type: "error",
+      });
+      return;
+    }
+
     try {
       await dealsService.deleteDeal(dealId);
       setDeals((prev) => prev.filter((deal) => deal._id !== dealId));
@@ -307,6 +381,20 @@ export function DealsProvider({ children }: DealsProviderProps) {
     statusId: string,
     statusName: string
   ) => {
+    // Verificar autenticación antes de hacer peticiones
+    if (!isUserAuthenticated) {
+      console.log(
+        "DealsContext: Usuario no autenticado, saltando updateDealStatus"
+      );
+      toast.show({
+        title: "Error",
+        description:
+          "Debes estar autenticado para actualizar el estado del negocio",
+        type: "error",
+      });
+      return;
+    }
+
     try {
       const updated = await dealsService.updateDealStatus(dealId, {
         status: statusId,
@@ -341,6 +429,15 @@ export function DealsProvider({ children }: DealsProviderProps) {
   // Función para buscar deals
   const searchDeals = useCallback(
     async (query: string) => {
+      // Verificar autenticación antes de hacer peticiones
+      if (!isUserAuthenticated) {
+        console.log(
+          "DealsContext: Usuario no autenticado, saltando searchDeals"
+        );
+        setSearchResults([]);
+        return;
+      }
+
       try {
         const response = await dealsService.searchDeals(query);
         setSearchResults(response.data || []);
@@ -354,7 +451,7 @@ export function DealsProvider({ children }: DealsProviderProps) {
         });
       }
     },
-    [toast]
+    [toast, isUserAuthenticated]
   );
 
   // Handlers para modales
@@ -385,6 +482,14 @@ export function DealsProvider({ children }: DealsProviderProps) {
 
   // Función para cargar más deals (scroll infinito)
   const loadMoreDeals = async () => {
+    // Verificar autenticación antes de hacer peticiones
+    if (!isUserAuthenticated) {
+      console.log(
+        "DealsContext: Usuario no autenticado, saltando loadMoreDeals"
+      );
+      return;
+    }
+
     if (pagination.isLoadingMore || !pagination.hasNextPage) {
       return;
     }
@@ -448,6 +553,19 @@ export function DealsProvider({ children }: DealsProviderProps) {
       return;
     }
 
+    // Verificar autenticación antes de hacer peticiones
+    if (!isUserAuthenticated) {
+      console.log(
+        "DealsContext: Usuario no autenticado, saltando changePipeline"
+      );
+      toast.show({
+        title: "Error",
+        description: "Debes estar autenticado para cambiar el pipeline",
+        type: "error",
+      });
+      return;
+    }
+
     try {
       setPipelineId(newPipelineId);
 
@@ -483,6 +601,14 @@ export function DealsProvider({ children }: DealsProviderProps) {
 
   // Función auxiliar para obtener deals de un pipeline específico
   const fetchDealsForPipeline = async (targetPipelineId: string) => {
+    // Verificar autenticación antes de hacer peticiones
+    if (!isUserAuthenticated) {
+      console.log(
+        "DealsContext: Usuario no autenticado, saltando fetchDealsForPipeline"
+      );
+      return;
+    }
+
     try {
       showLoading("Cargando negocios...");
 
@@ -582,10 +708,36 @@ export function DealsProvider({ children }: DealsProviderProps) {
     }
   };
 
-  // Cargar deals al montar el componente
+  // Cargar deals al montar el componente SOLO si el usuario está autenticado
   useEffect(() => {
-    fetchDeals(true); // Reset = true para cargar desde la primera página
-  }, [pipelineId]);
+    if (isUserAuthenticated) {
+      console.log("DealsContext: Usuario autenticado, cargando deals");
+      fetchDeals(true); // Reset = true para cargar desde la primera página
+    } else {
+      console.log("DealsContext: Usuario no autenticado, no cargando deals");
+    }
+  }, [pipelineId, isUserAuthenticated]);
+
+  // Limpiar estado cuando el usuario se desautentica
+  useEffect(() => {
+    if (!isUserAuthenticated) {
+      console.log("DealsContext: Usuario desautenticado, limpiando estado");
+      setDeals([]);
+      setColumns([]);
+      setActiveDeal(null);
+      setSelectedDeal(null);
+      setEditingDeal(null);
+      setCurrentDeal(null);
+      setRelatedDeals([]);
+      setSearchResults([]);
+      setPagination({
+        currentPage: 1,
+        totalPages: 1,
+        hasNextPage: true,
+        isLoadingMore: false,
+      });
+    }
+  }, [isUserAuthenticated]);
 
   const value: DealsContextType = {
     // Estado
