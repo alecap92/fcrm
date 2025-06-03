@@ -24,6 +24,15 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
+// Verificar configuración en desarrollo
+if (import.meta.env.DEV) {
+  console.log("🔧 Firebase Config:", {
+    authDomain: firebaseConfig.authDomain,
+    projectId: firebaseConfig.projectId,
+    currentOrigin: window.location.origin,
+  });
+}
+
 // Initialize Analytics (opcional, solo en producción)
 let analytics;
 if (typeof window !== "undefined") {
@@ -46,46 +55,49 @@ const facebookProvider = new FacebookAuthProvider();
 facebookProvider.addScope("email");
 
 // Funciones de autenticación con mejor manejo de errores
-// Usar popup en desarrollo, redirect en producción
+// Usar popup preferentemente, con fallback a redirect
 const isDevelopment = import.meta.env.DEV;
 
 export const signInWithGoogle = () => {
-  if (isDevelopment) {
-    // En desarrollo, usar popup pero con mejor manejo de errores
-    return signInWithPopup(auth, googleProvider).catch((error) => {
-      console.error("Error en Google Sign-In:", error);
-      // Si falla el popup, intentar con redirect
-      if (
-        error.code === "auth/popup-blocked" ||
-        error.code === "auth/popup-closed-by-user"
-      ) {
-        console.log("Popup bloqueado, intentando con redirect...");
-        return signInWithRedirect(auth, googleProvider);
-      }
-      throw error;
-    });
-  } else {
-    // En producción, usar redirect
-    return signInWithRedirect(auth, googleProvider);
-  }
+  // Intentar popup primero (más confiable y mejor UX)
+  return signInWithPopup(auth, googleProvider).catch((error) => {
+    console.error("Error en Google Sign-In popup:", error);
+
+    // Si falla el popup por bloqueo o cierre, usar redirect como fallback
+    if (
+      error.code === "auth/popup-blocked" ||
+      error.code === "auth/popup-closed-by-user" ||
+      error.code === "auth/cancelled-popup-request"
+    ) {
+      console.log(
+        "Popup bloqueado o cerrado, usando redirect como fallback..."
+      );
+      return signInWithRedirect(auth, googleProvider);
+    }
+
+    // Para otros errores, re-lanzar
+    throw error;
+  });
 };
 
 export const signInWithFacebook = () => {
-  if (isDevelopment) {
-    return signInWithPopup(auth, facebookProvider).catch((error) => {
-      console.error("Error en Facebook Sign-In:", error);
-      if (
-        error.code === "auth/popup-blocked" ||
-        error.code === "auth/popup-closed-by-user"
-      ) {
-        console.log("Popup bloqueado, intentando con redirect...");
-        return signInWithRedirect(auth, facebookProvider);
-      }
-      throw error;
-    });
-  } else {
-    return signInWithRedirect(auth, facebookProvider);
-  }
+  // Mismo enfoque para Facebook
+  return signInWithPopup(auth, facebookProvider).catch((error) => {
+    console.error("Error en Facebook Sign-In popup:", error);
+
+    if (
+      error.code === "auth/popup-blocked" ||
+      error.code === "auth/popup-closed-by-user" ||
+      error.code === "auth/cancelled-popup-request"
+    ) {
+      console.log(
+        "Popup bloqueado o cerrado, usando redirect como fallback..."
+      );
+      return signInWithRedirect(auth, facebookProvider);
+    }
+
+    throw error;
+  });
 };
 
 // Función para manejar el resultado del redirect

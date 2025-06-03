@@ -12,6 +12,7 @@ import { useSettingsStore } from "../store/settingsStore";
 import { useToast } from "../components/ui/toast";
 import type { User, LoginCredentials } from "../types/auth";
 import { Organization } from "../types/settings";
+import { handleRedirectResult } from "../config/firebase"; // Agregar esta importación
 
 interface AuthContextType {
   user: User | null;
@@ -181,6 +182,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true;
 
     const initializeAuth = async () => {
+      // PRIMERO: Manejar resultado del redirect de Firebase (para producción)
+      try {
+        console.log("🔍 Verificando resultado del redirect de Firebase...");
+        const result = await handleRedirectResult();
+        if (result && result.user) {
+          console.log("🎉 Firebase redirect result found:", result.user.email);
+          console.log("🔄 Procesando autenticación desde redirect...");
+
+          // Obtener el token y procesar como login normal
+          const idToken = await result.user.getIdToken();
+          const response = await authService.loginWithFirebaseToken(
+            idToken,
+            "google"
+          );
+
+          console.log(
+            "✅ Autenticación desde redirect exitosa:",
+            response.user?.email
+          );
+
+          setUser(response.user);
+          if (response.organization) {
+            setOrganization({
+              ...response.organization,
+              employees: response.organization.employees || [],
+              iconUrl: response.organization.iconUrl || "",
+            });
+          }
+
+          setupTokenRefresh();
+
+          // Redirigir después del login exitoso
+          const from = location.state?.from || "/deals";
+          console.log("🔄 Redirigiendo desde redirect a:", from);
+          navigate(from);
+          setIsLoading(false);
+          return;
+        } else {
+          console.log("ℹ️ No hay resultado de redirect de Firebase");
+        }
+      } catch (error) {
+        console.error("❌ Error handling Firebase redirect result:", error);
+        // Continuar con el flujo normal si hay error
+      }
+
       // No validar sesión en rutas públicas
       const publicRoutes = ["/login", "/register"];
       if (publicRoutes.includes(location.pathname)) {
@@ -423,7 +469,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithGoogle = async () => {
     try {
       setIsLoading(true);
+      console.log("🔄 Iniciando login con Google...");
+
       const response = await authService.loginWithGoogle();
+      console.log("✅ Login con Google exitoso:", response.user?.email);
 
       setUser(response.user);
       if (response.organization) {
@@ -436,9 +485,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setupTokenRefresh();
 
-      const from = location.state?.from || "/";
+      const from = location.state?.from || "/deals";
+      console.log("🔄 Redirigiendo a:", from);
       navigate(from);
     } catch (error) {
+      console.error("❌ Error en login con Google:", error);
       toast.show({
         title: "Error",
         description:

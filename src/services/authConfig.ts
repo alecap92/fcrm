@@ -441,6 +441,27 @@ class AuthService {
       throw this.handleAuthError(error as AxiosError);
     }
   }
+
+  // Nuevo método para manejar login con token de Firebase directamente (para redirects)
+  public async loginWithFirebaseToken(
+    idToken: string,
+    provider: string
+  ): Promise<AuthResponse> {
+    try {
+      const response = await apiService.post<AuthResponse>(
+        "/auth/firebase-login",
+        {
+          idToken,
+          provider,
+        }
+      );
+
+      this.setSession(response);
+      return response;
+    } catch (error) {
+      throw this.handleAuthError(error as AxiosError);
+    }
+  }
 }
 
 export const authService = AuthService.getInstance();
