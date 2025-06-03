@@ -414,10 +414,12 @@ function TopBar() {
                     <div className="py-1">
                       <div className="px-4 py-2 border-b">
                         <p className="text-sm font-medium text-gray-900">
-                          {organization?.companyName}
+                          {user?.firstName + " " + user?.lastName ||
+                            user?.email ||
+                            "Usuario"}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {organization?.email}
+                          {organization?.companyName}
                         </p>
                       </div>
                       {userMenuItems.map((item) => (

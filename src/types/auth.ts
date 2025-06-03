@@ -2,7 +2,8 @@ export interface User {
   _id?: string;
   id: string;
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   avatar?: string;
   role: "admin" | "user";
   createdAt: string;
