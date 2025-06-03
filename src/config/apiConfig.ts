@@ -23,9 +23,9 @@ class ApiService {
   private constructor() {
     this.api = axios.create({
       baseURL:
-        import.meta.env.VITE_API_URL ||
         import.meta.env.VITE_API_BASE_URL ||
-        "https://fusioncrmapiv3-production.up.railway.app/api",
+        import.meta.env.VITE_API_URL ||
+        "https://fusioncrmapiv3-production.up.railway.app/api/v1",
       timeout: Number(import.meta.env.VITE_API_TIMEOUT) || 10000,
       headers: {
         "Content-Type": "application/json",
