@@ -348,8 +348,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setupTokenRefresh();
 
-      const from = location.state?.from || "/";
-      navigate(from);
+      navigate("/deals");
     } catch (error) {
       toast.show({
         title: "Error",
