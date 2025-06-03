@@ -22,11 +22,20 @@ class ApiService {
 
   private constructor() {
     this.api = axios.create({
-      baseURL: import.meta.env.VITE_API_BASE_URL,
+      baseURL:
+        import.meta.env.VITE_API_URL ||
+        import.meta.env.VITE_API_BASE_URL ||
+        "https://fusioncrmapiv3-production.up.railway.app/api",
       timeout: Number(import.meta.env.VITE_API_TIMEOUT) || 10000,
       headers: {
         "Content-Type": "application/json",
       },
+    });
+
+    // Log para debugging
+    console.log("🔧 API Config:", {
+      baseURL: this.api.defaults.baseURL,
+      env: import.meta.env.MODE,
     });
 
     this.setupInterceptors();
