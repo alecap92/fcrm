@@ -23,6 +23,7 @@ Esta es la documentación completa del frontend de FUSIONCOL. Aquí encontrarás
 - [**Drag & Drop en Workflows**](./features/drag-drop-improvements.md) - Mejoras en la funcionalidad de arrastrar y soltar
 - [**Eliminación de Elementos**](./features/delete-functionality.md) - Sistema de eliminación de nodos y conexiones
 - [**Gestión de Estado**](./features/state-management.md) - Arquitectura y patrones de estado
+- [**Módulo de Emails**](./features/email-module.md) - Configuración de cuentas y gestión de correos
 
 ### 📖 **Guías de Desarrollo**
 
