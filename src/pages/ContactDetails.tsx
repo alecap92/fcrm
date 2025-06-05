@@ -42,6 +42,7 @@ import { useLoading } from "../contexts/LoadingContext";
 import AiComments from "../components/contacts/AiComments";
 import { ComposeEmail } from "../components/email/ComposeEmail";
 import emailsService from "../services/emailService";
+import { useChatModule } from "../components/chat/floating";
 
 interface Document {
   _id?: string;
@@ -138,6 +139,9 @@ export function ContactDetails() {
   const [isLoadingAiComments, setIsLoadingAiComments] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
 
+  // Hook para integración con chat contextual
+  const chatModule = useChatModule("contacts");
+
   const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && newTag.trim()) {
       setTags([...tags, newTag.trim()]);
@@ -181,22 +185,22 @@ export function ContactDetails() {
     }
   };
 
-  const getAiComments = async () => {
-    try {
-      setIsLoadingAiComments(true);
-      const response: any = await contactsService.getAiComments(id as any);
-      setAiComments(response.data.analysis);
-    } catch (error) {
-      console.error("Error obteniendo comentarios de IA:", error);
-      toast.show({
-        title: "Error",
-        description: "No se pudieron cargar los comentarios de IA",
-        type: "error",
-      });
-    } finally {
-      setIsLoadingAiComments(false);
-    }
-  };
+  // const getAiComments = async () => {
+  //   try {
+  //     setIsLoadingAiComments(true);
+  //     const response: any = await contactsService.getAiComments(id as any);
+  //     setAiComments(response.data.analysis);
+  //   } catch (error) {
+  //     console.error("Error obteniendo comentarios de IA:", error);
+  //     toast.show({
+  //       title: "Error",
+  //       description: "No se pudieron cargar los comentarios de IA",
+  //       type: "error",
+  //     });
+  //   } finally {
+  //     setIsLoadingAiComments(false);
+  //   }
+  // };
 
   const handleGetQuotations = async () => {
     try {
@@ -448,11 +452,51 @@ export function ContactDetails() {
     getContact();
   }, [id]);
 
+  // useEffect(() => {
+  //   if (contactDetails._id) {
+  //     // getAiComments();
+  //   }
+  // }, [contactDetails._id]);
+
+  // Actualizar contexto del chat cuando cambien los datos del contacto
   useEffect(() => {
-    if (contactDetails._id) {
-      getAiComments();
+    if (contactDetails._id && deals.length >= 0) {
+      const contactDataForChat = {
+        ...contactDetails,
+        deals,
+        leadScore,
+        dailyMetrics,
+      };
+
+      chatModule.updateChatContext(contactDataForChat, {
+        currentPage: "contact-details",
+        totalCount: deals.length,
+      });
+
+      // Agregar sugerencias específicas basadas en los datos
+      if (deals.length > 0) {
+        const totalValue = deals.reduce(
+          (sum, deal) => sum + (deal.amount || 0),
+          0
+        );
+        const avgValue = totalValue / deals.length;
+
+        if (avgValue > 10000) {
+          chatModule.sendSuggestion(
+            "Este es un cliente de alto valor, ¿cómo mantener la relación?"
+          );
+        }
+
+        chatModule.sendSuggestion(
+          "¿Cuál es el valor promedio de compra de este contacto?"
+        );
+      } else {
+        chatModule.sendSuggestion(
+          "¿Cómo convertir este contacto en su primer deal?"
+        );
+      }
     }
-  }, [contactDetails._id]);
+  }, [contactDetails, deals, leadScore, dailyMetrics]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -734,25 +778,6 @@ export function ContactDetails() {
 
           {/* Notes Section */}
           <div className="lg:col-span-1">
-            <div
-              className={`bg-white rounded-lg shadow p-6 my-2 relative ${
-                isLoadingAiComments ? "gradient-border" : ""
-              }`}
-            >
-              {isLoadingAiComments && (
-                <div className="absolute inset-0 gradient-border-animation rounded-lg pointer-events-none"></div>
-              )}
-              <h2 className="text-lg font-semibold mb-4">Comentarios de IA</h2>
-              {isLoadingAiComments ? (
-                <p className="text-gray-500">Cargando comentarios de IA...</p>
-              ) : aiComments === "" ? (
-                <p className="text-gray-500">
-                  Aquí puedes ver los comentarios de la IA sobre el contacto.
-                </p>
-              ) : (
-                <AiComments comments={aiComments} />
-              )}
-            </div>
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold mb-4">Actividades</h2>
               <div className="space-y-4">

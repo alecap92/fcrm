@@ -4,10 +4,9 @@ const AdvanceSearch = async (searchParams: string): Promise<any> => {
   try {
     const response = await apiService.post(
       "/advancedSearch?search=573233625527",
-      {
-        searchParams,
-      }
+      { searchParams }
     );
+
     return response;
   } catch (error) {
     console.error("Error in AdvanceSearch:", error);

@@ -6,7 +6,7 @@ import React, {
   useRef,
 } from "react";
 import { Plus, Settings, AlertCircle, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ChatModal from "../components/chat/modal/ChatModal";
 import { Button } from "../components/ui/button";
 import ManageColumnsModal from "../components/chat/modal/ManageColumnsModal";
@@ -201,6 +201,7 @@ const Conversations: React.FC = () => {
   const toastRef = useRef<any>(null);
   const loadingRef = useRef<any>({ showLoading: null, hideLoading: null });
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { organization } = useAuth();
 
   // Usar el contexto expandido
@@ -272,6 +273,66 @@ const Conversations: React.FC = () => {
       fetchPipeline();
     }
   }, [fetchPipeline, hasWhatsAppConfig]);
+
+  // Efecto para abrir conversación desde parámetros URL
+  useEffect(() => {
+    const openPhone = searchParams.get("openPhone");
+    if (openPhone && pipeline && !selectedChat) {
+      const openConversationFromPhone = async () => {
+        try {
+          const conversationResponse =
+            await conversationService.findConversationByPhone(openPhone);
+
+          if (
+            conversationResponse?.success &&
+            conversationResponse?.conversation
+          ) {
+            const realConversation = {
+              id: conversationResponse.conversation._id,
+              title: conversationResponse.conversation.title,
+              mobile: openPhone,
+              ...conversationResponse.conversation,
+            };
+
+            setSelectedChat(realConversation);
+            await markConversationAsRead(
+              realConversation.id,
+              realConversation.mobile
+            );
+
+            // Limpiar el parámetro de la URL
+            setSearchParams({});
+          } else {
+            toastRef.current?.show({
+              title: "Conversación no encontrada",
+              description:
+                "No se pudo encontrar una conversación activa para este número",
+              type: "warning",
+            });
+            // Limpiar el parámetro de la URL
+            setSearchParams({});
+          }
+        } catch (error) {
+          console.error("Error al abrir conversación:", error);
+          toastRef.current?.show({
+            title: "Error al abrir conversación",
+            description: "No se pudo cargar la conversación",
+            type: "error",
+          });
+          // Limpiar el parámetro de la URL
+          setSearchParams({});
+        }
+      };
+
+      openConversationFromPhone();
+    }
+  }, [
+    searchParams,
+    pipeline,
+    selectedChat,
+    markConversationAsRead,
+    setSearchParams,
+  ]);
 
   // Handlers para drag and drop (estables)
   const handleDragStart = useCallback((e: React.DragEvent, chatId: string) => {

@@ -9,7 +9,7 @@ import {
   closestCenter,
 } from "@dnd-kit/core";
 import { Plus, Search, Settings } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { PipelineSelect } from "../components/deals/PipelineSelect";
@@ -20,6 +20,7 @@ import { DealCard } from "../components/deals/DealCard";
 import { SearchDealsModal } from "../components/deals/SearchDealsModal";
 import { useDeals } from "../contexts/DealsContext";
 import { useAuth } from "../contexts/AuthContext";
+import { useChatModule } from "../components/chat/floating";
 
 // Importamos los tipos que asumo tienes en tu proyecto
 
@@ -27,6 +28,9 @@ export function Deals() {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const navigate = useNavigate();
   const { organization } = useAuth();
+
+  // Hook para integración con chat contextual
+  const chatModule = useChatModule("deals");
 
   const {
     // Estado del contexto
@@ -64,6 +68,30 @@ export function Deals() {
 
   // Verificar si hay configuraciones básicas de organización
   const hasBasicConfig = organization?.companyName && organization?.settings;
+
+  // Actualizar contexto del chat cuando cambien los deals
+  useEffect(() => {
+    if (deals.length > 0) {
+      chatModule.updateChatContext(deals, {
+        currentPage: "deals",
+        filters: { pipelineId },
+        totalCount: deals.length,
+      });
+
+      // Agregar sugerencias específicas basadas en el estado actual
+      if (
+        deals.some((deal) =>
+          deal.status?.name?.toLowerCase().includes("pending")
+        )
+      ) {
+        chatModule.sendSuggestion("¿Qué deals necesitan seguimiento urgente?");
+      }
+
+      if (deals.length > 10) {
+        chatModule.sendSuggestion("Muéstrame estadísticas de conversión");
+      }
+    }
+  }, [deals, columns, pipelineId, pagination.hasNextPage]);
 
   // Si no hay configuraciones básicas, mostrar mensaje de configuración
   if (!hasBasicConfig) {
