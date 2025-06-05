@@ -21,6 +21,7 @@ import { useLoading } from "../contexts/LoadingContext";
 import { useChatContext } from "../contexts/ChatContext";
 import { useAuth } from "../contexts/AuthContext";
 import integrationService from "../services/integrationService";
+import { conversationService } from "../services/conversationService";
 
 // Componente separado para cada columna que maneja su propio scroll infinito
 const ConversationColumn: React.FC<{
@@ -309,6 +310,59 @@ const Conversations: React.FC = () => {
     async (chat: any) => {
       setSelectedChat(chat);
       await markConversationAsRead(chat.id, chat.mobile);
+    },
+    [markConversationAsRead]
+  );
+
+  // Handler específico para resultados de búsqueda
+  const handleSearchResultClick = useCallback(
+    async (searchResult: any) => {
+      const { showLoading, hideLoading } = loadingRef.current;
+      const toast = toastRef.current;
+
+      try {
+        showLoading("buscando conversación...");
+
+        // Intentar encontrar la conversación real por número de teléfono
+        const conversationResponse =
+          await conversationService.findConversationByPhone(searchResult.from);
+
+        if (
+          conversationResponse?.success &&
+          conversationResponse?.conversation
+        ) {
+          // Si encontramos la conversación real, usarla
+          const realConversation = {
+            id: conversationResponse.conversation._id,
+            title: conversationResponse.conversation.title,
+            mobile: searchResult.from,
+            ...conversationResponse.conversation,
+          };
+
+          setSelectedChat(realConversation);
+          await markConversationAsRead(
+            realConversation.id,
+            realConversation.mobile
+          );
+        } else {
+          // Si no encontramos conversación, mostrar mensaje informativo
+          toast?.show({
+            title: "Conversación no encontrada",
+            description:
+              "No se pudo encontrar una conversación activa para este número",
+            type: "warning",
+          });
+        }
+      } catch (error) {
+        console.error("Error al buscar conversación:", error);
+        toast?.show({
+          title: "Error al buscar conversación",
+          description: "No se pudo cargar la conversación",
+          type: "error",
+        });
+      } finally {
+        hideLoading();
+      }
     },
     [markConversationAsRead]
   );
@@ -658,7 +712,7 @@ const Conversations: React.FC = () => {
             onClose={modalHandlers.closeSearch}
             onSubmit={searchConversations}
             searchResults={searchResults}
-            handleChatClick={handleChatClick}
+            handleChatClick={handleSearchResultClick}
           />
         )}
 

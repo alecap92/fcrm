@@ -153,6 +153,18 @@ const searchConversations = async (searchTerm: string) => {
   }
 };
 
+const findConversationByPhone = async (phoneNumber: string) => {
+  try {
+    const response: any = await apiService.get(
+      `/conversation/find-by-phone?phone=${phoneNumber}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error finding conversation by phone:", error);
+    return null;
+  }
+};
+
 const getDefaultPipeline = async () => {
   try {
     const response: any = await apiService.get(
@@ -181,4 +193,5 @@ export const conversationService = {
   createConversation,
   deleteConversation,
   searchConversations,
+  findConversationByPhone,
 };

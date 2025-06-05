@@ -642,7 +642,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
     // Establecer nuevo timeout para evitar múltiples llamadas
     refreshTimeoutRef.current = setTimeout(() => {
-      console.log("[ChatContext] Refrescando conversaciones...");
       fetchConversations();
     }, 500); // Debounce de 500ms
   }, [fetchConversations]);
@@ -651,20 +650,12 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const loadMessages = useCallback(
     async (pageToLoad = 1, initial = false, chatId?: string) => {
       const targetChatId = chatId || currentChatId;
-      console.log("loadMessages llamado con:", {
-        pageToLoad,
-        initial,
-        targetChatId,
-        currentChatId,
-      });
 
       if (!targetChatId) {
-        console.warn("No hay targetChatId, no se pueden cargar mensajes");
         setIsLoading(false);
         return;
       }
 
-      console.log("Estableciendo isLoading = true");
       setIsLoading(true);
       setError(null);
       try {
@@ -676,10 +667,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           }
         );
 
-        console.log("Response from backend:", response);
-
         if (response && response.data) {
-          console.log("Datos de conversación cargados exitosamente");
           // Cargar detalles de la conversación solo en la primera carga
           if (pageToLoad === 1) {
             setConversationDetail(response.data);
@@ -722,15 +710,12 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             setIsInitialLoad(false);
           }
         } else {
-          console.error("Respuesta inválida del backend:", response);
           setError("No se pudo cargar la conversación");
         }
       } catch (err) {
-        console.error("Error al cargar mensajes:", err);
         setError("Error al cargar la conversación");
         setHasMore(false);
       } finally {
-        console.log("loadMessages completado, estableciendo isLoading = false");
         setIsLoading(false);
       }
     },
@@ -979,10 +964,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   // Función para inicializar el chat
   const initializeChat = useCallback(
     (chatId: string, isOpen: boolean) => {
-      console.log("initializeChat llamado con:", { chatId, isOpen });
       if (isOpen && chatId) {
-        console.log("Inicializando chat:", chatId);
-
         // Restaurar el título cuando el usuario abre una conversación
         restoreTitle();
 
@@ -992,13 +974,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         setIsInitialLoad(true);
         setError(null);
         setIsLoading(true); // Establecer loading antes de cargar mensajes
-        console.log("Llamando loadMessages desde initializeChat");
         loadMessages(1, true, chatId);
-      } else {
-        console.log("No se inicializa chat - condiciones no cumplidas:", {
-          isOpen,
-          chatId,
-        });
       }
     },
     [loadMessages, restoreTitle]
@@ -1085,13 +1061,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     const organizationId = user.organizationId;
     const orgRoom = `organization_${organizationId}`;
 
-    console.log("[Socket] Suscribiéndose a salas de conversación:", {
-      conversationId: currentChatId,
-      organizationId,
-      orgRoom,
-      socketId: socket.id,
-    });
-
     // Suscribirse a la conversación
     subscribeToConversation(currentChatId);
 
@@ -1100,14 +1069,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
     // Función para manejar nuevos mensajes
     const handleNewMessage = (newMessage: any) => {
-      console.log("[Socket] Nuevo mensaje recibido:", {
-        messageId: newMessage._id,
-        conversationId: newMessage.conversation,
-        currentChatId: currentChatId,
-        messageType: newMessage.type,
-        direction: newMessage.direction,
-      });
-
       // Si el mensaje es entrante y no pertenece a la conversación actual, mostrar notificación en el título
       if (
         newMessage.direction === "incoming" &&
@@ -1121,18 +1082,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           newMessage.from ||
           "Contacto";
 
-        console.log(
-          "[Socket] Mostrando notificación en título para:",
-          senderName
-        );
         showNewMessageNotification(senderName);
       }
 
       // Verificar si el mensaje pertenece a esta conversación
       if (newMessage.conversation === currentChatId) {
-        console.log(
-          "[Socket] Mensaje pertenece a esta conversación, actualizando UI"
-        );
         setMessages((prevMessages) => {
           // Verificar si el mensaje ya existe para evitar duplicados
           const messageExists = prevMessages.some(
@@ -1148,13 +1102,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
         // Si el mensaje es entrante, marcar como leído
         if (newMessage.direction === "incoming") {
-          console.log("[Socket] Mensaje entrante, marcando como leído");
           chatService.markAsRead(newMessage.from);
         }
-      } else {
-        console.log(
-          "[Socket] Mensaje no pertenece a esta conversación, ignorando"
-        );
       }
 
       // Siempre refrescar la lista de conversaciones para mostrar nuevos mensajes
@@ -1174,10 +1123,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
     // Limpiar suscripciones
     return () => {
-      console.log(`[Socket] Limpiando suscripciones de conversación`, {
-        conversationId: currentChatId,
-        orgRoom,
-      });
       socket.off("new_message", handleNewMessage);
       socket.off("whatsapp_message", handleNewMessage);
       socket.off("newNotification", handleNewNotification);

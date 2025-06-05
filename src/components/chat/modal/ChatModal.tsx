@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, TestTube } from "lucide-react";
+import { X } from "lucide-react";
 import ChatSidebar from "../ChatSidebar";
 import { MessageInput } from "../input/MessageInput";
 import { LibraryUpload } from "./LibraryUpload";
@@ -7,7 +7,6 @@ import { useChatContext } from "../../../contexts/ChatContext";
 import { MessageList } from "../messages";
 import { MessageTemplates, QuickResponses } from "../templates";
 import templatesService from "../../../services/templatesService";
-import { usePageTitle } from "../../../hooks/usePageTitle";
 
 interface ChatModalProps {
   isOpen: boolean;
@@ -19,9 +18,6 @@ interface ChatModalProps {
 }
 
 const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, chat }) => {
-  // Hook para pruebas de notificación de título y sonido
-  const { showNewMessageNotification, testSound } = usePageTitle();
-
   // Usar el contexto del chat
   const {
     message,
@@ -53,63 +49,9 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, chat }) => {
   const [showMessageTemplates, setShowMessageTemplates] = useState(false);
   const [showLibraryUpload, setShowLibraryUpload] = useState(false);
 
-  // Función de prueba para simular mensaje nuevo
-  const handleTestNotification = () => {
-    const testSenders = [
-      "Juan Pérez",
-      "María García",
-      "Carlos López",
-      "Ana Rodríguez",
-    ];
-    const randomSender =
-      testSenders[Math.floor(Math.random() * testSenders.length)];
-    showNewMessageNotification(randomSender);
-  };
-
-  // Función de prueba para simular evento newNotification de WhatsApp
-  const handleTestWhatsAppNotification = () => {
-    const testContacts = [
-      "573132925094",
-      "573001234567",
-      "573109876543",
-      "573156789012",
-    ];
-    const testMessages = [
-      "Hola, ¿cómo estás?",
-      "Necesito información sobre sus servicios",
-      "¿Están disponibles?",
-      "Gracias por la atención",
-    ];
-
-    const randomContact =
-      testContacts[Math.floor(Math.random() * testContacts.length)];
-    const randomMessage =
-      testMessages[Math.floor(Math.random() * testMessages.length)];
-
-    // Simular el evento newNotification tal como llega desde el backend
-    const mockNotification = {
-      contact: randomContact,
-      message: {
-        message: randomMessage,
-        timestamp: new Date().toISOString(),
-      },
-      title: `Nuevo mensaje de WhatsApp: ${randomMessage}`,
-      type: "whatsapp",
-    };
-
-    console.log("[Test] Simulando evento newNotification:", mockNotification);
-
-    // Emitir el evento manualmente para pruebas
-    import("../../../services/socketService").then(({ socket }) => {
-      socket.emit("test_newNotification", mockNotification);
-    });
-  };
-
   // Inicializar el chat cuando se abre el modal
   useEffect(() => {
-    console.log("ChatModal useEffect - isOpen:", isOpen, "chat.id:", chat.id);
     if (isOpen && chat.id) {
-      console.log("Llamando initializeChat desde ChatModal");
       initializeChat(chat.id, isOpen);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,24 +59,11 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, chat }) => {
 
   // Limpiar el chat cuando se cierra el modal
   useEffect(() => {
-    console.log("ChatModal cleanup useEffect - isOpen:", isOpen);
     if (!isOpen) {
-      console.log("Llamando cleanupChat desde ChatModal");
       cleanupChat();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
-
-  // Debug de estados
-  console.log("ChatModal render - Estados:", {
-    isOpen,
-    isLoading,
-    isInitialLoad,
-    error,
-    messagesLength: messages.length,
-    conversationDetail: !!conversationDetail,
-    chatId: chat.id,
-  });
 
   if (!isOpen) return null;
 
@@ -245,36 +174,6 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, chat }) => {
               )}
             </div>
             <div className="flex items-center gap-3">
-              {/* Botón de prueba para notificaciones */}
-              <button
-                onClick={handleTestNotification}
-                className="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm"
-                title="Probar notificación de mensaje nuevo"
-              >
-                <TestTube className="w-4 h-4" />
-                Probar Notificación
-              </button>
-
-              {/* Botón de prueba para notificaciones de WhatsApp */}
-              <button
-                onClick={handleTestWhatsAppNotification}
-                className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm"
-                title="Probar notificación de WhatsApp"
-              >
-                <TestTube className="w-4 h-4" />
-                WhatsApp Test
-              </button>
-
-              {/* Botón de prueba para sonido de notificación */}
-              <button
-                onClick={testSound}
-                className="flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm"
-                title="Probar sonido de notificación"
-              >
-                <TestTube className="w-4 h-4" />
-                🔊 Sonido
-              </button>
-
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-600"

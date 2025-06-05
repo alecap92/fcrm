@@ -25,7 +25,13 @@ const SearchModal = ({
     onSubmit(debouncedSearchTerm);
   };
 
-  console.log(searchResults);
+  // Función para manejar el click en un resultado de búsqueda
+  const handleResultClick = (result: any) => {
+    // Primero cerrar el modal de búsqueda
+    onClose();
+    // Luego abrir el chat
+    handleChatClick(result);
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Buscar">
@@ -44,7 +50,7 @@ const SearchModal = ({
             <div
               key={result._id}
               className="bg-gray-100 p-4 rounded-lg my-2 hover:border hover:border-gray-300 cursor-pointer"
-              onClick={() => handleChatClick(result)}
+              onClick={() => handleResultClick(result)}
             >
               <h3 className="text-lg font-semibold">
                 {result?.possibleName}{" "}
