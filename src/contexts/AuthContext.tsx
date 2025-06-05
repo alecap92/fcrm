@@ -13,6 +13,7 @@ import { useToast } from "../components/ui/toast";
 import type { User, LoginCredentials } from "../types/auth";
 import { Organization } from "../types/settings";
 import { handleRedirectResult } from "../config/firebase"; // Agregar esta importación
+import { organizationService } from "../services/organizationService"; // Importar el servicio de organización
 
 interface AuthContextType {
   user: User | null;
@@ -32,6 +33,7 @@ interface AuthContextType {
   registerWithFacebook: () => Promise<void>;
   logout: () => Promise<void>;
   organization: Organization;
+  refreshOrganization: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -603,6 +605,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshOrganization = async () => {
+    try {
+      const response = await organizationService.getOrganization();
+      const updatedOrganization = response.data as Organization;
+
+      setOrganization({
+        ...updatedOrganization,
+        employees: updatedOrganization.employees || [],
+        iconUrl: updatedOrganization.iconUrl || "",
+      });
+
+      // También actualizar en localStorage
+      localStorage.setItem(
+        "auth_organization",
+        JSON.stringify(updatedOrganization)
+      );
+    } catch (error) {
+      console.error("Error refreshing organization:", error);
+      toast.show({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Error al actualizar la organización",
+        type: "error",
+      });
+    }
+  };
+
   if (isLoading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -625,6 +656,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loginWithFacebook,
         registerWithGoogle,
         registerWithFacebook,
+        refreshOrganization,
       }}
     >
       {children}

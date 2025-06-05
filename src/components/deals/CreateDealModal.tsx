@@ -22,6 +22,7 @@ import { normalizeContact } from "../../lib/parseContacts";
 import type { Contact } from "../../types/contact";
 import { ProductModal } from "./ProductModal";
 import { useDeals } from "../../contexts/DealsContext";
+import productsService from "../../services/productsService";
 
 interface CreateDealModalProps {
   isOpen: boolean;
@@ -83,6 +84,72 @@ export function CreateDealModal({
     Array<{ fieldId: string; value: string }>
   >([]);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [variantNames, setVariantNames] = useState<Record<string, string>>({});
+
+  // Función helper para obtener el nombre de una variante
+  const getVariantName = async (
+    productId: string,
+    variantId: string
+  ): Promise<string> => {
+    try {
+      // Verificar si ya tenemos el nombre en cache
+      if (variantNames[variantId]) {
+        return variantNames[variantId];
+      }
+
+      const response = await productsService.getProductVariants(productId);
+      const variant = response.data.find((v: any) => v._id === variantId);
+
+      if (
+        variant &&
+        variant.attributeValues &&
+        variant.attributeValues.length > 0
+      ) {
+        const variantName = variant.attributeValues[0].value;
+
+        // Guardar en cache para evitar llamadas futuras
+        setVariantNames((prev) => ({
+          ...prev,
+          [variantId]: variantName,
+        }));
+
+        return variantName;
+      }
+
+      return variantId; // Fallback al ID si no se encuentra el nombre
+    } catch (error) {
+      console.error("Error obteniendo nombre de variante:", error);
+      return variantId; // Fallback al ID en caso de error
+    }
+  };
+
+  // Cargar nombres de variantes cuando se cargan productos
+  useEffect(() => {
+    const loadVariantNames = async () => {
+      const variantPromises = products
+        .filter((product) => product.variantId)
+        .map(async (product) => {
+          const variantName = await getVariantName(
+            product.productId,
+            product.variantId!
+          );
+          return { variantId: product.variantId!, variantName };
+        });
+
+      const variantResults = await Promise.all(variantPromises);
+      const newVariantNames: Record<string, string> = {};
+
+      variantResults.forEach(({ variantId, variantName }) => {
+        newVariantNames[variantId] = variantName;
+      });
+
+      setVariantNames((prev) => ({ ...prev, ...newVariantNames }));
+    };
+
+    if (products.length > 0) {
+      loadVariantNames();
+    }
+  }, [products]);
 
   useEffect(() => {
     const loadCustomFields = async () => {
@@ -334,7 +401,12 @@ export function CreateDealModal({
     }));
   };
 
-  const handleAddProduct = (product: any) => {
+  const handleAddProduct = async (product: any) => {
+    // Si el producto tiene variante, obtener su nombre inmediatamente
+    if (product.variantId) {
+      await getVariantName(product.productId, product.variantId);
+    }
+
     setProducts((prev) => [...prev, product]);
     setIsProductModalOpen(false);
   };
@@ -633,9 +705,11 @@ export function CreateDealModal({
                     </p>
                     {product.variantId && (
                       <p className="text-sm text-gray-500">
-                        Variante: {product.variantId}
+                        Variante:{" "}
+                        {variantNames[product.variantId] || product.variantId}
                       </p>
                     )}
+                    {console.log(product) as any}
                   </div>
                   <div className="flex justify-end">
                     <button

@@ -1,6 +1,16 @@
 import { apiService } from "../config/apiConfig";
 import axios from "axios";
 
+const getOrganization = async () => {
+  try {
+    const response = await apiService.get(`/organizations/current`);
+    return response;
+  } catch (error) {
+    console.error("Error getting organization:", error);
+    throw error;
+  }
+};
+
 const updateOrganization = async (organizationData: any) => {
   try {
     const response = await apiService.put(`/organizations`, organizationData);
@@ -59,6 +69,7 @@ const uploadIcon = async (file: File) => {
 };
 
 export const organizationService = {
+  getOrganization,
   updateOrganization,
   uploadLogo,
   uploadIcon,

@@ -4,7 +4,6 @@ import {
   Search,
   Filter,
   Download,
-  MoreVertical,
   Calendar,
   Mail,
   CheckCircle2,
@@ -192,7 +191,7 @@ export function Quotes() {
       for (const quoteId of selectedQuotes) {
         await quotesService.deleteQuote(quoteId);
       }
-      setQuotes((prev) => 
+      setQuotes((prev) =>
         prev.filter((quote) => !selectedQuotes.includes(quote._id as string))
       );
       setSelectedQuotes([]);
@@ -217,10 +216,11 @@ export function Quotes() {
         return;
       }
 
-      if(!quoteNumber) {
+      if (!quoteNumber) {
         toast.show({
           title: "Error",
-          description: "No se puede enviar la cotización sin un número de cotización",
+          description:
+            "No se puede enviar la cotización sin un número de cotización",
           type: "error",
         });
         return;
@@ -228,14 +228,14 @@ export function Quotes() {
 
       await quotesService.sendQuote({
         quotationNumber: quoteNumber,
-        to: email, 
+        to: email,
         subject: "Cotización de manillas",
         templateId: "2",
         from: "ventas@manillasdecontrol.com",
       });
     } catch (error) {
       console.error("Error sending quote:", error);
-    } finally { 
+    } finally {
       hideLoading();
     }
   };
@@ -307,8 +307,8 @@ export function Quotes() {
               <span className="text-sm text-gray-700">
                 {selectedQuotes.length} cotización(es) seleccionada(s)
               </span>
-              <Button 
-                variant="destructive" 
+              <Button
+                variant="destructive"
                 size="sm"
                 onClick={confirmBulkDelete}
               >
@@ -321,7 +321,9 @@ export function Quotes() {
             {loading ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="w-12 h-12 text-action animate-spin mb-4" />
-                <p className="text-gray-500 text-lg">Cargando cotizaciones...</p>
+                <p className="text-gray-500 text-lg">
+                  Cargando cotizaciones...
+                </p>
               </div>
             ) : (
               <table className="min-w-full divide-y divide-gray-200">
@@ -331,7 +333,10 @@ export function Quotes() {
                       <input
                         type="checkbox"
                         className="rounded border-gray-300 text-action focus:ring-action"
-                        checked={selectedQuotes.length === quotes.length && quotes.length > 0}
+                        checked={
+                          selectedQuotes.length === quotes.length &&
+                          quotes.length > 0
+                        }
                         onChange={handleSelectAll}
                         disabled={quotes.length === 0}
                       />
@@ -359,8 +364,12 @@ export function Quotes() {
                     <tr>
                       <td colSpan={7} className="px-6 py-12 text-center">
                         <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                        <p className="text-gray-500 text-lg mb-2">No se encontraron cotizaciones</p>
-                        <p className="text-gray-400 text-sm mb-4">Crea una nueva cotización para comenzar</p>
+                        <p className="text-gray-500 text-lg mb-2">
+                          No se encontraron cotizaciones
+                        </p>
+                        <p className="text-gray-400 text-sm mb-4">
+                          Crea una nueva cotización para comenzar
+                        </p>
                         <Button onClick={() => navigate("/quotes/new")}>
                           <Plus className="w-4 h-4 mr-2" />
                           Nueva Cotización
@@ -374,8 +383,12 @@ export function Quotes() {
                           <input
                             type="checkbox"
                             className="rounded border-gray-300 text-action focus:ring-action"
-                            checked={selectedQuotes.includes(quote._id as string)}
-                            onChange={() => handleSelectQuote(quote._id as string)}
+                            checked={selectedQuotes.includes(
+                              quote._id as string
+                            )}
+                            onChange={() =>
+                              handleSelectQuote(quote._id as string)
+                            }
                           />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -394,16 +407,16 @@ export function Quotes() {
                             </div>
                             <div className="flex items-center text-sm text-gray-500">
                               <Mail className="w-4 h-4 mr-1" />
-                              {quote?.contactId?.email || 
-                               quote?.contact?.email || 
-                               "Sin correo"}
+                              {quote?.contactId?.email ||
+                                quote?.contact?.email ||
+                                "Sin correo"}
                             </div>
                             <div className="flex items-center text-sm text-gray-500">
                               <Phone className="w-4 h-4 mr-1" />
-                              {quote?.contactId?.mobile || 
-                               quote?.contact?.mobile || 
-                               quote?.contact?.phone || 
-                               ""}
+                              {quote?.contactId?.mobile ||
+                                quote?.contact?.mobile ||
+                                quote?.contact?.phone ||
+                                ""}
                             </div>
                           </div>
                         </td>
@@ -412,7 +425,10 @@ export function Quotes() {
                             <div className="flex items-center">
                               <Calendar className="w-4 h-4 mr-1" />
                               {quote?.creationDate &&
-                                format(new Date(quote.creationDate), "MMM d, yyyy")}
+                                format(
+                                  new Date(quote.creationDate),
+                                  "MMM d, yyyy"
+                                )}
                             </div>
                             <span className="text-xs">
                               Expira:{" "}
@@ -450,7 +466,9 @@ export function Quotes() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleEditQuote(quote._id as string)}
+                              onClick={() =>
+                                handleEditQuote(quote._id as string)
+                              }
                             >
                               <Edit2 className="w-4 h-4" />
                             </Button>
@@ -458,10 +476,12 @@ export function Quotes() {
                               variant="ghost"
                               size="sm"
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => confirmDelete(
-                                quote._id as string, 
-                                quote.name || quote.quotationNumber
-                              )}
+                              onClick={() =>
+                                confirmDelete(
+                                  quote._id as string,
+                                  quote.name || quote.quotationNumber
+                                )
+                              }
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -478,7 +498,10 @@ export function Quotes() {
                               variant="ghost"
                               size="sm"
                               onClick={() =>
-                                handleSendQuote(quote.quotationNumber, quote.contactId.email)
+                                handleSendQuote(
+                                  quote.quotationNumber,
+                                  quote.contactId.email
+                                )
                               }
                             >
                               <Mail className="w-4 h-4" />
@@ -564,14 +587,22 @@ export function Quotes() {
                   Eliminar cotización
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  ¿Estás seguro de que quieres eliminar {deleteConfirmation.quoteName}? Esta acción no se puede deshacer.
+                  ¿Estás seguro de que quieres eliminar{" "}
+                  {deleteConfirmation.quoteName}? Esta acción no se puede
+                  deshacer.
                 </p>
               </div>
             </div>
             <div className="flex justify-end gap-3">
               <Button
                 variant="outline"
-                onClick={() => setDeleteConfirmation({ isOpen: false, quoteId: "", quoteName: "" })}
+                onClick={() =>
+                  setDeleteConfirmation({
+                    isOpen: false,
+                    quoteId: "",
+                    quoteName: "",
+                  })
+                }
               >
                 Cancelar
               </Button>
@@ -599,7 +630,8 @@ export function Quotes() {
                   Eliminar cotizaciones
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  ¿Estás seguro de que quieres eliminar {selectedQuotes.length} cotización(es)? Esta acción no se puede deshacer.
+                  ¿Estás seguro de que quieres eliminar {selectedQuotes.length}{" "}
+                  cotización(es)? Esta acción no se puede deshacer.
                 </p>
               </div>
             </div>
@@ -610,10 +642,7 @@ export function Quotes() {
               >
                 Cancelar
               </Button>
-              <Button
-                variant="destructive"
-                onClick={handleBulkDelete}
-              >
+              <Button variant="destructive" onClick={handleBulkDelete}>
                 Eliminar
               </Button>
             </div>

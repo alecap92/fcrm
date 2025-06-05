@@ -11,7 +11,6 @@ export function CustomerInfo({
   customer,
   onChangeCustomer,
 }: CustomerInfoProps) {
-  console.log("customer", customer);
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="p-4 border-b">
@@ -20,7 +19,6 @@ export function CustomerInfo({
         </h2>
       </div>
       <div className="p-4">
-
         {customer?.firstName ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -36,7 +34,7 @@ export function CustomerInfo({
                     {customer.companyName && (
                       <div className="flex items-center gap-1">
                         <Building2 className="w-4 h-4" />
-                      {customer.companyName}
+                        {customer.companyName}
                       </div>
                     )}
                     {customer.email && (
@@ -58,8 +56,6 @@ export function CustomerInfo({
                 Cambiar
               </Button>
             </div>
-           
-           
           </div>
         ) : (
           <Button

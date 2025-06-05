@@ -16,9 +16,10 @@ import { QuoteItems } from "../components/quotes/QuoteItems";
 import { QuotesNotes } from "../components/quotes/QuotesNotes";
 import { useLoading } from "../contexts/LoadingContext";
 import { QuoteHeader } from "../components/quotes/QuoteHeader";
+import { normalizeContact } from "../lib/parseContacts";
 
 export function QuoteEditor() {
-  const { organization } = useAuth();
+  const { organization, refreshOrganization } = useAuth();
   const navigate = useNavigate();
 
   // Verificar si las configuraciones de cotizaciones están disponibles
@@ -33,8 +34,6 @@ export function QuoteEditor() {
         paymentTerms: ["Contado"],
         shippingTerms: ["FOB"],
       };
-
-  console.log("organization", quotationSettings.quotationNumber);
 
   // Si no hay configuraciones, mostrar mensaje de configuración requerida
   if (!hasQuotationSettings) {
@@ -110,8 +109,182 @@ export function QuoteEditor() {
     if (id) {
       try {
         showLoading("Cargando cotización...");
-        const quote = await quotesService.getQuoteById(id);
-        setQuote(quote.data);
+        const response = await quotesService.getQuoteById(id);
+        const quoteData = response.data;
+
+        // Mapear la información del cliente correctamente
+        let contactInfo = null;
+
+        // Primero intentar con contact
+        if (
+          quoteData.contact &&
+          (quoteData.contact.firstName || (quoteData.contact as any).name)
+        ) {
+          contactInfo = {
+            firstName:
+              quoteData.contact.firstName ||
+              (quoteData.contact as any).name ||
+              "",
+            lastName: quoteData.contact.lastName || "",
+            email: quoteData.contact.email || "",
+            mobile: quoteData.contact.mobile || "",
+            phone: quoteData.contact.phone || "",
+            companyName: quoteData.contact.companyName || "",
+            taxId: quoteData.contact.taxId || "",
+            _id: quoteData.contact._id || (quoteData.contact as any).id || "",
+            createdAt: quoteData.contact.createdAt || "",
+            updatedAt: quoteData.contact.updatedAt || "",
+            idType: quoteData.contact.idType || "",
+            idNumber: quoteData.contact.idNumber || "",
+            address: quoteData.contact.address || {
+              street: "",
+              city: "",
+              state: "",
+              country: "",
+              zipCode: "",
+            },
+          };
+        }
+        // Si contact está vacío, intentar con contactId (menos restrictivo)
+        else if (
+          quoteData.contactId &&
+          typeof quoteData.contactId === "object"
+        ) {
+          const contactData = quoteData.contactId as any;
+
+          // Si hay properties, usar la función normalizeContact que ya existe
+          if (contactData.properties && Array.isArray(contactData.properties)) {
+            try {
+              const normalizedContact = normalizeContact(contactData);
+
+              contactInfo = {
+                firstName: normalizedContact.firstName || "",
+                lastName: normalizedContact.lastName || "",
+                email: normalizedContact.email || "",
+                mobile: normalizedContact.mobile || "",
+                phone: normalizedContact.phone || "",
+                companyName: normalizedContact.companyName || "",
+                taxId: normalizedContact.taxId || "",
+                _id: normalizedContact._id || "",
+                createdAt: normalizedContact.createdAt || "",
+                updatedAt: normalizedContact.updatedAt || "",
+                idType: normalizedContact.idType || "",
+                idNumber: normalizedContact.idNumber || "",
+                address: normalizedContact.address || {
+                  street: "",
+                  city: "",
+                  state: "",
+                  country: "",
+                  zipCode: "",
+                },
+              };
+            } catch (error) {
+              console.error("Error normalizing contact:", error);
+              // Fallback manual si normalizeContact falla
+              const clientData: any = {};
+              contactData.properties.forEach((prop: any) => {
+                if (prop.key && prop.value) {
+                  clientData[prop.key] = prop.value;
+                }
+              });
+
+              contactInfo = {
+                firstName: clientData.firstName || "",
+                lastName: clientData.lastName || "",
+                email: clientData.email || "",
+                mobile: clientData.mobile || "",
+                phone: clientData.phone || "",
+                companyName: clientData.companyName || "",
+                taxId: clientData.idNumber || "",
+                _id: contactData._id || "",
+                createdAt: contactData.createdAt || "",
+                updatedAt: contactData.updatedAt || "",
+                idType: clientData.idType || "",
+                idNumber: clientData.idNumber || "",
+                address: {
+                  street: clientData.address || "",
+                  city: clientData.city || "",
+                  state: clientData.state || "",
+                  country: clientData.country || "",
+                  zipCode: clientData.postalCode || "",
+                },
+              };
+            }
+          } else {
+            // Fallback a los campos directos si no hay properties
+            contactInfo = {
+              firstName: contactData.firstName || contactData.name || "",
+              lastName: contactData.lastName || "",
+              email: contactData.email || "",
+              mobile: contactData.mobile || "",
+              phone: contactData.phone || "",
+              companyName: contactData.companyName || "",
+              taxId: contactData.taxId || "",
+              _id: contactData._id || contactData.id || "",
+              createdAt: contactData.createdAt || "",
+              updatedAt: contactData.updatedAt || "",
+              idType: contactData.idType || "",
+              idNumber: contactData.idNumber || "",
+              address: contactData.address || {
+                street: "",
+                city: "",
+                state: "",
+                country: "",
+                zipCode: "",
+              },
+            };
+          }
+        }
+        // Si ninguno tiene información, buscar en otros campos posibles
+        else {
+          // Buscar en campos alternativos
+          const possibleContactFields = [
+            "customer",
+            "client",
+            "clientId",
+            "customerId",
+          ];
+          for (const field of possibleContactFields) {
+            if ((quoteData as any)[field]) {
+              const fieldData = (quoteData as any)[field];
+              contactInfo = {
+                firstName: fieldData.firstName || fieldData.name || "",
+                lastName: fieldData.lastName || "",
+                email: fieldData.email || "",
+                mobile: fieldData.mobile || "",
+                phone: fieldData.phone || "",
+                companyName: fieldData.companyName || "",
+                taxId: fieldData.taxId || "",
+                _id: fieldData._id || fieldData.id || "",
+                createdAt: fieldData.createdAt || "",
+                updatedAt: fieldData.updatedAt || "",
+                idType: fieldData.idType || "",
+                idNumber: fieldData.idNumber || "",
+                address: fieldData.address || {
+                  street: "",
+                  city: "",
+                  state: "",
+                  country: "",
+                  zipCode: "",
+                },
+              };
+              break;
+            }
+          }
+        }
+
+        setQuote({
+          ...quoteData,
+          contact: contactInfo || {
+            firstName: "",
+            lastName: "",
+            email: "",
+            _id: "",
+            taxId: "",
+            createdAt: "",
+            updatedAt: "",
+          },
+        });
       } catch (error) {
         console.error("Error loading quote:", error);
         toast.show({
@@ -141,31 +314,34 @@ export function QuoteEditor() {
   }, [organization?.settings?.quotations?.quotationNumber]);
 
   const handleSelectContact = (contact: Contact) => {
-    console.log("contact2", contact);
-    setQuote((prev) => ({
-      ...prev,
-      contact: {
-        ...(prev.contact || {}),
-        firstName: contact.firstName || "",
-        lastName: contact.lastName || "",
-        email: contact.email || "",
-        mobile: contact.mobile || "",
-        companyName: contact.companyName || "",
-        taxId: contact.taxId || "",
-        id: contact._id,
-        createdAt: contact.createdAt || "",
-        updatedAt: contact.updatedAt || "",
-        idType: contact.idType || "",
-        phone: contact.phone || "",
-        address: contact.address || {
-          street: "",
-          city: "",
-          state: "",
-          country: "",
-          zipCode: "",
+    setQuote((prev) => {
+      const updatedQuote = {
+        ...prev,
+        contact: {
+          ...(prev.contact || {}),
+          firstName: contact.firstName || "",
+          lastName: contact.lastName || "",
+          email: contact.email || "",
+          mobile: contact.mobile || "",
+          companyName: contact.companyName || "",
+          taxId: contact.taxId || "",
+          _id: contact._id,
+          createdAt: contact.createdAt || "",
+          updatedAt: contact.updatedAt || "",
+          idType: contact.idType || "",
+          phone: contact.phone || "",
+          address: contact.address || {
+            street: "",
+            city: "",
+            state: "",
+            country: "",
+            zipCode: "",
+          },
         },
-      },
-    }));
+      };
+
+      return updatedQuote;
+    });
   };
 
   const calculateTotals = (updatedItems: QuoteItem[]) => {
@@ -250,7 +426,6 @@ export function QuoteEditor() {
 
   const handleSave = async () => {
     try {
-      console.log("Saving quote", quote);
       const { contact } = quote;
 
       if (!contact || !contact.firstName) {
@@ -263,7 +438,7 @@ export function QuoteEditor() {
         return;
       }
 
-      const quoteData = {
+      const baseQuoteData = {
         ...quote,
         items: (quote.items || []).map((item) => ({
           ...item,
@@ -275,7 +450,7 @@ export function QuoteEditor() {
           imageUrl: item.imageUrl || "",
         })),
         subtotal: Number(quote.subtotal),
-        discount: Number(quote.discount),
+        discounts: Number(quote.discount),
         taxes: Number(quote.taxes),
         total: Number(quote.total),
         lastModified: format(new Date(), "yyyy-MM-dd"),
@@ -288,20 +463,41 @@ export function QuoteEditor() {
         observaciones: quotationSettings.notes || "",
       };
 
+      let quoteData;
+
       if (id) {
-        await quotesService.updateQuote(id as string, quoteData);
+        // Para actualizar: enviar contactId directamente
+        quoteData = {
+          ...baseQuoteData,
+          contactId: contact._id,
+        };
+      } else {
+        // Para crear: enviar contact.id como espera el backend
+        quoteData = {
+          ...baseQuoteData,
+          contact: {
+            id: contact._id,
+          },
+        };
+      }
+
+      if (id) {
+        await quotesService.updateQuote(id as string, quoteData as any);
         toast.show({
           title: "Actualizada",
           description: "Cotización actualizada correctamente",
           type: "success",
         });
       } else {
-        await quotesService.createQuote(quoteData as Quote);
+        await quotesService.createQuote(quoteData as any);
         toast.show({
           title: "Creada",
           description: "Cotización creada correctamente",
           type: "success",
         });
+
+        // Refrescar la organización para obtener el nuevo número de cotización
+        await refreshOrganization();
       }
 
       navigate("/quotes");
