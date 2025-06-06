@@ -74,6 +74,13 @@ interface DealsContextType {
   searchDeals: (query: string) => Promise<void>;
   changePipeline: (newPipelineId: string) => Promise<void>;
 
+  // Nueva función para estadísticas
+  getDealsStats: (period?: "current" | "previous") => Promise<any>;
+  getTopSellingProducts: (
+    period?: "current" | "previous",
+    limit?: number
+  ) => Promise<any>;
+
   // Handlers para modales
   openCreateDealModal: () => void;
   closeCreateDealModal: () => void;
@@ -739,6 +746,46 @@ export function DealsProvider({ children }: DealsProviderProps) {
     }
   }, [isUserAuthenticated]);
 
+  // Nueva función para estadísticas
+  const getDealsStats = async (period?: "current" | "previous") => {
+    // Verificar autenticación antes de hacer peticiones
+    if (!isUserAuthenticated) {
+      console.log(
+        "DealsContext: Usuario no autenticado, saltando getDealsStats"
+      );
+      return null;
+    }
+
+    try {
+      const response = await dealsService.getDealsStats(pipelineId, period);
+      return response;
+    } catch (error) {
+      console.error("Error getting deals stats:", error);
+      return null;
+    }
+  };
+
+  const getTopSellingProducts = async (
+    period?: "current" | "previous",
+    limit?: number
+  ) => {
+    // Verificar autenticación antes de hacer peticiones
+    if (!isUserAuthenticated) {
+      console.log(
+        "DealsContext: Usuario no autenticado, saltando getTopSellingProducts"
+      );
+      return null;
+    }
+
+    try {
+      const response = await dealsService.getTopSellingProducts(period, limit);
+      return response;
+    } catch (error) {
+      console.error("Error getting top selling products:", error);
+      return null;
+    }
+  };
+
   const value: DealsContextType = {
     // Estado
     deals,
@@ -775,6 +822,8 @@ export function DealsProvider({ children }: DealsProviderProps) {
     updateDealStatus,
     searchDeals,
     changePipeline,
+    getDealsStats,
+    getTopSellingProducts,
 
     // Handlers para modales
     openCreateDealModal,

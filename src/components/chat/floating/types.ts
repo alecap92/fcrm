@@ -4,14 +4,17 @@ export interface Message {
   sender: "user" | "assistant";
   timestamp: Date;
   buttons?: ChatButton[];
+  variant?: "default" | "warning" | "info";
+  icon?: string;
 }
 
 export interface ChatButton {
   id: string;
   text: string;
   type: "action" | "gpt" | "suggestion";
-  action?: () => void;
   variant?: "primary" | "secondary" | "outline";
+  action?: () => void;
+  icon?: string;
 }
 
 export interface ChatState {

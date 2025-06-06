@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Message } from "../types";
 import { useChatContext } from "../context/ChatContext";
 import { ChatResponseService } from "../services/ChatResponseService";
@@ -6,40 +6,34 @@ import { GPTService } from "../services/GPTService";
 import { KeywordDetectionService } from "../services/KeywordDetectionService";
 
 const INITIAL_MESSAGES: Message[] = [
-  {
-    id: "1",
-    content:
-      "¡Hola! Soy tu asistente de FusionCRM. ¿En qué puedo ayudarte hoy?",
-    sender: "assistant",
-    timestamp: new Date(),
-  },
-  {
-    id: "2",
-    content:
-      "Puedo ayudarte con información sobre la organización, tutoriales, consejos y responder preguntas sobre el CRM.",
-    sender: "assistant",
-    timestamp: new Date(),
-    buttons: [
-      {
-        id: "initial-1",
-        text: "Ver tutoriales",
-        type: "action",
-        variant: "secondary",
-      },
-      {
-        id: "initial-2",
-        text: "Mejores prácticas",
-        type: "action",
-        variant: "secondary",
-      },
-      {
-        id: "initial-3",
-        text: "Preguntar a GPT",
-        type: "gpt",
-        variant: "primary",
-      },
-    ],
-  },
+  // {
+  //   id: "1",
+  //   content:
+  //     "¡Hola! Soy tu asistente de FusionCRM. ¿En qué puedo ayudarte hoy?",
+  //   sender: "assistant",
+  //   timestamp: new Date(),
+  // },
+  // {
+  //   id: "2",
+  //   content:
+  //     "Puedo ayudarte con información sobre la organización, tutoriales, consejos y responder preguntas sobre el CRM.",
+  //   sender: "assistant",
+  //   timestamp: new Date(),
+  //   buttons: [
+  //     {
+  //       id: "initial-1",
+  //       text: "Ver tutoriales",
+  //       type: "action",
+  //       variant: "secondary",
+  //     },
+  //     {
+  //       id: "initial-3",
+  //       text: "Preguntar a GPT",
+  //       type: "gpt",
+  //       variant: "primary",
+  //     },
+  //   ],
+  // },
 ];
 
 const SAMPLE_RESPONSES = [
@@ -49,27 +43,103 @@ const SAMPLE_RESPONSES = [
   "Perfecto, estoy procesando tu solicitud. Pronto tendré capacidades de IA más avanzadas.",
 ];
 
+// Helper function para obtener el nombre del mes actual
+const getCurrentMonthName = () => {
+  const months = [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
+  ];
+  return months[new Date().getMonth()];
+};
+
+// Helper function para obtener el nombre del mes anterior
+const getPreviousMonthName = () => {
+  const months = [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
+  ];
+  const previousMonth = new Date().getMonth() - 1;
+  const monthIndex = previousMonth < 0 ? 11 : previousMonth;
+  return months[monthIndex];
+};
+
+// Helper function para obtener el año anterior si es necesario
+const getPreviousYearIfNeeded = () => {
+  const currentDate = new Date();
+  const previousMonth = currentDate.getMonth() - 1;
+  return previousMonth < 0
+    ? currentDate.getFullYear() - 1
+    : currentDate.getFullYear();
+};
+
 export const useChatLogic = () => {
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [isTyping, setIsTyping] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
   const [awaitingGptResponse, setAwaitingGptResponse] = useState(false);
-  const { contextData, sendContextualMessage } = useChatContext();
+  const {
+    contextData,
+    sendContextualMessage,
+    registerMessageHandler,
+    unregisterMessageHandler,
+  } = useChatContext();
 
   const addMessage = useCallback(
-    (content: string, sender: "user" | "assistant", buttons?: any[]) => {
+    (
+      content: string,
+      sender: "user" | "assistant",
+      buttons?: any[],
+      options?: { variant?: "default" | "warning" | "info"; icon?: string }
+    ) => {
       const newMessage: Message = {
         id: Date.now().toString(),
         content,
         sender,
         timestamp: new Date(),
         buttons,
+        ...options,
       };
       setMessages((prev) => [...prev, newMessage]);
       return newMessage;
     },
     []
   );
+
+  // Registrar el handler de mensajes al montar el componente
+  useEffect(() => {
+    const messageHandler = async (
+      content: string,
+      sender: "user" | "assistant",
+      buttons?: any[],
+      options?: { variant?: "default" | "warning" | "info"; icon?: string }
+    ) => {
+      addMessage(content, sender, buttons, options);
+    };
+    registerMessageHandler(messageHandler);
+    return () => {
+      unregisterMessageHandler();
+    };
+  }, [addMessage, registerMessageHandler, unregisterMessageHandler]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -106,7 +176,8 @@ export const useChatLogic = () => {
                     type: "gpt",
                     variant: "primary",
                   },
-                ]
+                ],
+                { variant: "warning" }
               );
               setIsTyping(false);
               return;
@@ -117,14 +188,19 @@ export const useChatLogic = () => {
               context: contextData || undefined,
             });
 
-            addMessage(gptResponse.content, "assistant", [
-              {
-                id: "gpt-follow-up",
-                text: "Preguntar algo más a GPT",
-                type: "gpt",
-                variant: "primary",
-              },
-            ]);
+            addMessage(
+              gptResponse.content,
+              "assistant",
+              [
+                {
+                  id: "gpt-follow-up",
+                  text: "Preguntar algo más a GPT",
+                  type: "gpt",
+                  variant: "primary",
+                },
+              ],
+              { variant: "info", icon: "🤖" }
+            );
             setAwaitingGptResponse(false);
           } catch (error) {
             console.error("Error with GPT:", error);
@@ -144,7 +220,8 @@ export const useChatLogic = () => {
                   type: "action",
                   variant: "secondary",
                 },
-              ]
+              ],
+              { variant: "warning", icon: "❌" }
             );
             setAwaitingGptResponse(false);
           }
@@ -210,7 +287,10 @@ export const useChatLogic = () => {
                 ];
             }
 
-            addMessage(responseContent, "assistant", buttons);
+            addMessage(responseContent, "assistant", buttons, {
+              variant: "info",
+              icon: "💡",
+            });
             setIsTyping(false);
           }, 800 + Math.random() * 400);
         }
@@ -248,38 +328,13 @@ export const useChatLogic = () => {
     setIsTyping(false);
     setShowTextInput(false);
     setAwaitingGptResponse(false);
-
-    // Agregar mensaje de confirmación después de un breve delay
-    setTimeout(() => {
-      addMessage(
-        "Conversación reiniciada. ¡Hola de nuevo! ¿En qué puedo ayudarte?",
-        "assistant",
-        [
-          {
-            id: "restart-1",
-            text: "Ver tutoriales",
-            type: "action",
-            variant: "secondary",
-          },
-          {
-            id: "restart-2",
-            text: "Mejores prácticas",
-            type: "action",
-            variant: "secondary",
-          },
-          {
-            id: "restart-3",
-            text: "Preguntar a GPT",
-            type: "gpt",
-            variant: "primary",
-          },
-        ]
-      );
-    }, 500);
   }, [addMessage]);
 
   const handleButtonClick = useCallback(
-    (button: any) => {
+    async (button: any) => {
+      // Primero agregar el mensaje del usuario con el texto del botón
+      addMessage(button.text, "user");
+
       if (button.type === "gpt") {
         // Habilitar input para preguntar a GPT
         setShowTextInput(true);
@@ -296,36 +351,214 @@ export const useChatLogic = () => {
           button.action();
         } else {
           // Simular respuesta para acciones predefinidas
-          handleActionButton(button);
+          await handleActionButton(button);
         }
       } else if (button.type === "suggestion") {
         // Tratar como mensaje normal
         sendMessage(button.text);
       }
     },
-    [addMessage]
+    [addMessage, sendMessage]
   );
 
   const handleActionButton = useCallback(
-    (button: any) => {
+    async (button: any) => {
       setIsTyping(true);
 
-      setTimeout(() => {
+      setTimeout(async () => {
         let responseContent = "";
 
         // Respuestas específicas por ID de botón
         switch (button.id) {
-          case "deals-stats-1":
-            responseContent =
-              "Aquí tienes el desglose por etapa: Prospecto (40%), Negociación (30%), Propuesta (20%), Cierre (10%)";
+          case "deals-tutorial":
+            addMessage(
+              "📚 ¡Perfecto! Te explico cómo funcionan los deals.",
+              "assistant"
+            );
+
+            setTimeout(() => {
+              addMessage(
+                "En los deals, puedes crear las oportunidades de venta de tu empresa. Puedes personalizar cada etapa e inclusive puedes crear varios Pipelines o flujos de venta.",
+                "assistant"
+              );
+            }, 1000);
+
+            setTimeout(() => {
+              addMessage(
+                "Por ejemplo, si vendes camisetas, puedes crear un Pipeline para cada color de camiseta. ¿Te gustaría que te muestre cómo crear tu primer deal?",
+                "assistant",
+                []
+              );
+            }, 2500);
+
+            setIsTyping(false);
+            return;
+
+          case "deals-monthly-sales":
+            console.log("🔍 Verificando contextData:", contextData);
+            console.log(
+              "🔍 getDealsStats existe:",
+              !!contextData?.getDealsStats
+            );
+
+            if (contextData?.getDealsStats) {
+              try {
+                console.log("📊 Llamando getDealsStats con period: current");
+                const stats = await contextData.getDealsStats("current");
+                console.log("📊 Estadísticas recibidas:", stats);
+
+                if (stats) {
+                  responseContent =
+                    `💰 **Reporte de ${stats.month} ${stats.year}**\n\n` +
+                    `📊 **Deals totales:** ${stats.totalDeals}\n` +
+                    `💵 **Valor total:** $${stats.totalAmount.toLocaleString()}\n` +
+                    `✅ **Deals cerrados:** ${stats.closedDeals}\n` +
+                    `🎯 **Ventas cerradas:** $${stats.closedAmount.toLocaleString()}\n` +
+                    `📈 **Promedio por deal:** $${stats.averageAmount.toLocaleString()}\n` +
+                    `🎯 **Tasa de conversión:** ${stats.conversionRate}%`;
+                } else {
+                  responseContent = `📊 No hay datos de deals disponibles para ${getCurrentMonthName()} ${new Date().getFullYear()}.`;
+                }
+              } catch (error) {
+                console.error("Error obteniendo estadísticas:", error);
+                responseContent =
+                  "❌ Error al obtener las estadísticas de deals.";
+              }
+            } else {
+              console.log("❌ getDealsStats no está disponible en contextData");
+              responseContent =
+                "❌ No hay datos de deals disponibles en este momento.";
+            }
             break;
-          case "deals-stats-2":
-            responseContent =
-              "Los deals de mayor valor están en la etapa de negociación. El promedio es $15,000 por deal.";
+
+          case "deals-previous-sales":
+            if (contextData?.getDealsStats) {
+              try {
+                const stats = await contextData.getDealsStats("previous");
+                if (stats) {
+                  responseContent =
+                    `📅 **Reporte de ${stats.month} ${stats.year}**\n\n` +
+                    `📊 **Deals totales:** ${stats.totalDeals}\n` +
+                    `💵 **Valor total:** $${stats.totalAmount.toLocaleString()}\n` +
+                    `✅ **Deals cerrados:** ${stats.closedDeals}\n` +
+                    `🎯 **Ventas cerradas:** $${stats.closedAmount.toLocaleString()}\n` +
+                    `📈 **Promedio por deal:** $${stats.averageAmount.toLocaleString()}\n` +
+                    `🎯 **Tasa de conversión:** ${stats.conversionRate}%`;
+                } else {
+                  responseContent = `📊 No hay datos de deals disponibles para ${getPreviousMonthName()} ${getPreviousYearIfNeeded()}.`;
+                }
+              } catch (error) {
+                console.error("Error obteniendo estadísticas:", error);
+                responseContent =
+                  "❌ Error al obtener las estadísticas de deals.";
+              }
+            } else {
+              responseContent =
+                "❌ No hay datos de deals disponibles en este momento.";
+            }
             break;
-          case "deals-default-1":
-            responseContent =
-              "Estadísticas generales: Tasa de conversión 15%, tiempo promedio de cierre 30 días, valor promedio $8,500.";
+          case "deals-products-sold":
+            console.log(
+              "🔍 Verificando contextData para productos:",
+              contextData
+            );
+            console.log(
+              "🔍 getTopSellingProducts existe:",
+              !!contextData?.getTopSellingProducts
+            );
+
+            if (contextData?.getTopSellingProducts) {
+              try {
+                console.log(
+                  "🛍️ Llamando getTopSellingProducts con period: current"
+                );
+                // Temporal: intentar con diferentes períodos para encontrar datos
+                let topProducts = await contextData.getTopSellingProducts(
+                  "current",
+                  5
+                );
+
+                // Si no hay datos en el período actual, intentar con período anterior
+                if (
+                  !topProducts ||
+                  !topProducts.topByQuantity ||
+                  topProducts.topByQuantity.length === 0
+                ) {
+                  console.log(
+                    "🛍️ No hay datos en período actual, intentando período anterior"
+                  );
+                  topProducts = await contextData.getTopSellingProducts(
+                    "previous",
+                    5
+                  );
+                }
+
+                console.log(
+                  "🛍️ Productos más vendidos recibidos:",
+                  topProducts
+                );
+
+                console.log("🛍️ Top products structure:", {
+                  hasTopByQuantity: !!topProducts?.topByQuantity,
+                  topByQuantityLength: topProducts?.topByQuantity?.length || 0,
+                  period: topProducts?.period,
+                  month: topProducts?.month,
+                  year: topProducts?.year,
+                  startDate: topProducts?.startDate,
+                  endDate: topProducts?.endDate,
+                  summary: topProducts?.summary,
+                });
+
+                console.log(
+                  "🛍️ Full response details:",
+                  JSON.stringify(topProducts, null, 2)
+                );
+
+                if (
+                  topProducts &&
+                  topProducts.topByQuantity &&
+                  topProducts.topByQuantity.length > 0
+                ) {
+                  let productsList = topProducts.topByQuantity
+                    .map(
+                      (product: any, index: number) =>
+                        `${index + 1}. **${
+                          product.productName
+                        }**\n   📦 Cantidad: ${
+                          product.totalQuantitySold
+                        } unidades\n   💰 Ingresos: $${product.totalRevenue.toLocaleString()}\n   🏷️ Precio promedio: $${Math.round(
+                          product.averagePrice
+                        ).toLocaleString()}`
+                    )
+                    .join("\n\n");
+
+                  responseContent =
+                    `🏆 **Top 5 Productos Más Vendidos - ${topProducts.month} ${topProducts.year}**\n\n` +
+                    `${productsList}\n\n` +
+                    `📊 **Resumen Total:**\n` +
+                    `• Total productos únicos: ${topProducts.summary.totalProducts}\n` +
+                    `• Cantidad total vendida: ${topProducts.summary.totalQuantitySold} unidades\n` +
+                    `• Ingresos totales: $${topProducts.summary.totalRevenue.toLocaleString()}`;
+                } else {
+                  responseContent = `📊 No hay datos de productos vendidos disponibles para ${
+                    topProducts?.month || "el período actual"
+                  } ${topProducts?.year || new Date().getFullYear()}.`;
+                }
+              } catch (error) {
+                console.error(
+                  "Error obteniendo productos más vendidos:",
+                  error
+                );
+                responseContent =
+                  "❌ Error al obtener los productos más vendidos.";
+              }
+            } else {
+              console.log(
+                "❌ getTopSellingProducts no está disponible en contextData"
+              );
+              responseContent =
+                "❌ No hay datos de productos disponibles en este momento.";
+            }
             break;
           case "deals-default-2":
             responseContent =
@@ -469,7 +702,7 @@ export const useChatLogic = () => {
         setIsTyping(false);
       }, 1000);
     },
-    [addMessage]
+    [addMessage, contextData]
   );
 
   return {
@@ -481,5 +714,6 @@ export const useChatLogic = () => {
     clearMessages,
     handleButtonClick,
     setShowTextInput,
+    addMessage,
   };
 };

@@ -4,6 +4,7 @@ import React, {
   useState,
   useCallback,
   ReactNode,
+  useRef,
 } from "react";
 
 export type ModuleType =
@@ -27,6 +28,12 @@ export interface ChatContextData {
     selectedItems?: any[];
     totalCount?: number;
   };
+  // Nueva función para estadísticas (cuando el módulo es deals)
+  getDealsStats?: (period?: "current" | "previous") => Promise<any>;
+  getTopSellingProducts?: (
+    period?: "current" | "previous",
+    limit?: number
+  ) => Promise<any>;
 }
 
 export interface ChatSuggestion {
@@ -35,13 +42,35 @@ export interface ChatSuggestion {
   action?: () => void;
 }
 
+export interface ChatButton {
+  id: string;
+  text: string;
+  type: "action" | "gpt" | "suggestion";
+  variant?: "primary" | "secondary" | "outline";
+  action?: () => void;
+  icon?: string;
+}
+
 interface ChatContextType {
   contextData: ChatContextData | null;
   suggestions: ChatSuggestion[];
   setContextData: (data: ChatContextData) => void;
   addSuggestion: (suggestion: ChatSuggestion) => void;
   clearSuggestions: () => void;
-  sendContextualMessage: (message: string) => void;
+  sendContextualMessage: (
+    message: string,
+    buttons?: ChatButton[],
+    options?: { variant?: "default" | "warning" | "info"; icon?: string }
+  ) => void;
+  registerMessageHandler: (
+    handler: (
+      message: string,
+      sender: "user" | "assistant",
+      buttons?: ChatButton[],
+      options?: { variant?: "default" | "warning" | "info"; icon?: string }
+    ) => void
+  ) => void;
+  unregisterMessageHandler: () => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -55,6 +84,23 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     null
   );
   const [suggestions, setSuggestions] = useState<ChatSuggestion[]>([]);
+  const messageHandlerRef = useRef<
+    | ((
+        message: string,
+        sender: "user" | "assistant",
+        buttons?: ChatButton[],
+        options?: { variant?: "default" | "warning" | "info"; icon?: string }
+      ) => void)
+    | null
+  >(null);
+  const pendingMessagesRef = useRef<
+    Array<{
+      message: string;
+      sender: "user" | "assistant";
+      buttons?: ChatButton[];
+      options?: { variant?: "default" | "warning" | "info"; icon?: string };
+    }>
+  >([]);
 
   const setContextData = useCallback((data: ChatContextData) => {
     setContextDataState(data);
@@ -70,13 +116,52 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     setSuggestions([]);
   }, []);
 
-  const sendContextualMessage = useCallback(
-    (message: string) => {
-      // Esta función será llamada desde el hook useChatLogic
-      // para procesar mensajes con contexto
-      console.log("Mensaje contextual:", message, "Contexto:", contextData);
+  const registerMessageHandler = useCallback(
+    (
+      handler: (
+        message: string,
+        sender: "user" | "assistant",
+        buttons?: ChatButton[],
+        options?: { variant?: "default" | "warning" | "info"; icon?: string }
+      ) => void
+    ) => {
+      messageHandlerRef.current = handler;
+      // Procesar mensajes pendientes
+      if (pendingMessagesRef.current.length > 0) {
+        pendingMessagesRef.current.forEach(
+          ({ message, sender, buttons, options }) => {
+            handler(message, sender, buttons, options);
+          }
+        );
+        pendingMessagesRef.current = [];
+      }
     },
-    [contextData]
+    []
+  );
+
+  const unregisterMessageHandler = useCallback(() => {
+    messageHandlerRef.current = null;
+  }, []);
+
+  const sendContextualMessage = useCallback(
+    (
+      message: string,
+      buttons?: ChatButton[],
+      options?: { variant?: "default" | "warning" | "info"; icon?: string }
+    ) => {
+      if (messageHandlerRef.current) {
+        messageHandlerRef.current(message, "assistant", buttons, options);
+      } else {
+        pendingMessagesRef.current.push({
+          message,
+          sender: "assistant",
+          buttons,
+          options,
+        });
+        console.log("Mensaje agregado a cola pendiente:", message);
+      }
+    },
+    []
   );
 
   const generateSuggestions = (data: ChatContextData) => {
@@ -150,6 +235,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     addSuggestion,
     clearSuggestions,
     sendContextualMessage,
+    registerMessageHandler,
+    unregisterMessageHandler,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

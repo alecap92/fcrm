@@ -1,11 +1,19 @@
 import React from "react";
-import { MessageSquare, Lightbulb, Zap, HelpCircle } from "lucide-react";
+import { MessageSquare, Lightbulb, Zap, HelpCircle, Book } from "lucide-react";
 import { ChatButton } from "./types";
 
 interface ChatButtonsProps {
   buttons: ChatButton[];
   onButtonClick: (button: ChatButton) => void;
 }
+
+const iconMap: Record<string, JSX.Element> = {
+  book: <Book className="w-4 h-4 mr-1" />,
+  help: <HelpCircle className="w-4 h-4 mr-1" />,
+  zap: <Zap className="w-4 h-4 mr-1" />,
+  message: <MessageSquare className="w-4 h-4 mr-1" />,
+  // Agrega más iconos aquí si lo necesitas
+};
 
 export const ChatButtons: React.FC<ChatButtonsProps> = ({
   buttons,
@@ -26,7 +34,7 @@ export const ChatButtons: React.FC<ChatButtonsProps> = ({
 
   const getButtonStyles = (variant: ChatButton["variant"] = "secondary") => {
     const baseStyles =
-      "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors";
+      "inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left justify-start";
 
     switch (variant) {
       case "primary":
@@ -48,7 +56,8 @@ export const ChatButtons: React.FC<ChatButtonsProps> = ({
           onClick={() => onButtonClick(button)}
           className={getButtonStyles(button.variant)}
         >
-          {getButtonIcon(button.type)}
+          {/* Si hay icono personalizado, lo muestro, si no, el icono por tipo */}
+          {button.icon ? iconMap[button.icon] : getButtonIcon(button.type)}
           {button.text}
         </button>
       ))}

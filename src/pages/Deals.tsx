@@ -20,7 +20,7 @@ import { DealCard } from "../components/deals/DealCard";
 import { SearchDealsModal } from "../components/deals/SearchDealsModal";
 import { useDeals } from "../contexts/DealsContext";
 import { useAuth } from "../contexts/AuthContext";
-import { useChatModule } from "../components/chat/floating";
+import { useChatContext, useChatModule } from "../components/chat/floating";
 
 // Importamos los tipos que asumo tienes en tu proyecto
 
@@ -31,6 +31,7 @@ export function Deals() {
 
   // Hook para integración con chat contextual
   const chatModule = useChatModule("deals");
+  const { sendContextualMessage } = useChatContext();
 
   const {
     // Estado del contexto
@@ -46,10 +47,7 @@ export function Deals() {
 
     // Setters del contexto
     setActiveDeal,
-    setDeals,
 
-    // Acciones del contexto
-    fetchDeals,
     loadMoreDeals,
     createDeal,
     updateDeal,
@@ -57,6 +55,8 @@ export function Deals() {
     updateDealStatus,
     searchDeals,
     changePipeline,
+    getDealsStats,
+    getTopSellingProducts,
 
     // Handlers para modales
     openCreateDealModal,
@@ -72,7 +72,14 @@ export function Deals() {
   // Actualizar contexto del chat cuando cambien los deals
   useEffect(() => {
     if (deals.length > 0) {
-      chatModule.updateChatContext(deals, {
+      // Crear objeto de contexto que incluye datos y función de estadísticas
+      const contextDataWithStats = {
+        data: deals,
+        getDealsStats,
+        getTopSellingProducts,
+      };
+
+      chatModule.updateChatContext(contextDataWithStats, {
         currentPage: "deals",
         filters: { pipelineId },
         totalCount: deals.length,
@@ -91,7 +98,70 @@ export function Deals() {
         chatModule.sendSuggestion("Muéstrame estadísticas de conversión");
       }
     }
-  }, [deals, columns, pipelineId, pagination.hasNextPage]);
+  }, [
+    deals,
+    columns,
+    pipelineId,
+    pagination.hasNextPage,
+    getDealsStats,
+    getTopSellingProducts,
+  ]);
+
+  useEffect(() => {
+    // Pequeño delay para asegurar que el chat esté montado
+    const timer = setTimeout(() => {
+      sendContextualMessage(
+        "¡Bienvenido a la gestión de negocios! ¿En qué puedo ayudarte con tus deals?",
+        [
+          {
+            id: "deals-tutorial",
+            text: "Tutoriales",
+            type: "action",
+            variant: "secondary",
+            icon: "book",
+          },
+          {
+            id: "deals-monthly-sales",
+            text: "Ver ventas del mes",
+            type: "action",
+            variant: "secondary",
+          },
+          {
+            id: "deals-previous-sales",
+            text: "Ver ventas del mes anterior",
+            type: "action",
+            variant: "secondary",
+          },
+          {
+            id: "deals-products-sold",
+            text: "Productos más vendidos",
+            type: "action",
+            variant: "secondary",
+          },
+          {
+            id: "deals-help",
+            text: "Calcula el Ticket promedio",
+            type: "action",
+            variant: "secondary",
+          },
+          {
+            id: "deals-gpt",
+            text: "Preguntar a GPT",
+            type: "gpt",
+            variant: "primary",
+          },
+        ]
+      );
+      // Mensaje tipo warning/reminder
+      sendContextualMessage(
+        "El negocio XX lleva más de 8 días sin actividad.",
+        undefined,
+        { variant: "warning", icon: "alert" }
+      );
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Si no hay configuraciones básicas, mostrar mensaje de configuración
   if (!hasBasicConfig) {

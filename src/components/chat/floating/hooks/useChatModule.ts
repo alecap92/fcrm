@@ -11,11 +11,29 @@ export const useChatModule = (module: ModuleType) => {
 
   const updateChatContext = useCallback(
     (data: any, metadata?: ChatContextData["metadata"]) => {
-      const contextData: ChatContextData = {
-        module,
-        data,
-        metadata,
-      };
+      // Si el data contiene funciones estadísticas, extraerlas al nivel superior
+      let contextData: ChatContextData;
+
+      if (
+        data &&
+        typeof data === "object" &&
+        ("getDealsStats" in data || "getTopSellingProducts" in data)
+      ) {
+        contextData = {
+          module,
+          data: data.data, // Los datos reales están en data.data
+          metadata,
+          getDealsStats: data.getDealsStats, // Extraer la función al nivel superior
+          getTopSellingProducts: data.getTopSellingProducts, // Extraer la función al nivel superior
+        };
+      } else {
+        contextData = {
+          module,
+          data,
+          metadata,
+        };
+      }
+
       setContextData(contextData);
     },
     [module, setContextData]

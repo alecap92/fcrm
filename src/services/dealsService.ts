@@ -126,6 +126,63 @@ class DealsService {
     });
   }
 
+  // Nuevos métodos para estadísticas
+  public async getDealsStats(
+    pipelineId: string,
+    period?: "current" | "previous"
+  ): Promise<any> {
+    try {
+      const response = await apiService.get<any>(
+        `${this.baseUrl}/stats?pipelineId=${pipelineId}&period=${
+          period || "current"
+        }`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error getting deals stats:", error);
+      throw error;
+    }
+  }
+
+  public async getMonthlyStats(
+    pipelineId: string,
+    year?: number,
+    month?: number
+  ): Promise<any> {
+    try {
+      const currentDate = new Date();
+      const targetYear = year || currentDate.getFullYear();
+      const targetMonth = month !== undefined ? month : currentDate.getMonth();
+
+      const response = await apiService.get<any>(
+        `${this.baseUrl}/stats/monthly?pipelineId=${pipelineId}&year=${targetYear}&month=${targetMonth}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error getting monthly stats:", error);
+      throw error;
+    }
+  }
+
+  public async getTopSellingProducts(
+    period?: "current" | "previous",
+    limit?: number
+  ): Promise<any> {
+    try {
+      const params = new URLSearchParams();
+      if (period) params.append("period", period);
+      if (limit) params.append("limit", limit.toString());
+
+      const response = await apiService.get<any>(
+        `${this.baseUrl}/stats/top-products?${params.toString()}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error getting top selling products:", error);
+      throw error;
+    }
+  }
+
   public async bulkDeleteDeals(ids: string[]): Promise<void> {
     return apiService.delete(`${this.baseUrl}/`, { ids });
   }
