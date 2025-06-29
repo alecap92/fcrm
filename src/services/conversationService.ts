@@ -156,7 +156,7 @@ const searchConversations = async (searchTerm: string) => {
 const findConversationByPhone = async (phoneNumber: string) => {
   try {
     const response: any = await apiService.get(
-      `/conversation/find-by-phone?phone=${phoneNumber}`
+      `/conversation/find-by-phone?mobile=${phoneNumber}`
     );
     return response.data;
   } catch (error) {

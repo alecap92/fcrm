@@ -134,7 +134,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               <Building2 className="w-3 h-3" /> {contact.companyName}
             </div>
             <div className="flex items-center gap-1">
-              <Phone className="w-3 h-3" /> {contact.phone}
+              <Phone className="w-3 h-3" /> {contact.mobile}
             </div>
             <div className="flex items-center gap-1">
               <MapPin className="w-3 h-3" /> {contact.city}

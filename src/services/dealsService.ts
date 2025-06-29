@@ -97,7 +97,39 @@ class DealsService {
   }
 
   public async getDealById(id: string): Promise<any> {
-    return apiService.get<Deal>(`${this.baseUrl}/${id}`);
+    try {
+      const response = await apiService.get<{
+        deal?: Deal;
+        fields?: any[];
+        dealProducts?: any[];
+      }>(`${this.baseUrl}/${id}`);
+      console.log("🔍 Respuesta del servidor en getDealById:", response);
+
+      // Si la respuesta tiene una estructura anidada
+      if (response.data && response.data.deal) {
+        return {
+          data: {
+            ...response.data.deal,
+            dealProducts:
+              response.data.deal.dealProducts ||
+              response.data.dealProducts ||
+              [],
+            fields: response.data.fields || [],
+          },
+        };
+      }
+
+      // Si la respuesta ya tiene el formato esperado
+      return {
+        data: {
+          ...response.data,
+          dealProducts: response.data.dealProducts || [],
+        },
+      };
+    } catch (error) {
+      console.error("Error en getDealById:", error);
+      throw error;
+    }
   }
 
   public async createDeal(
@@ -318,6 +350,19 @@ class DealsService {
     } catch (error) {
       console.error("Error deleting deal field:", error);
       throw error;
+    }
+  }
+
+  public async getDealProducts(dealId: string): Promise<any> {
+    try {
+      const response = await apiService.get<any>(
+        `/product-acquisitions?dealId=${dealId}`
+      );
+      console.log("🛍️ Productos del trato obtenidos:", response);
+      return response.data;
+    } catch (error) {
+      console.error("Error obteniendo productos del trato:", error);
+      return { data: [] };
     }
   }
 }

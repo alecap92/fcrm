@@ -2,7 +2,7 @@ import { Button } from "./button";
 import { X } from "lucide-react";
 
 // Define size options for the modal
-type ModalSize = "MD" | "L" | "XL";
+type ModalSize = "MD" | "L" | "XL" | "XXL";
 
 interface ModalProps {
   isOpen: boolean;
@@ -28,6 +28,8 @@ export function Modal({
         return "max-w-2xl"; // Large size (576px)
       case "XL":
         return "max-w-4xl"; // Extra large size (896px)
+      case "XXL":
+        return "max-w-6xl"; // Extra large size (896px)
       default:
         return "max-w-2xl"; // Medium size (default, 448px)
     }

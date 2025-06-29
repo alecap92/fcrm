@@ -34,9 +34,18 @@ export const contactToAttributes = (
   // Teléfono
   if (contact?.phone) {
     attributes.push({
+      id: "phone",
+      label: "Teléfono",
+      value: contact.phone,
+    });
+  }
+
+  // Celular
+  if (contact?.mobile) {
+    attributes.push({
       id: "mobile",
       label: "Celular",
-      value: contact.phone,
+      value: contact.mobile,
     });
   }
 

@@ -1,11 +1,12 @@
 import { Message } from "../../../types/chat";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   formatTime,
   isIncomingMessage,
   getMessageMediaUrl,
 } from "../../../lib";
 import { useChatContext } from "../../../contexts/ChatContext";
+import { ImagePreviewModal } from "./ImagePreviewModal";
 
 interface MessageListProps {
   messages: Message[];
@@ -25,6 +26,7 @@ export function MessageList({
   const messageListRef = useRef<HTMLDivElement>(null);
   const { groupedMessages } = useChatContext();
   const prevMessagesLengthRef = useRef<number>(messages.length);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const handleScroll = () => {
     if (!messageListRef.current) return;
@@ -133,8 +135,11 @@ export function MessageList({
                   <img
                     src={getMessageMediaUrl(message)!}
                     alt="Imagen del mensaje"
-                    className="w-full rounded-xl shadow-sm"
+                    className="w-full rounded-xl shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
                     style={{ maxWidth: "300px" }}
+                    onClick={() =>
+                      setSelectedImage(getMessageMediaUrl(message)!)
+                    }
                   />
                 ) : message.type === "document" &&
                   getMessageMediaUrl(message) ? (
@@ -177,6 +182,11 @@ export function MessageList({
           ))}
         </div>
       ))}
+      <ImagePreviewModal
+        isOpen={!!selectedImage}
+        onClose={() => setSelectedImage(null)}
+        imageUrl={selectedImage || ""}
+      />
     </div>
   );
 }

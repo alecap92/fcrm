@@ -22,6 +22,10 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { normalizeContact } from "../../lib/parseContacts";
 import { dealsService } from "../../services/dealsService";
+import { contactsService } from "../../services/contactsService";
+import type { Contact } from "../../types/contact";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
 interface DealDetailsModalProps {
   deal?: Deal | any;
@@ -37,42 +41,162 @@ export function DealDetailsModal({
   dealId,
 }: DealDetailsModalProps) {
   const navigate = useNavigate();
-  const [contact, setContact] = useState<any>([]);
+  const [contact, setContact] = useState<Contact | null>(null);
   const [currentDeal, setCurrentDeal] = useState<Deal | null>(null);
+  const [isLoadingContact, setIsLoadingContact] = useState(false);
+  const [hasFetchedDealProducts, setHasFetchedDealProducts] = useState(false);
+
+  const fetchContactData = async (contactId: string) => {
+    try {
+      setIsLoadingContact(true);
+      const response = await contactsService.getContactById(contactId);
+      console.log("📞 Datos del contacto obtenidos:", response.data);
+
+      if (response.data?.contact) {
+        const contactData = response.data.contact;
+        const properties = contactData.properties || [];
+
+        // Función auxiliar para obtener el valor de una propiedad
+        const getPropertyValue = (key: string) => {
+          const prop = properties.find((p: any) => p.key === key);
+          return prop ? prop.value : "";
+        };
+
+        setContact({
+          _id: contactData._id,
+          firstName: getPropertyValue("firstName"),
+          lastName: getPropertyValue("lastName"),
+          email: getPropertyValue("email"),
+          phone: getPropertyValue("phone"),
+          mobile: getPropertyValue("mobile"),
+          companyName: getPropertyValue("companyName"),
+          createdAt: contactData.createdAt,
+          updatedAt: contactData.updatedAt,
+          taxId: getPropertyValue("taxId") || "",
+          // Campos adicionales que vemos en la UI
+          idType: getPropertyValue("idType"),
+          idNumber: getPropertyValue("idNumber"),
+          companyType: getPropertyValue("companyType"),
+          lifeCycle: getPropertyValue("lifeCycle"),
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error al obtener datos del contacto:", error);
+      setContact(null);
+    } finally {
+      setIsLoadingContact(false);
+    }
+  };
+
+  const parseContactInfo = () => {
+    if (currentDeal?.associatedContactId) {
+      console.log("🔍 Deal completo:", currentDeal);
+      console.log("🔍 Contact ID:", currentDeal.associatedContactId);
+
+      // Si associatedContactId es un string (ID), buscar los datos del contacto
+      if (typeof currentDeal.associatedContactId === "string") {
+        fetchContactData(currentDeal.associatedContactId);
+      } else {
+        // Si ya tenemos los datos del contacto, asegurarnos de que tenga el formato correcto
+        const contactData = currentDeal.associatedContactId as {
+          _id: string;
+          properties: any[];
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        if (contactData && contactData.properties) {
+          const getPropertyValue = (key: string) => {
+            const prop = contactData.properties.find((p: any) => p.key === key);
+            return prop ? prop.value : "";
+          };
+
+          setContact({
+            _id: contactData._id,
+            firstName: getPropertyValue("firstName"),
+            lastName: getPropertyValue("lastName"),
+            email: getPropertyValue("email"),
+            phone: getPropertyValue("phone"),
+            mobile: getPropertyValue("mobile"),
+            companyName: getPropertyValue("companyName"),
+            createdAt: contactData.createdAt || new Date().toISOString(),
+            updatedAt: contactData.updatedAt || new Date().toISOString(),
+            taxId: getPropertyValue("taxId") || "",
+            // Campos adicionales que vemos en la UI
+            idType: getPropertyValue("idType"),
+            idNumber: getPropertyValue("idNumber"),
+            companyType: getPropertyValue("companyType"),
+            lifeCycle: getPropertyValue("lifeCycle"),
+          });
+        } else {
+          console.error("❌ Datos de contacto inválidos:", contactData);
+          setContact(null);
+        }
+      }
+    } else {
+      console.log("⚠️ No hay ID de contacto disponible");
+      setContact(null);
+    }
+  };
 
   const handleRedirect = (contactId: string) => {
     navigate(`/contacts/${contactId}`);
   };
 
-  const parseContactInfo = () => {
-    if (currentDeal?.associatedContactId) {
-      const parsedContact = [currentDeal.associatedContactId].map(
-        normalizeContact
-      );
-      setContact(parsedContact[0]);
+  // Obtiene el negocio por su ID (usa el prop dealId o uno proporcionado)
+  const fetchDeal = async (id?: string) => {
+    const targetId = id || dealId;
+
+    if (!targetId) return;
+
+    try {
+      const response = await dealsService.getDealById(targetId);
+      console.log("📦 Respuesta completa del servidor:", response);
+
+      // Parsear la respuesta para unir deal y fields si es necesario
+      if (response.data && response.data.deal) {
+        // Si la respuesta tiene una estructura con deal y fields separados
+        const dealData = {
+          ...response.data.deal,
+          fields: response.data.fields || [],
+          dealProducts:
+            response.data.deal.dealProducts || response.data.dealProducts || [],
+        };
+        console.log("🎯 Deal data procesada (estructura anidada):", dealData);
+        console.log("🛍️ Productos en dealData:", dealData.dealProducts);
+        setCurrentDeal(dealData);
+      } else {
+        // Si la respuesta ya tiene el formato esperado
+        const dealData = {
+          ...response.data,
+          dealProducts: response.data.dealProducts || [],
+        };
+        console.log("🎯 Deal data procesada (formato plano):", dealData);
+        console.log("🛍️ Productos en dealData:", dealData.dealProducts);
+        setCurrentDeal(dealData);
+      }
+    } catch (error) {
+      console.error("Error fetching deal:", error);
     }
   };
 
-  const fetchDeal = async () => {
-    if (dealId) {
-      try {
-        const response = await dealsService.getDealById(dealId);
+  // Función para obtener los productos del negocio de forma independiente
+  const fetchDealProducts = async (dealIdParam: string) => {
+    try {
+      const response = await dealsService.getDealProducts(dealIdParam);
+      if (response && Array.isArray(response.data)) {
+        console.log("🛍️ Productos obtenidos por separado:", response.data);
 
-        // Parsear la respuesta para unir deal y fields si es necesario
-        if (response.data && response.data.deal) {
-          // Si la respuesta tiene una estructura con deal y fields separados
-          const dealData = {
-            ...response.data.deal,
-            fields: response.data.fields || [],
-          };
-          setCurrentDeal(dealData);
-        } else {
-          // Si la respuesta ya tiene el formato esperado
-          setCurrentDeal(response.data);
-        }
-      } catch (error) {
-        console.error("Error fetching deal:", error);
+        setCurrentDeal((prev) =>
+          prev
+            ? {
+                ...prev,
+                dealProducts: response.data,
+              }
+            : prev
+        );
       }
+    } catch (error) {
+      console.error("❌ Error al obtener productos del negocio:", error);
     }
   };
 
@@ -84,15 +208,46 @@ export function DealDetailsModal({
       !(Array.isArray(deal) && deal.length === 0);
 
     if (isDealValid) {
+      console.log("🎯 Deal proporcionado directamente:", deal);
+      console.log("🛍️ Productos en deal directo:", deal.dealProducts);
       setCurrentDeal(deal);
+
+      // Si el negocio no tiene productos asociados, intentamos cargarlos
+      if (
+        !hasFetchedDealProducts &&
+        (!deal.dealProducts || deal.dealProducts.length === 0) &&
+        (deal._id || dealId)
+      ) {
+        console.log(
+          "🔄 No se encontraron productos en el negocio proporcionado. Solicitando al servidor..."
+        );
+        fetchDealProducts(deal._id || (dealId as string));
+        setHasFetchedDealProducts(true);
+      }
     } else if (dealId) {
+      console.log("🔍 Buscando deal por ID:", dealId);
       fetchDeal();
     }
   }, [deal, dealId]);
 
   useEffect(() => {
     if (currentDeal) {
+      console.log("🔄 Deal actualizado:", currentDeal);
+      console.log("🛍️ Productos en currentDeal:", currentDeal.dealProducts);
       parseContactInfo();
+
+      // Si después de actualizar todavía no hay productos y no hemos intentado, intentar cargar
+      if (
+        !hasFetchedDealProducts &&
+        (!currentDeal.dealProducts || currentDeal.dealProducts.length === 0) &&
+        (currentDeal._id || dealId)
+      ) {
+        console.log(
+          "🔄 Intento adicional para obtener productos faltantes del negocio..."
+        );
+        fetchDealProducts(currentDeal._id || (dealId as string));
+        setHasFetchedDealProducts(true);
+      }
     }
   }, [currentDeal]);
 
@@ -121,13 +276,17 @@ export function DealDetailsModal({
                 <h2 className="text-xl font-semibold text-gray-900">
                   {currentDeal.title}
                 </h2>
-                <p
-                  className="text-sm text-blue-500 cursor-pointer"
-                  onClick={() => contact?._id && handleRedirect(contact._id)}
-                >
-                  {contact?.firstName}
-                </p>
-                <p className="text-sm text-gray-500">{contact?.companyName}</p>
+                {contact && contact.firstName && (
+                  <p
+                    className="text-sm text-blue-500 cursor-pointer"
+                    onClick={() => contact._id && handleRedirect(contact._id)}
+                  >
+                    {contact.firstName} {contact.lastName}
+                  </p>
+                )}
+                {contact && contact.companyName && (
+                  <p className="text-sm text-gray-500">{contact.companyName}</p>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -146,52 +305,98 @@ export function DealDetailsModal({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Files */}
+              {/* Custom Fields */}
               <div className="bg-white rounded-lg border p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-medium text-gray-900">
-                    Productos
-                  </h3>
-                </div>
+                <h3 className="text-sm font-medium text-gray-900 mb-4">
+                  Custom Fields
+                </h3>
                 <div className="space-y-3">
-                  {currentDeal?.dealProducts?.length > 0 ? (
-                    currentDeal.dealProducts.map((product) => (
-                      <div
-                        key={product._id}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all border"
-                      >
-                        <Box className="w-8 h-8 text-blue-500 bg-blue-50 p-1.5 rounded-md" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">
-                            {product.productId.name}
-                          </p>
-                          <div className="flex flex-wrap gap-2 mt-1">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                              Variante:{" "}
-                              {product.variantId
-                                ? product?.variantId?.attributeValues[0].value
-                                : "Sin Variante"}
-                            </span>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                              Cantidad: {product.quantity}
-                            </span>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
-                              Precio: $
-                              {product.priceAtAcquisition
-                                ? product.priceAtAcquisition
-                                : product.variantId
-                                ? product?.variantId?.attributeValues[0].price
-                                : "Sin Precio"}
-                            </span>
-                          </div>
-                        </div>
+                  {contact && (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-500">
+                          Tipo de empresa
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {contact.companyType || "No disponible"}
+                        </span>
                       </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-500 italic">
-                      No hay productos asociados a este negocio
-                    </p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-500">
+                          Tipo de cliente
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {contact.lifeCycle || "No disponible"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-500">
+                          Identificación
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {contact.idType} {contact.idNumber || "No disponible"}
+                        </span>
+                      </div>
+                    </>
                   )}
+                </div>
+              </div>
+
+              {/* Products Section */}
+              <div className="bg-white rounded-lg border p-4">
+                <h3 className="text-sm font-medium text-gray-900 mb-4">
+                  Productos
+                </h3>
+                <div className="space-y-3">
+                  {(() => {
+                    console.log(
+                      "🎨 Renderizando productos:",
+                      currentDeal?.dealProducts
+                    );
+                    return currentDeal?.dealProducts?.length > 0 ? (
+                      currentDeal.dealProducts.map((product: any) => {
+                        console.log("📦 Producto individual:", product);
+                        return (
+                          <div
+                            key={product._id}
+                            className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all border"
+                          >
+                            <Box className="w-8 h-8 text-blue-500 bg-blue-50 p-1.5 rounded-md" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">
+                                {product.productId?.name ||
+                                  "Producto sin nombre"}
+                              </p>
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  Variante:{" "}
+                                  {product.variantId
+                                    ? product.variantId.attributeValues?.[0]
+                                        ?.value || "Sin valor"
+                                    : "Sin Variante"}
+                                </span>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                  Cantidad: {product.quantity || 0}
+                                </span>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                                  Precio: $
+                                  {product.priceAtAcquisition ||
+                                    (product.variantId &&
+                                      product.variantId.attributeValues?.[0]
+                                        ?.price) ||
+                                    "Sin Precio"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">
+                        No hay productos asociados a este negocio
+                      </p>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -238,6 +443,15 @@ export function DealDetailsModal({
                         : "No definido"}
                     </span>
                   </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center text-sm text-gray-500">
+                      <TagIcon className="w-4 h-4 mr-2" />
+                      Status
+                    </div>
+                    <span className="text-sm font-medium text-gray-900">
+                      {currentDeal.status?.name || "No definido"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -247,60 +461,31 @@ export function DealDetailsModal({
                   Contact Information
                 </h3>
                 <div className="space-y-3">
-                  <div className="flex items-center text-sm">
-                    <Building2 className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">
-                      {currentDeal.associatedContactId?.properties
-                        ?.companyName ||
-                        contact?.companyName ||
-                        "No disponible"}
-                    </span>
-                  </div>
-                  <div className="flex items-center text-sm">
-                    <Mail className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">
-                      {currentDeal.associatedContactId?.properties?.email ||
-                        contact?.email ||
-                        "No disponible"}
-                    </span>
-                  </div>
-                  <div className="flex items-center text-sm">
-                    <Phone className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-900">
-                      {currentDeal.associatedContactId?.properties?.phone ||
-                        contact?.mobile ||
-                        "No disponible"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Custom Fields */}
-              <div className="bg-white rounded-lg border p-4">
-                <h3 className="text-sm font-medium text-gray-900 mb-4">
-                  Custom Fields
-                </h3>
-                <div className="space-y-3">
-                  {currentDeal.fields &&
-                  Array.isArray(currentDeal.fields) &&
-                  currentDeal.fields.length > 0 ? (
-                    currentDeal.fields.map((field: any) => (
-                      <div
-                        key={field._id || field.field?._id}
-                        className="flex items-center justify-between"
-                      >
-                        <span className="text-sm text-gray-500">
-                          {field.field?.name || "Campo personalizado"}
-                        </span>
-                        <span className="text-sm font-medium text-gray-900">
-                          {field.value || ""}
+                  {isLoadingContact ? (
+                    <div className="text-sm text-gray-500">
+                      Cargando información del contacto...
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center text-sm">
+                        <Building2 className="w-4 h-4 text-gray-400 mr-2" />
+                        <span className="text-gray-900">
+                          {contact?.companyName || "No disponible"}
                         </span>
                       </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-500">
-                      No hay campos personalizados
-                    </p>
+                      <div className="flex items-center text-sm">
+                        <Mail className="w-4 h-4 text-gray-400 mr-2" />
+                        <span className="text-gray-900">
+                          {contact?.email || "No disponible"}
+                        </span>
+                      </div>
+                      <div className="flex items-center text-sm">
+                        <Phone className="w-4 h-4 text-gray-400 mr-2" />
+                        <span className="text-gray-900">
+                          {contact?.phone || contact?.mobile || "No disponible"}
+                        </span>
+                      </div>
+                    </>
                   )}
                 </div>
               </div>

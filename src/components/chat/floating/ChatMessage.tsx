@@ -39,10 +39,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         }`}
       >
         {!isWarning && (
-          <p className="text-sm leading-relaxed">{message.content}</p>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+            {message.content}
+          </p>
         )}
         {isWarning && (
-          <span className="text-sm leading-relaxed font-medium flex items-center gap-2">
+          <span className="text-sm leading-relaxed font-medium flex items-center gap-2 whitespace-pre-wrap break-words">
             {message.content}
           </span>
         )}
