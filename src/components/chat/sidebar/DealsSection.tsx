@@ -19,8 +19,6 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
 }) => {
   const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
 
-  if (deals.length === 0) return null;
-
   return (
     <>
       <div className="p-4 border-b border-gray-200">
@@ -40,33 +38,39 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
             </button>
           </div>
         </div>
-        <div className="flex flex-col gap-3 mt-4 max-h-[300px] overflow-y-auto pr-2">
-          {deals.map((deal) => (
-            <div
-              key={deal._id}
-              className="flex flex-col p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
-              onClick={() => setSelectedDeal(deal)}
-            >
-              <div className="flex justify-between items-start">
-                <div className="flex flex-col">
-                  <h3 className="text-gray-900 font-semibold text-red-500">
-                    {deal.title}
-                  </h3>
-                  <p className="text-gray-500 text-sm">
-                    {formatDealClosingDate(deal.closingDate)}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end">
-                  <p className="font-medium text-gray-900">
-                    {formatDealAmount(deal.amount)}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {getDealStatusName(deal)}
-                  </p>
+        <div className="flex flex-col gap-3 mt-4 h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+          {deals.length === 0 ? (
+            <div className="text-center py-4 text-gray-500">
+              No hay negocios asociados
+            </div>
+          ) : (
+            deals.map((deal) => (
+              <div
+                key={deal._id}
+                className="flex flex-col p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+                onClick={() => setSelectedDeal(deal)}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex flex-col">
+                    <h3 className="text-gray-900 font-semibold text-red-500">
+                      {deal.title}
+                    </h3>
+                    <p className="text-gray-500 text-sm">
+                      {formatDealClosingDate(deal.closingDate)}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <p className="font-medium text-gray-900">
+                      {formatDealAmount(deal.amount)}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {getDealStatusName(deal)}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 

@@ -103,7 +103,7 @@ const ConversationColumn: React.FC<{
     <div
       key={column.id}
       style={{ backgroundColor: column.color }}
-      className="rounded-lg flex flex-col h-full min-w-[400px] max-w-[320px]"
+      className="rounded-lg flex flex-col h-full w-[320px] relative"
       onDragOver={onDragOver}
       onDrop={(e) => onDrop(e, index)}
     >
@@ -125,10 +125,10 @@ const ConversationColumn: React.FC<{
           </span>
         </div>
       </div>
-
+      {console.log("Column chats", columnChats) as any}
       {/* Column Content with Infinite Scroll */}
       <div
-        className="flex-1 overflow-y-auto p-2 space-y-2"
+        className="flex-1 p-2 space-y-2 overflow-y-auto overflow-x-visible"
         style={{ maxHeight: "calc(100vh - 200px)" }}
         onScroll={handleScroll}
       >

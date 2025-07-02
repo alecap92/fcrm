@@ -310,39 +310,66 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
   // Función para obtener conversaciones
   const fetchConversations = useCallback(
-    async (currentPipeline?: Pipeline | null) => {
-      const targetPipeline = currentPipeline || pipeline;
-      if (!targetPipeline) return;
-
-      setIsLoadingConversations(true);
+    async (currentPipeline: Pipeline | null = null) => {
       try {
-        const response = (await conversationService.getConversations()) as {
-          success: boolean;
-          data: ApiConversation[];
-          pagination?: {
-            total: number;
-            page: number;
-            limit: number;
-            pages: number;
-          };
-        };
+        if (!currentPipeline) return;
 
-        if (response.success && response.data) {
-          const formattedConversations = transformApiConversations(
-            response.data,
-            targetPipeline
+        setIsLoadingConversations(true);
+
+        // Cargar cada columna individualmente
+        const allConversations: Conversation[] = [];
+
+        for (const stage of currentPipeline.stages) {
+          console.log("DEBUG Fetching stage:", {
+            stageId: stage.stageId,
+            stageName: stage.stageName,
+          });
+
+          const response = await conversationService.getConversationsByStage(
+            currentPipeline.pipeline.id,
+            stage.stageId,
+            1,
+            50
           );
-          setConversations(formattedConversations);
-          setConversationsError(null);
+
+          if (response.success && response.data) {
+            console.log("DEBUG Stage response:", {
+              stageId: stage.stageId,
+              conversationsReceived: response.data.conversations.length,
+              pagination: response.data.pagination,
+            });
+
+            const formattedConversations = transformApiConversations(
+              response.data.conversations,
+              currentPipeline
+            );
+
+            allConversations.push(...formattedConversations);
+
+            // Actualizar la paginación de la columna
+            setColumns((prevColumns) =>
+              prevColumns.map((col) =>
+                col.id === stage.stageId
+                  ? {
+                      ...col,
+                      pagination: response.data.pagination,
+                    }
+                  : col
+              )
+            );
+          }
         }
-      } catch (err) {
-        console.error("Error al cargar conversaciones:", err);
-        setConversationsError("Error al cargar conversaciones");
+
+        setConversations(allConversations);
+        setConversationsError(null);
+      } catch (error) {
+        console.error("DEBUG Fetch error:", error);
+        setConversationsError("Error al cargar las conversaciones");
       } finally {
         setIsLoadingConversations(false);
       }
     },
-    [pipeline, transformApiConversations]
+    [transformApiConversations]
   );
 
   // Función para obtener pipeline
@@ -395,6 +422,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             },
           })
         );
+        console.log("Pipeline columns", pipelineColumns);
 
         setColumns(pipelineColumns);
         await fetchConversations(newPipeline);
@@ -610,13 +638,23 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
   // Agrupar conversaciones por columna
   const conversationsByColumn = useMemo(() => {
-    return columns.reduce((acc, column) => {
-      acc[column.id] = conversations.filter(
+    const groupedConversations: Record<string, Conversation[]> = {};
+
+    columns.forEach((column) => {
+      groupedConversations[column.id] = conversations.filter(
         (chat) => chat.status === column.id
       );
-      return acc;
-    }, {} as Record<string, Conversation[]>);
-  }, [columns, conversations]);
+
+      console.log("DEBUG Conversations by Column:", {
+        columnId: column.id,
+        columnTitle: column.title,
+        conversationsCount: groupedConversations[column.id].length,
+        totalInPagination: column.pagination?.total,
+      });
+    });
+
+    return groupedConversations;
+  }, [conversations, columns]);
 
   // Función para truncar mensajes
   const truncateMessage = useCallback(
@@ -1053,6 +1091,39 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     refreshConversations,
   ]);
 
+  // Función para manejar nuevos mensajes
+  const handleNewMessage = (newMessage: any) => {
+    // Si el mensaje es entrante y no pertenece a la conversación actual, mostrar notificación en el título
+    if (
+      newMessage.direction === "incoming" &&
+      newMessage.conversation !== currentChatId
+    ) {
+      // Obtener el nombre del remitente desde el título de la conversación o usar el número de teléfono
+      const senderName =
+        newMessage.possibleName ||
+        conversations.find((conv) => conv.id === newMessage.conversation)
+          ?.title ||
+        newMessage.from ||
+        "Contacto";
+
+      showNewMessageNotification(senderName);
+    }
+
+    // Verificar si el mensaje pertenece a esta conversación
+    if (newMessage.conversation === currentChatId && currentChatId) {
+      // Recargar los mensajes completos para asegurar sincronización
+      loadMessages(1, true, currentChatId);
+
+      // Si el mensaje es entrante, marcar como leído
+      if (newMessage.direction === "incoming") {
+        chatService.markAsRead(newMessage.from);
+      }
+    }
+
+    // Siempre refrescar la lista de conversaciones para mostrar nuevos mensajes
+    refreshConversations();
+  };
+
   // Efecto para manejar la suscripción a eventos de socket específicos de conversación
   useEffect(() => {
     if (!currentChatId || !user?.organizationId) return;
@@ -1067,65 +1138,16 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     // Suscribirse a la sala de la organización (por si no está ya suscrito)
     socket.emit("joinRoom", orgRoom);
 
-    // Función para manejar nuevos mensajes
-    const handleNewMessage = (newMessage: any) => {
-      // Si el mensaje es entrante y no pertenece a la conversación actual, mostrar notificación en el título
-      if (
-        newMessage.direction === "incoming" &&
-        newMessage.conversation !== currentChatId
-      ) {
-        // Obtener el nombre del remitente desde el título de la conversación o usar el número de teléfono
-        const senderName =
-          newMessage.possibleName ||
-          conversations.find((conv) => conv.id === newMessage.conversation)
-            ?.title ||
-          newMessage.from ||
-          "Contacto";
-
-        showNewMessageNotification(senderName);
-      }
-
-      // Verificar si el mensaje pertenece a esta conversación
-      if (newMessage.conversation === currentChatId) {
-        setMessages((prevMessages) => {
-          // Verificar si el mensaje ya existe para evitar duplicados
-          const messageExists = prevMessages.some(
-            (msg) => msg._id === newMessage._id
-          );
-          if (messageExists) {
-            return prevMessages;
-          }
-
-          // Agregar el nuevo mensaje al final (ya que viene en orden cronológico)
-          return [...prevMessages, newMessage];
-        });
-
-        // Si el mensaje es entrante, marcar como leído
-        if (newMessage.direction === "incoming") {
-          chatService.markAsRead(newMessage.from);
-        }
-      }
-
-      // Siempre refrescar la lista de conversaciones para mostrar nuevos mensajes
-      refreshConversations();
-    };
-
-    // Función para manejar notificaciones de WhatsApp (específicas de conversación)
-    const handleNewNotification = (notification: any) => {
-      // Refrescar la lista de conversaciones para mostrar nuevos mensajes
-      refreshConversations();
-    };
-
     // Suscribirse a eventos de socket específicos de conversación
     socket.on("new_message", handleNewMessage);
     socket.on("whatsapp_message", handleNewMessage);
-    socket.on("newNotification", handleNewNotification);
+    socket.on("newNotification", handleNewMessage);
 
     // Limpiar suscripciones
     return () => {
       socket.off("new_message", handleNewMessage);
       socket.off("whatsapp_message", handleNewMessage);
-      socket.off("newNotification", handleNewNotification);
+      socket.off("newNotification", handleNewMessage);
       unsubscribeFromConversation(currentChatId);
     };
   }, [
@@ -1142,17 +1164,31 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       if (!pipeline) return;
 
       const column = columns.find((col) => col.id === columnId);
+      console.log("DEBUG loadMore - Column state:", {
+        columnId,
+        currentPage: column?.pagination?.page,
+        hasMore: column?.pagination?.hasMore,
+        total: column?.pagination?.total,
+        currentLimit: column?.pagination?.limit,
+      });
+
       if (!column || !column.pagination?.hasMore) return;
 
       setColumnLoadingStates((prev) => ({ ...prev, [columnId]: true }));
 
       try {
         const nextPage = (column.pagination?.page || 1) + 1;
+        console.log("DEBUG loadMore - Fetching page:", {
+          columnId,
+          nextPage,
+          limit: column.pagination?.limit || 50,
+        });
+
         const response = (await conversationService.getConversationsByStage(
           pipeline.pipeline.id,
           columnId,
           nextPage,
-          column.pagination?.limit || 10
+          column.pagination?.limit || 50
         )) as {
           success: boolean;
           data: {
@@ -1168,6 +1204,12 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           };
         };
 
+        console.log("DEBUG loadMore - Response:", {
+          success: response.success,
+          conversationsReceived: response.data?.conversations?.length,
+          pagination: response.data?.pagination,
+        });
+
         if (response.success && response.data) {
           const formattedConversations = transformApiConversations(
             response.data.conversations,
@@ -1175,10 +1217,15 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           );
 
           // Agregar las nuevas conversaciones al estado existente
-          setConversations((prevConversations) => [
-            ...prevConversations,
-            ...formattedConversations,
-          ]);
+          setConversations((prevConversations) => {
+            const newState = [...prevConversations, ...formattedConversations];
+            console.log("DEBUG loadMore - Updated conversations:", {
+              previousCount: prevConversations.length,
+              newCount: newState.length,
+              addedCount: formattedConversations.length,
+            });
+            return newState;
+          });
 
           // Actualizar la información de paginación de la columna
           setColumns((prevColumns) =>
@@ -1194,11 +1241,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
           setConversationsError(null);
         } else {
-          console.error("Respuesta inválida del backend:", response);
+          console.error("DEBUG loadMore - Invalid response:", response);
           setConversationsError("Error al cargar más conversaciones");
         }
       } catch (err) {
-        console.error("Error al cargar más conversaciones:", err);
+        console.error("DEBUG loadMore - Error:", err);
         setConversationsError("Error al cargar más conversaciones");
       } finally {
         setColumnLoadingStates((prev) => ({ ...prev, [columnId]: false }));

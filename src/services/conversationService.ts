@@ -70,15 +70,34 @@ const getConversationsByStage = async (
   pipelineId: string,
   stageId: string,
   page: number = 1,
-  limit: number = 10
+  limit: number = 50
 ) => {
   try {
+    console.log("DEBUG Service - Fetching stage:", {
+      pipelineId,
+      stageId,
+      page,
+      limit,
+    });
+
+    // Asegurarse de que los parámetros sean números
+    const validPage = Math.max(1, page);
+    const validLimit = Math.max(50, limit);
+
     const response: any = await apiService.get(
-      `/conversation/kanban?pipelineId=${pipelineId}&stageId=${stageId}&page=${page}&limit=${limit}`
+      `/conversation/kanban?pipelineId=${pipelineId}&stageId=${stageId}&page=${validPage}&limit=${validLimit}`
     );
+
+    console.log("DEBUG Service - Stage response:", {
+      success: response.data?.success,
+      conversationsCount: response.data?.data?.conversations?.length,
+      pagination: response.data?.data?.pagination,
+      stageId,
+    });
+
     return response.data;
   } catch (error) {
-    console.error("Error loading conversations by stage:", error);
+    console.error("DEBUG Service - Error loading stage:", { stageId, error });
     return {
       success: false,
       error: "Error de conexión al servidor",

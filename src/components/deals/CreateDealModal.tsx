@@ -647,6 +647,7 @@ export function CreateDealModal({
                 setFormData({ ...formData, stage: e.target.value })
               }
               className="mt-1 block w-full rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-action focus:border-transparent px-3 py-2"
+              required
             >
               <option value="">-Seleccionar etapa-</option>
               {stages.map((stage) => (
@@ -709,7 +710,6 @@ export function CreateDealModal({
                         {variantNames[product.variantId] || product.variantId}
                       </p>
                     )}
-                    {console.log(product) as any}
                   </div>
                   <div className="flex justify-end">
                     <button

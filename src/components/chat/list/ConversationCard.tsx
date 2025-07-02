@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useState, MouseEvent } from "react";
+import { MoreVertical } from "lucide-react";
+import { useChatContext } from "../../../contexts/ChatContext";
 
 interface ConversationCardProps {
   title: string;
@@ -9,6 +11,8 @@ interface ConversationCardProps {
   tags: string[];
   isRead: boolean;
   onDelete?: () => void;
+  onToggleRead?: () => void;
+  onMoveTo?: (columnId: string) => void;
 }
 
 const ConversationCard: React.FC<ConversationCardProps> = ({
@@ -20,7 +24,40 @@ const ConversationCard: React.FC<ConversationCardProps> = ({
   tags,
   isRead,
   onDelete,
+  onToggleRead,
+  onMoveTo,
 }) => {
+  const { columns } = useChatContext();
+  const [showMenu, setShowMenu] = useState(false);
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
+
+  const handleMenuToggle = (e: MouseEvent) => {
+    e.stopPropagation();
+    setShowMenu((prev) => !prev);
+    if (showMenu) setShowMoveMenu(false);
+  };
+
+  const handleToggleReadClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    onToggleRead?.();
+    setShowMenu(false);
+    setShowMoveMenu(false);
+  };
+
+  const handleDeleteClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    onDelete?.();
+    setShowMenu(false);
+    setShowMoveMenu(false);
+  };
+
+  const handleMoveClick = (e: MouseEvent, columnId: string) => {
+    e.stopPropagation();
+    onMoveTo?.(columnId);
+    setShowMenu(false);
+    setShowMoveMenu(false);
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high":
@@ -169,17 +206,15 @@ const ConversationCard: React.FC<ConversationCardProps> = ({
           </span>
         </div>
       </div>
-      {onDelete && (
+      <div
+        className="absolute top-3 right-3"
+        style={{ position: "absolute", zIndex: 50 }}
+      >
         <button
-          onClick={onDelete}
+          onClick={handleMenuToggle}
           style={{
-            position: "absolute",
-            top: 12,
-            right: 12,
             background: "none",
             border: "none",
-            fontSize: "20px",
-            color: "#aaa",
             cursor: "pointer",
             padding: "4px",
             display: "flex",
@@ -197,9 +232,62 @@ const ConversationCard: React.FC<ConversationCardProps> = ({
             e.currentTarget.style.backgroundColor = "transparent";
           }}
         >
-          &times;
+          <MoreVertical className="w-4 h-4 text-gray-600" />
         </button>
-      )}
+
+        {showMenu && (
+          <div
+            className="absolute right-0 top-full mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-100"
+            style={{ zIndex: 50 }}
+          >
+            <div className="py-1">
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                onClick={handleToggleReadClick}
+              >
+                {isRead ? "Marcar como no leída" : "Marcar como leída"}
+              </button>
+              {onDelete && (
+                <button
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                  onClick={handleDeleteClick}
+                >
+                  Eliminar conversación
+                </button>
+              )}
+
+              <div className="relative">
+                <button
+                  className="w-full flex justify-between items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMoveMenu((prev) => !prev);
+                  }}
+                >
+                  Mover a<span className="ml-auto">▸</span>
+                </button>
+
+                {showMoveMenu && (
+                  <div
+                    className="absolute left-full top-0 ml-1 w-48 bg-white rounded-md shadow-lg border border-gray-100"
+                    style={{ zIndex: 51 }}
+                  >
+                    {columns?.map((col) => (
+                      <button
+                        key={col.id}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={(e) => handleMoveClick(e, col.id)}
+                      >
+                        {col.title}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
