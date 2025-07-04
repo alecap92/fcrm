@@ -1,8 +1,8 @@
 import { io } from "socket.io-client";
 import { authService } from "../config/authConfig";
 
-const SOCKET_URL = "http://localhost:3001"; // Temporalmente forzado a local
-// const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:3001";
+// const SOCKET_URL = "http://localhost:3001"; // Temporalmente forzado a local
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:3001";
 
 console.log("[DEBUG] Socket URL:", SOCKET_URL);
 console.log("[DEBUG] Initial token:", authService.getToken());

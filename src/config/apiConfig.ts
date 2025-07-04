@@ -22,11 +22,11 @@ class ApiService {
 
   private constructor() {
     this.api = axios.create({
-      baseURL: "http://localhost:3001/api/v1", // Temporalmente forzado a local
-      // baseURL:
-      //   import.meta.env.VITE_API_BASE_URL ||
-      //   import.meta.env.VITE_API_URL ||
-      //   "https://fusioncrmapiv3-production.up.railway.app/api/v1",
+      // baseURL: "http://localhost:3001/api/v1", // Temporalmente forzado a local
+      baseURL:
+        import.meta.env.VITE_API_BASE_URL ||
+        import.meta.env.VITE_API_URL ||
+        "https://fusioncrmapiv3-production.up.railway.app/api/v1",
       timeout: Number(import.meta.env.VITE_API_TIMEOUT) || 10000,
       headers: {
         "Content-Type": "application/json",
