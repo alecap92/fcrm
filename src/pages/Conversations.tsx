@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import { Plus, Settings, AlertCircle, Search } from "lucide-react";
+import { Plus, Settings, AlertCircle, Search, RefreshCcw } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ChatModal from "../components/chat/modal/ChatModal";
 import { Button } from "../components/ui/button";
@@ -125,7 +125,7 @@ const ConversationColumn: React.FC<{
           </span>
         </div>
       </div>
-      {console.log("Column chats", columnChats) as any}
+
       {/* Column Content with Infinite Scroll */}
       <div
         className="flex-1 p-2 space-y-2 overflow-y-auto overflow-x-visible"
@@ -190,6 +190,8 @@ const Conversations: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedChat, setSelectedChat] = useState<any | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
 
   // Estado para verificación de WhatsApp
   const [hasWhatsAppConfig, setHasWhatsAppConfig] = useState<boolean | null>(
@@ -236,6 +238,11 @@ const Conversations: React.FC = () => {
 
     // Funciones de limpieza
     cleanupChat,
+
+    // Funciones de debug
+    checkSocketStatus,
+    forceSocketReconnect,
+    testSocket,
   } = useChatContext();
 
   const toast = useToast();
@@ -524,6 +531,21 @@ const Conversations: React.FC = () => {
     [editColumn]
   );
 
+  const handleRefreshConversations = useCallback(async () => {
+    await refreshConversations();
+  }, [refreshConversations]);
+
+  // Función para manejar la actualización
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await refreshConversations();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // Handlers para modales (estables y memoizados)
   const modalHandlers = useMemo(
     () => ({
@@ -704,44 +726,135 @@ const Conversations: React.FC = () => {
         <div className="flex flex-col h-screen">
           {/* Header */}
           <div className="bg-white border-b">
-            <div className="p-4 flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900">
-                  Conversaciones
-                </h1>
-                <p className="mt-1 text-sm text-gray-500">
-                  {pipeline?.pipeline?.name}
-                </p>
-              </div>
-              <div className="flex space-x-3">
-                <Button
-                  variant="outline"
-                  className="flex items-center"
-                  onClick={modalHandlers.showSearch}
-                >
-                  <Search size={16} className="mr-2" />
-                  Buscar
-                </Button>
-                <Button
-                  onClick={modalHandlers.showColumns}
-                  variant="outline"
-                  className="flex items-center"
-                >
-                  <Settings size={16} className="mr-2" />
-                  Administrar Columnas
-                </Button>
-                <Button
-                  onClick={modalHandlers.showNewChat}
-                  className="flex items-center"
-                >
-                  <Plus size={16} className="mr-2" />
-                  Nueva Conversación
-                </Button>
+            <div className="px-4 sm:px-6 lg:px-8 py-4">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <h1 className="text-2xl font-semibold text-gray-900">
+                    Conversaciones
+                  </h1>
+                  {hasWhatsAppConfig !== null &&
+                    !hasWhatsAppConfig &&
+                    !isCheckingWhatsApp && (
+                      <div className="flex items-center gap-2 text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full">
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="text-sm">WhatsApp no configurado</span>
+                      </div>
+                    )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className="flex items-center gap-2"
+                  >
+                    <RefreshCcw
+                      className={`w-4 h-4 ${
+                        isRefreshing ? "animate-spin" : ""
+                      }`}
+                    />
+                    Actualizar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowDebugPanel(!showDebugPanel)}
+                    className="flex items-center gap-2"
+                  >
+                    <AlertCircle className="w-4 h-4" />
+                    Debug
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowSearchModal(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Search className="w-4 h-4" />
+                    Buscar
+                  </Button>
+                  <Button
+                    onClick={() => setShowNewChatModal(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Nuevo Chat
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowColumnsModal(true)}
+                  >
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Kanban Board */}
+          {/* Debug Panel */}
+          {showDebugPanel && (
+            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+              <h3 className="text-sm font-medium text-yellow-800 mb-3">
+                Panel de Debug - Socket
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={checkSocketStatus}
+                    className="w-full"
+                  >
+                    Verificar Estado
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={forceSocketReconnect}
+                    className="w-full"
+                  >
+                    Forzar Reconexión
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={testSocket}
+                    className="w-full"
+                  >
+                    Probar Socket
+                  </Button>
+                </div>
+                <div className="text-xs space-y-1">
+                  <div>
+                    <strong>Conversaciones:</strong> {conversations.length}
+                  </div>
+                  <div>
+                    <strong>Columnas:</strong> {columns.length}
+                  </div>
+                  <div>
+                    <strong>Pipeline:</strong>{" "}
+                    {pipeline ? "Cargado" : "No cargado"}
+                  </div>
+                  <div>
+                    <strong>Error:</strong> {conversationsError || "Ninguno"}
+                  </div>
+                </div>
+                <div className="text-xs text-gray-600">
+                  <p>
+                    Revisa la consola del navegador para logs detallados del
+                    socket.
+                  </p>
+                  <p className="mt-1">
+                    Los eventos de socket aparecerán con el prefijo [DEBUG].
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Content */}
           <div
             className="flex-1 overflow-x-auto p-6"
             style={{ height: "calc(100vh - 120px)" }}

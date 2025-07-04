@@ -21,6 +21,7 @@ import type { FileDocument } from "../services/filesService";
 import { groupMessagesByDate, getHoursDifference } from "../lib";
 import { useAuth } from "./AuthContext";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useLoading } from "./LoadingContext";
 
 // Interfaces para conversaciones y pipelines
 interface ApiConversation {
@@ -36,6 +37,15 @@ interface ApiConversation {
     contact: {
       reference: string;
       type: "Contact";
+      contactId: string;
+      displayInfo?: {
+        mobile: string;
+        name: string;
+        lastName: string;
+        email: string;
+        position: string;
+        contactId: string;
+      };
     };
   };
   unreadCount: number;
@@ -184,6 +194,11 @@ interface ChatContextType {
   initializeChat: (chatId: string, isOpen: boolean) => void;
   cleanupChat: () => void;
   refreshConversations: () => void;
+
+  // Funciones de debug
+  checkSocketStatus: () => any;
+  forceSocketReconnect: () => void;
+  testSocket: () => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -212,6 +227,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     soundEnabled: true, // Habilitar sonidos de notificación
     soundVolume: 0.6, // Volumen moderado
   });
+
+  // Hook de loading global
+  const { showLoading, hideLoading } = useLoading();
 
   // Estado del chat individual
   const [message, setMessage] = useState("");
@@ -289,9 +307,17 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const stageId =
           currentPipeline.stages[conv.currentStage]?.stageId || "";
 
+        // Obtener el nombre del contacto si está disponible
+        const contactDisplayInfo = conv.participants?.contact?.displayInfo;
+        const contactName = contactDisplayInfo?.name
+          ? `${contactDisplayInfo.name} ${
+              contactDisplayInfo.lastName || ""
+            }`.trim()
+          : conv.title || conv.participants?.contact?.reference || "Sin nombre";
+
         return {
           id: conv._id,
-          title: conv.title,
+          title: contactName,
           lastMessage: conv.lastMessage?.message || "",
           priority: conv.priority,
           status: stageId,
@@ -301,14 +327,14 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           tags: conv.tags,
           createdAt: conv.lastMessage?.timestamp || conv.createdAt,
           isRead: conv.lastMessage?.isRead || false,
-          mobile: conv.mobile,
+          mobile: conv.mobile || conv.participants?.contact?.reference,
         };
       });
     },
     []
   );
 
-  // Función para obtener conversaciones
+  // Función para obtener conversaciones sin mostrar loading global
   const fetchConversations = useCallback(
     async (currentPipeline: Pipeline | null = null) => {
       try {
@@ -320,11 +346,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         const allConversations: Conversation[] = [];
 
         for (const stage of currentPipeline.stages) {
-          console.log("DEBUG Fetching stage:", {
-            stageId: stage.stageId,
-            stageName: stage.stageName,
-          });
-
           const response = await conversationService.getConversationsByStage(
             currentPipeline.pipeline.id,
             stage.stageId,
@@ -333,12 +354,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           );
 
           if (response.success && response.data) {
-            console.log("DEBUG Stage response:", {
-              stageId: stage.stageId,
-              conversationsReceived: response.data.conversations.length,
-              pagination: response.data.pagination,
-            });
-
             const formattedConversations = transformApiConversations(
               response.data.conversations,
               currentPipeline
@@ -377,6 +392,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     // Solo mostrar loading si no es un retry
     if (isInitialPipelineLoad) {
       setIsLoadingConversations(true);
+      showLoading("Cargando pipeline...");
     }
 
     setConversationsError(null);
@@ -422,7 +438,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             },
           })
         );
-        console.log("Pipeline columns", pipelineColumns);
 
         setColumns(pipelineColumns);
         await fetchConversations(newPipeline);
@@ -476,10 +491,17 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         "Error de conexión - no se pudo cargar el pipeline"
       );
     } finally {
+      hideLoading();
       setIsLoadingConversations(false);
       setIsInitialPipelineLoad(false);
     }
-  }, [fetchConversations, isInitialPipelineLoad, retryCount]);
+  }, [
+    fetchConversations,
+    isInitialPipelineLoad,
+    retryCount,
+    showLoading,
+    hideLoading,
+  ]);
 
   // Función para actualizar conversación
   const updateConversationStage = useCallback(
@@ -644,13 +666,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       groupedConversations[column.id] = conversations.filter(
         (chat) => chat.status === column.id
       );
-
-      console.log("DEBUG Conversations by Column:", {
-        columnId: column.id,
-        columnTitle: column.title,
-        conversationsCount: groupedConversations[column.id].length,
-        totalInPagination: column.pagination?.total,
-      });
     });
 
     return groupedConversations;
@@ -672,17 +687,19 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   }, []);
 
   // Función para refrescar conversaciones con debounce
-  const refreshConversations = useCallback(() => {
-    // Limpiar timeout anterior si existe
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
+  const refreshConversations = useCallback(async () => {
+    try {
+      if (pipeline) {
+        // Si ya tenemos el pipeline cargado, actualizamos solo las conversaciones
+        await fetchConversations(pipeline);
+      } else {
+        // Si no hay pipeline, volvemos a cargarlo (esto también carga las conversaciones)
+        await fetchPipeline();
+      }
+    } catch (error) {
+      console.error("[CHAT] Error al actualizar conversaciones:", error);
     }
-
-    // Establecer nuevo timeout para evitar múltiples llamadas
-    refreshTimeoutRef.current = setTimeout(() => {
-      fetchConversations();
-    }, 500); // Debounce de 500ms
-  }, [fetchConversations]);
+  }, [fetchConversations, fetchPipeline, pipeline]);
 
   // Función para cargar mensajes con paginación
   const loadMessages = useCallback(
@@ -1034,129 +1051,180 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     setHasMore(true);
   }, [currentChatId]);
 
-  // Efecto separado para manejar notificaciones globales (independiente de currentChatId)
-  useEffect(() => {
-    if (!user?.organizationId) return;
+  // Función auxiliar para actualizar sólo la conversación afectada en el estado
+  const updateConversationPreview = useCallback(
+    (chatId: string, data: Partial<Conversation>) => {
+      setConversations((prev) =>
+        prev.map((conv) => (conv.id === chatId ? { ...conv, ...data } : conv))
+      );
+    },
+    []
+  );
 
-    const organizationId = user.organizationId;
-    const orgRoom = `organization_${organizationId}`;
+  // Función para manejar nuevos mensajes
+  const handleNewMessage = useCallback(
+    (newMessage: any) => {
+      // Manejar diferentes formatos de eventos del backend
+      let messageData;
+      let chatId;
 
-    // Suscribirse a la sala de la organización para notificaciones globales
-    socket.emit("joinRoom", orgRoom);
+      if (newMessage.message && newMessage.conversationId) {
+        // Formato de whatsapp_message
+        messageData = newMessage.message;
+        chatId = newMessage.conversationId.toString();
+      } else if (newMessage.conversation) {
+        // Formato directo de newMessage
+        messageData = newMessage;
+        chatId = newMessage.conversation;
+      } else if (newMessage.type && newMessage.contact) {
+        // Formato de newNotification
+        showNewMessageNotification(newMessage.contact);
+        return; // Solo mostrar notificación, no actualizar mensajes
+      } else {
+        console.warn("[CHAT] Formato de mensaje desconocido:", newMessage);
+        return;
+      }
 
-    // Función para manejar notificaciones de WhatsApp globales
-    const handleGlobalNewNotification = (notification: any) => {
-      // Si es una notificación de WhatsApp, mostrar notificación en el título
-      if (notification.type === "whatsapp") {
-        // Extraer el nombre del contacto del título o usar el número
-        let senderName = "Contacto";
-
-        // Intentar obtener el nombre desde las conversaciones existentes
-        const existingConversation = conversations.find(
-          (conv) =>
-            conv.mobile === notification.contact ||
-            conv.id.includes(notification.contact)
-        );
-
-        if (existingConversation) {
-          senderName = existingConversation.title;
-        } else if (notification.contact) {
-          // Formatear el número de teléfono para que sea más legible
-          const formattedPhone = notification.contact.replace(
-            /(\d{3})(\d{3})(\d{4})/,
-            "$1-$2-$3"
-          );
-          senderName = `WhatsApp (${formattedPhone})`;
-        }
+      // Si el mensaje es entrante y no pertenece a la conversación actual, mostrar notificación en el título
+      if (messageData.direction === "incoming" && chatId !== currentChatId) {
+        const senderName =
+          messageData.possibleName ||
+          conversations.find((conv) => conv.id === chatId)?.title ||
+          messageData.from ||
+          "Contacto";
 
         showNewMessageNotification(senderName);
       }
 
-      // Refrescar la lista de conversaciones para mostrar nuevos mensajes
-      refreshConversations();
-    };
+      // 1. Actualizar mensajes si el chat está abierto
+      if (chatId === currentChatId && currentChatId) {
+        const formattedMessage: Message = {
+          _id: messageData._id || Date.now().toString(),
+          message: messageData.message,
+          user: messageData.user || messageData.from,
+          organization: messageData.organization || "",
+          from: messageData.from,
+          to: messageData.to,
+          mediaUrl: messageData.mediaUrl || undefined,
+          mediaId: messageData.mediaId || "",
+          timestamp: messageData.timestamp || new Date().toISOString(),
+          type: messageData.type || "text",
+          direction: messageData.direction,
+          isRead: messageData.isRead || false,
+          possibleName: messageData.possibleName || "",
+          replyToMessage: messageData.replyToMessage || null,
+          messageId: messageData.messageId || "",
+          reactions: messageData.reactions || [],
+          conversation: chatId,
+        };
 
-    // Suscribirse solo al evento de notificaciones globales
-    socket.on("newNotification", handleGlobalNewNotification);
+        setMessages((prev) => [...prev, formattedMessage]);
 
-    // Limpiar suscripciones
-    return () => {
-      socket.off("newNotification", handleGlobalNewNotification);
-      // No hacer leaveRoom aquí porque puede estar siendo usado por el otro useEffect
-    };
-  }, [
-    user?.organizationId,
-    showNewMessageNotification,
-    conversations,
-    refreshConversations,
-  ]);
-
-  // Función para manejar nuevos mensajes
-  const handleNewMessage = (newMessage: any) => {
-    // Si el mensaje es entrante y no pertenece a la conversación actual, mostrar notificación en el título
-    if (
-      newMessage.direction === "incoming" &&
-      newMessage.conversation !== currentChatId
-    ) {
-      // Obtener el nombre del remitente desde el título de la conversación o usar el número de teléfono
-      const senderName =
-        newMessage.possibleName ||
-        conversations.find((conv) => conv.id === newMessage.conversation)
-          ?.title ||
-        newMessage.from ||
-        "Contacto";
-
-      showNewMessageNotification(senderName);
-    }
-
-    // Verificar si el mensaje pertenece a esta conversación
-    if (newMessage.conversation === currentChatId && currentChatId) {
-      // Recargar los mensajes completos para asegurar sincronización
-      loadMessages(1, true, currentChatId);
-
-      // Si el mensaje es entrante, marcar como leído
-      if (newMessage.direction === "incoming") {
-        chatService.markAsRead(newMessage.from);
+        // Si es entrante, marcar como leído en backend y estado
+        if (messageData.direction === "incoming") {
+          chatService.markAsRead(messageData.from);
+          updateConversationPreview(chatId, { isRead: true });
+        }
       }
+
+      // 2. Actualizar la vista previa de la conversación en el Kanban
+      const exists = conversations.some((conv) => conv.id === chatId);
+
+      if (exists) {
+        // Actualizar solo la conversación afectada
+        updateConversationPreview(chatId, {
+          lastMessage: messageData.message,
+          createdAt: messageData.timestamp || new Date().toISOString(),
+          isRead: chatId === currentChatId || false,
+        });
+      } else {
+        // Es una conversación nueva, obtener solo esta conversación
+        (async () => {
+          try {
+            const response = await conversationService.getConversationById(
+              chatId,
+              { page: 1, limit: 1 }
+            );
+            if (response && response.conversation) {
+              const apiConv: ApiConversation = response.conversation;
+              if (pipeline) {
+                const formatted = transformApiConversations(
+                  [apiConv],
+                  pipeline
+                );
+                setConversations((prev) => [...formatted, ...prev]);
+              }
+            }
+          } catch (err) {
+            console.error(
+              "[CHAT] No se pudo obtener la nueva conversación:",
+              err
+            );
+          }
+        })();
+      }
+    },
+    [
+      currentChatId,
+      conversations,
+      updateConversationPreview,
+      showNewMessageNotification,
+      pipeline,
+      transformApiConversations,
+    ]
+  );
+
+  // Efecto para manejar la suscripción a la sala global de la organización
+  useEffect(() => {
+    if (!user?.organizationId) {
+      return;
     }
 
-    // Siempre refrescar la lista de conversaciones para mostrar nuevos mensajes
-    refreshConversations();
-  };
-
-  // Efecto para manejar la suscripción a eventos de socket específicos de conversación
-  useEffect(() => {
-    if (!currentChatId || !user?.organizationId) return;
-
-    // Suscribirse a la sala de la organización
     const organizationId = user.organizationId;
     const orgRoom = `organization_${organizationId}`;
 
-    // Suscribirse a la conversación
-    subscribeToConversation(currentChatId);
-
-    // Suscribirse a la sala de la organización (por si no está ya suscrito)
+    // Suscribirse a la sala de la organización
     socket.emit("joinRoom", orgRoom);
 
-    // Suscribirse a eventos de socket específicos de conversación
-    socket.on("new_message", handleNewMessage);
+    // Limpiar al desmontar
+    return () => {
+      socket.emit("leaveRoom", orgRoom);
+    };
+  }, [user?.organizationId]);
+
+  // Efecto para manejar eventos globales de socket (notificaciones y actualizaciones de conversaciones)
+  useEffect(() => {
+    if (!user?.organizationId) {
+      return;
+    }
+
+    // Suscribirse a eventos globales de socket
+    socket.on("newMessage", handleNewMessage);
     socket.on("whatsapp_message", handleNewMessage);
     socket.on("newNotification", handleNewMessage);
 
-    // Limpiar suscripciones
+    // Limpiar suscripciones globales
     return () => {
-      socket.off("new_message", handleNewMessage);
+      socket.off("newMessage", handleNewMessage);
       socket.off("whatsapp_message", handleNewMessage);
       socket.off("newNotification", handleNewMessage);
+    };
+  }, [user?.organizationId, handleNewMessage]);
+
+  // Efecto separado para manejar la suscripción a eventos de socket específicos de conversación
+  useEffect(() => {
+    if (!currentChatId) {
+      return;
+    }
+
+    // Suscribirse a la conversación específica
+    subscribeToConversation(currentChatId);
+
+    // Limpiar suscripciones
+    return () => {
       unsubscribeFromConversation(currentChatId);
     };
-  }, [
-    currentChatId,
-    refreshConversations,
-    user?.organizationId,
-    showNewMessageNotification,
-    conversations,
-  ]);
+  }, [currentChatId]);
 
   // Nueva función para cargar más conversaciones para una columna
   const loadMoreConversationsForColumn = useCallback(
@@ -1164,13 +1232,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       if (!pipeline) return;
 
       const column = columns.find((col) => col.id === columnId);
-      console.log("DEBUG loadMore - Column state:", {
-        columnId,
-        currentPage: column?.pagination?.page,
-        hasMore: column?.pagination?.hasMore,
-        total: column?.pagination?.total,
-        currentLimit: column?.pagination?.limit,
-      });
 
       if (!column || !column.pagination?.hasMore) return;
 
@@ -1178,11 +1239,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
       try {
         const nextPage = (column.pagination?.page || 1) + 1;
-        console.log("DEBUG loadMore - Fetching page:", {
-          columnId,
-          nextPage,
-          limit: column.pagination?.limit || 50,
-        });
 
         const response = (await conversationService.getConversationsByStage(
           pipeline.pipeline.id,
@@ -1204,12 +1260,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           };
         };
 
-        console.log("DEBUG loadMore - Response:", {
-          success: response.success,
-          conversationsReceived: response.data?.conversations?.length,
-          pagination: response.data?.pagination,
-        });
-
         if (response.success && response.data) {
           const formattedConversations = transformApiConversations(
             response.data.conversations,
@@ -1217,15 +1267,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           );
 
           // Agregar las nuevas conversaciones al estado existente
-          setConversations((prevConversations) => {
-            const newState = [...prevConversations, ...formattedConversations];
-            console.log("DEBUG loadMore - Updated conversations:", {
-              previousCount: prevConversations.length,
-              newCount: newState.length,
-              addedCount: formattedConversations.length,
-            });
-            return newState;
-          });
+          setConversations((prevConversations) => [
+            ...prevConversations,
+            ...formattedConversations,
+          ]);
 
           // Actualizar la información de paginación de la columna
           setColumns((prevColumns) =>
@@ -1241,11 +1286,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
 
           setConversationsError(null);
         } else {
-          console.error("DEBUG loadMore - Invalid response:", response);
           setConversationsError("Error al cargar más conversaciones");
         }
       } catch (err) {
-        console.error("DEBUG loadMore - Error:", err);
+        console.error("[CHAT] Error cargando más conversaciones:", err);
         setConversationsError("Error al cargar más conversaciones");
       } finally {
         setColumnLoadingStates((prev) => ({ ...prev, [columnId]: false }));
@@ -1253,6 +1297,22 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     },
     [pipeline, columns, transformApiConversations]
   );
+
+  // Inicializar pipeline cuando el usuario esté disponible
+  useEffect(() => {
+    if (
+      user?.organizationId &&
+      !hasAttemptedPipelineLoad &&
+      !isLoadingConversations
+    ) {
+      fetchPipeline();
+    }
+  }, [
+    user?.organizationId,
+    hasAttemptedPipelineLoad,
+    isLoadingConversations,
+    fetchPipeline,
+  ]);
 
   // Limpiar timeout al desmontar
   useEffect(() => {
@@ -1265,6 +1325,45 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       }
     };
   }, []);
+
+  // Función para verificar el estado del socket
+  const checkSocketStatus = useCallback(() => {
+    const status = {
+      connected: socket.connected,
+      id: socket.id,
+      url: import.meta.env.VITE_SOCKET_URL || "http://localhost:3001",
+      organizationId: user?.organizationId,
+      currentChatId,
+      conversationsCount: conversations.length,
+    };
+    console.log("[SOCKET] Estado actual:", status);
+    return status;
+  }, [user?.organizationId, currentChatId, conversations.length]);
+
+  // Función para forzar reconexión del socket
+  const forceSocketReconnect = useCallback(() => {
+    console.log("[SOCKET] Forzando reconexión");
+    socket.disconnect();
+    setTimeout(() => {
+      socket.connect();
+    }, 1000);
+  }, []);
+
+  // Función para probar el socket manualmente
+  const testSocket = useCallback(() => {
+    console.log("[SOCKET] Probando conexión");
+    if (user?.organizationId) {
+      const orgRoom = `organization_${user.organizationId}`;
+      socket.emit("joinRoom", orgRoom);
+
+      // Emitir un evento de prueba
+      socket.emit("test_event", {
+        message: "Test from frontend",
+        timestamp: new Date().toISOString(),
+        organizationId: user.organizationId,
+      });
+    }
+  }, [user?.organizationId]);
 
   const value: ChatContextType = useMemo(
     () => ({
@@ -1330,6 +1429,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       initializeChat,
       cleanupChat,
       refreshConversations,
+
+      // Funciones de debug
+      checkSocketStatus,
+      forceSocketReconnect,
+      testSocket,
     }),
     [
       // Estado del chat individual
@@ -1394,6 +1498,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       initializeChat,
       cleanupChat,
       refreshConversations,
+
+      // Funciones de debug
+      checkSocketStatus,
+      forceSocketReconnect,
+      testSocket,
     ]
   );
 
