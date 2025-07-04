@@ -73,13 +73,6 @@ const getConversationsByStage = async (
   limit: number = 50
 ) => {
   try {
-    console.log("DEBUG Service - Fetching stage:", {
-      pipelineId,
-      stageId,
-      page,
-      limit,
-    });
-
     // Asegurarse de que los parámetros sean números
     const validPage = Math.max(1, page);
     const validLimit = Math.max(50, limit);
@@ -87,13 +80,6 @@ const getConversationsByStage = async (
     const response: any = await apiService.get(
       `/conversation/kanban?pipelineId=${pipelineId}&stageId=${stageId}&page=${validPage}&limit=${validLimit}`
     );
-
-    console.log("DEBUG Service - Stage response:", {
-      success: response.data?.success,
-      conversationsCount: response.data?.data?.conversations?.length,
-      pagination: response.data?.data?.pagination,
-      stageId,
-    });
 
     return response.data;
   } catch (error) {
@@ -109,6 +95,7 @@ const getConversationsByStage = async (
 const sendMessage = async (message: any) => {
   try {
     const response: any = await apiService.post("/chat/send", message);
+    console.log("response", response);
     return response.data;
   } catch (error) {
     console.error("Error sending message:", error);

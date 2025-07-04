@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { conversationService } from "../services/conversationService";
 import chatService from "../services/chatService";
+import fileService from "../services/filesService";
 import {
   socket,
   subscribeToConversation,
@@ -831,12 +832,14 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         to: destinationPhone,
         message: message,
         messageType: "text",
+        type: "text", // Tipo de mensaje para el backend
         mediaUrl: "",
         caption: "",
+        conversation: currentChatId, // Agregar el ID de la conversación
       };
 
-      // Enviar el mensaje a través del servicio
-      await conversationService.sendMessage(messageData);
+      // Enviar el mensaje a través del servicio de chat
+      await chatService.sendMessage(messageData);
 
       // Si es necesario, recargar los mensajes para ver la confirmación del servidor
       if (conversationDetail) {
@@ -945,18 +948,27 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       setUploadError(null);
 
       try {
-        // Crear FormData para enviar el archivo
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("to", destinationPhone);
-        formData.append(
-          "messageType",
-          file.type.startsWith("image/") ? "image" : "document"
-        );
-        formData.append("caption", file.name);
+        // Usar el servicio de chat para subir el archivo
+        const fileResponse = await chatService.uploadFile(file, true);
+
+        if (!fileResponse.success) {
+          throw new Error("Error al subir el archivo");
+        }
+
+        // Luego enviar el mensaje con la URL del archivo
+        const messageData = new FormData();
+        messageData.append("to", destinationPhone);
+        const messageType = file.type.startsWith("image/")
+          ? "image"
+          : "document";
+        messageData.append("messageType", messageType);
+        messageData.append("type", messageType);
+        messageData.append("mediaUrl", fileResponse.mediaURL);
+        messageData.append("conversation", currentChatId || "");
+        messageData.append("caption", file.name);
 
         // Enviar el archivo
-        await sendFile(formData);
+        await sendFile(messageData);
       } catch (error) {
         console.error("Error al enviar archivo:", error);
         setUploadError("Error al enviar el archivo. Inténtalo de nuevo.");
@@ -1000,6 +1012,9 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         formData.append("file", file);
         formData.append("to", destinationPhone);
         formData.append("messageType", document.fileType);
+        formData.append("type", document.fileType);
+        formData.append("mediaUrl", document.mediaURL);
+        formData.append("conversation", currentChatId || "");
         formData.append("caption", document.name);
 
         // Enviar el archivo
