@@ -150,6 +150,13 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, chat }) => {
             <div className="flex flex-col">
               <h3 className="text-xl font-semibold text-gray-900">
                 {conversationDetail?.conversation?.title || chat.title}
+                <span className="text-sm text-gray-500">
+                  {" - "}
+                  {
+                    conversationDetail?.conversation?.participants?.contact
+                      ?.reference
+                  }
+                </span>
               </h3>
               {conversationDetail?.conversation && (
                 <div className="flex items-center gap-2 mt-1">

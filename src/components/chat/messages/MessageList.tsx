@@ -28,7 +28,7 @@ export function MessageList({
   const { groupedMessages } = useChatContext();
   const prevMessagesLengthRef = useRef<number>(messages.length);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
+  console.log(messages, 1);
   const handleScroll = () => {
     if (!messageListRef.current) return;
 
@@ -97,6 +97,25 @@ export function MessageList({
     return parts[parts.length - 1];
   };
 
+  // Función para obtener una previsualización del mensaje al que se responde
+  const getRepliedMessagePreview = (replyId: string): string | null => {
+    const replied = messages.find((msg) => msg._id === replyId);
+    if (!replied) return null;
+
+    switch (replied.type) {
+      case "text":
+        return replied.message;
+      case "image":
+        return "📷 Imagen";
+      case "document":
+        return "📄 Documento";
+      case "audio":
+        return "🎵 Audio";
+      default:
+        return "Mensaje";
+    }
+  };
+
   return (
     <>
       <div
@@ -139,6 +158,19 @@ export function MessageList({
                       : "bg-action text-white"
                   }`}
                 >
+                  {/* Vista previa del mensaje al que se responde */}
+                  {message.replyToMessage && (
+                    <div
+                      className={`mb-2 border-l-2 pl-2 text-xs italic ${
+                        isIncomingMessage(message)
+                          ? "border-gray-400 text-gray-600"
+                          : "border-white/60 text-white/80"
+                      }`}
+                    >
+                      {getRepliedMessagePreview(message.replyToMessage) ||
+                        "Mensaje no disponible"}
+                    </div>
+                  )}
                   {message.type === "image" && getMessageMediaUrl(message) ? (
                     <img
                       src={getMessageMediaUrl(message)!}
@@ -199,6 +231,7 @@ export function MessageList({
                     {formatTime(message.timestamp)}
                   </div>
                 </div>
+                {/* Eliminamos la visualización del ID de replyToMessage fuera del bubble */}
               </div>
             ))}
           </div>

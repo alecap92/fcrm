@@ -746,6 +746,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
               type: apiMsg.type,
               direction: apiMsg.direction,
               isRead: apiMsg.isRead,
+              replyToMessage: apiMsg.replyToMessage,
             })
           );
 

@@ -88,6 +88,7 @@ export interface ApiMessage {
   possibleName?: string;
   conversation: string;
   reactions: any[];
+  replyToMessage: string | null;
 }
 
 // Interfaz para los metadatos
