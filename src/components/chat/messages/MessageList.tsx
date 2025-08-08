@@ -7,7 +7,7 @@ import {
 } from "../../../lib";
 import { useChatContext } from "../../../contexts/ChatContext";
 import { ImagePreviewModal } from "./ImagePreviewModal";
-import { Download } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 
 interface MessageListProps {
   messages: Message[];
@@ -97,6 +97,17 @@ export function MessageList({
     return parts[parts.length - 1];
   };
 
+  // Detecta si una URL apunta a un PDF (por extensión)
+  const isPdfUrl = (url: string | null | undefined): boolean => {
+    if (!url) return false;
+    try {
+      const cleanUrl = url.split("?")[0].split("#")[0];
+      return /\.pdf$/i.test(cleanUrl);
+    } catch {
+      return false;
+    }
+  };
+
   // Función para obtener una previsualización del mensaje al que se responde
   const getRepliedMessagePreview = (replyId: string): string | null => {
     const replied = messages.find((msg) => msg._id === replyId);
@@ -183,7 +194,24 @@ export function MessageList({
                     />
                   ) : message.type === "document" &&
                     getMessageMediaUrl(message) ? (
-                    <div className="mt-2">
+                    <div className="mt-2 space-y-2">
+                      <div className="rounded-lg overflow-hidden bg-white shadow-sm border border-gray-200">
+                        <object
+                          data={getMessageMediaUrl(message)!}
+                          type="application/pdf"
+                          width="220"
+                          height="280"
+                          className="block"
+                        >
+                          <div className="flex flex-col items-center justify-center w-[220px] h-[280px] text-gray-500 gap-2">
+                            <FileText className="w-8 h-8" />
+                            <span className="text-xs">
+                              No se pudo mostrar la vista previa
+                            </span>
+                          </div>
+                        </object>
+                      </div>
+
                       <a
                         href={getMessageMediaUrl(message)!}
                         target="_blank"
@@ -191,14 +219,14 @@ export function MessageList({
                         download={getFileNameFromUrl(
                           getMessageMediaUrl(message)!
                         )}
-                        className={`flex items-center gap-2 p-2 rounded-lg ${
+                        className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
                           isIncomingMessage(message)
-                            ? "bg-white hover:bg-gray-50"
-                            : "bg-action-dark hover:bg-action-darker"
-                        } transition-colors`}
+                            ? "bg-white hover:bg-gray-50 text-gray-800"
+                            : "bg-action-dark hover:bg-action-darker text-white"
+                        }`}
                       >
                         <Download className="w-4 h-4" />
-                        <span className="text-sm">
+                        <span className="text-sm truncate max-w-[240px]">
                           {getFileNameFromUrl(getMessageMediaUrl(message)!)}
                         </span>
                       </a>
