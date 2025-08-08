@@ -27,6 +27,7 @@ export interface Message {
   messageId: string;
   reactions: any[];
   conversation: string;
+  status?: "queued" | "sending" | "sent" | "error";
 }
 
 export interface QuickResponse {

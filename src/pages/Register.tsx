@@ -219,7 +219,7 @@ export function Register() {
   return (
     <div className="min-h-screen flex">
       {/* Panel izquierdo - Formulario de registro (30%) */}
-      <div className="w-[30%] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-12 xl:px-16 bg-white">
+      <div className="w-full lg:w-[30%] flex flex-col justify-center py-8 md:py-12 px-4 sm:px-6 lg:px-12 xl:px-16 bg-white">
         <div className="mx-auto w-full max-w-sm">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
@@ -294,7 +294,7 @@ export function Register() {
             )}
 
             {/* Nombre y Apellido en la misma fila */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label
                   htmlFor="firstName"
@@ -530,7 +530,7 @@ export function Register() {
       </div>
 
       {/* Panel derecho - Información y funcionalidades (70%) */}
-      <div className="hidden lg:block relative w-[70%] px-25 xl:px-16 bg-gradient-to-br from-[#1F2A48] via-[#2A3B5C] to-[#1F2A48]">
+      <div className="hidden lg:block relative lg:w-[70%] px-6 md:px-12 xl:px-16 bg-gradient-to-br from-[#1F2A48] via-[#2A3B5C] to-[#1F2A48]">
         <div className="absolute inset-0 bg-black bg-opacity-10"></div>
         <div className="relative h-full flex flex-col justify-center px-12 xl:px-16">
           <div className="text-center mb-12">
@@ -601,7 +601,7 @@ export function Register() {
           </div>
 
           {/* Beneficios adicionales */}
-          <div className="mt-8 grid grid-cols-3 gap-4">
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-10 h-10 bg-white bg-opacity-20 rounded-full mb-2">
                 <CheckCircle className="w-5 h-5 text-white" />

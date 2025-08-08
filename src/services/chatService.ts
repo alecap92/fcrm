@@ -59,29 +59,30 @@ const sendMessage = async (message: any) => {
     console.log("servicio de chat");
     console.log(API_BASE_URL, "API URL");
     const token = authService.getToken();
-    let response: AxiosResponse;
+    let data: any;
     if (message instanceof FormData) {
       // Si es FormData, usar axios directamente
-      response = await axios.post(`${API_BASE_URL}/chat/send`, message, {
+      const response = await axios.post(`${API_BASE_URL}/chat/send`, message, {
         headers: {
           "Content-Type": "multipart/form-data",
           Authorization: "Bearer " + token,
         },
       });
+      data = response.data;
     } else {
-      // Si no es FormData, usar apiService
-      response = await apiService.post("/chat/send", message);
+      // Si no es FormData, usar apiService (ya devuelve data directamente)
+      data = await apiService.post("/chat/send", message);
     }
 
     // Emitir evento de socket para notificar el nuevo mensaje
-    if (response.data) {
+    if (data) {
       socket.emit("message_sent", {
         conversationId: message.conversation,
-        message: response.data,
+        message: data,
       });
     }
 
-    return response.data;
+    return data;
   } catch (error) {
     console.error("Error sending message:", error);
     throw error;

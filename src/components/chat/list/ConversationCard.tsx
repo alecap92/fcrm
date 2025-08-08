@@ -1,10 +1,12 @@
-import React, { useState, MouseEvent } from "react";
+import React, { useState, MouseEvent, useMemo } from "react";
 import { MoreVertical } from "lucide-react";
 import { useChatContext } from "../../../contexts/ChatContext";
 
 interface ConversationCardProps {
   title: string;
   lastMessage: string;
+  lastMessageDate: string;
+  lastMessageDirection: string;
   priority: string;
   createdAt: string;
   assignedTo: string;
@@ -13,11 +15,15 @@ interface ConversationCardProps {
   onDelete?: () => void;
   onToggleRead?: () => void;
   onMoveTo?: (columnId: string) => void;
+  status: string;
+  currentStage: any;
 }
 
 const ConversationCard: React.FC<ConversationCardProps> = ({
   title,
   lastMessage,
+  lastMessageDate,
+  lastMessageDirection,
   priority,
   createdAt,
   assignedTo,
@@ -26,6 +32,8 @@ const ConversationCard: React.FC<ConversationCardProps> = ({
   onDelete,
   onToggleRead,
   onMoveTo,
+  status,
+  currentStage,
 }) => {
   const { columns } = useChatContext();
   const [showMenu, setShowMenu] = useState(false);
@@ -80,6 +88,19 @@ const ConversationCard: React.FC<ConversationCardProps> = ({
     }).format(date);
   };
 
+  // TODO: Create a function to check if the conversation is unattended for more than 10 minutes and highlight the border of the card
+  const isUnattended = useMemo(() => {
+    // if (
+    //   currentStage === 0 ||
+    //   (currentStage === 1 && lastMessageDirection === "incoming")
+    // ) {
+    //   const date = new Date(lastMessageDate);
+    //   const now = new Date();
+    //   const diff = now.getTime() - date.getTime();
+    //   return diff > 10 * 60 * 1000;
+    // }
+  }, []);
+
   return (
     <div
       style={{
@@ -91,7 +112,9 @@ const ConversationCard: React.FC<ConversationCardProps> = ({
         position: "relative",
         fontFamily: "inherit",
       }}
-      className="hover:border-2 hover:border-gray-300"
+      className={`hover:border-2 hover:border-gray-300 ${
+        isUnattended ? "border-2 border-red-500" : ""
+      }`}
     >
       <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

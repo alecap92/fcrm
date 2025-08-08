@@ -224,6 +224,14 @@ export function DealDetailsModal({
         fetchDealProducts(deal._id || (dealId as string));
         setHasFetchedDealProducts(true);
       }
+
+      // Asegurar que los campos personalizados estén cargados
+      if ((!deal.fields || deal.fields.length === 0) && (deal._id || dealId)) {
+        console.log(
+          "🔄 No se encontraron campos personalizados en el negocio proporcionado. Solicitando al servidor..."
+        );
+        fetchDeal(deal._id || (dealId as string));
+      }
     } else if (dealId) {
       console.log("🔍 Buscando deal por ID:", dealId);
       fetchDeal();
@@ -308,38 +316,34 @@ export function DealDetailsModal({
               {/* Custom Fields */}
               <div className="bg-white rounded-lg border p-4">
                 <h3 className="text-sm font-medium text-gray-900 mb-4">
-                  Custom Fields
+                  Campos Personalizados
                 </h3>
-                <div className="space-y-3">
-                  {contact && (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-500">
-                          Tipo de empresa
-                        </span>
-                        <span className="text-sm font-medium text-gray-900">
-                          {contact.companyType || "No disponible"}
-                        </span>
+                {currentDeal?.fields &&
+                Array.isArray(currentDeal.fields) &&
+                currentDeal.fields.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {currentDeal.fields.map((field: any) => (
+                      <div
+                        key={field._id || field.field?._id}
+                        className="flex items-center space-x-3"
+                      >
+                        <FileText className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-gray-500">
+                            {field.field?.name || "Campo personalizado"}
+                          </p>
+                          <p className="text-gray-700">
+                            {field.value || "Sin valor"}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-500">
-                          Tipo de cliente
-                        </span>
-                        <span className="text-sm font-medium text-gray-900">
-                          {contact.lifeCycle || "No disponible"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-500">
-                          Identificación
-                        </span>
-                        <span className="text-sm font-medium text-gray-900">
-                          {contact.idType} {contact.idNumber || "No disponible"}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    No hay campos personalizados
+                  </p>
+                )}
               </div>
 
               {/* Products Section */}

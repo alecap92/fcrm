@@ -57,6 +57,18 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, chat }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, chat.id]);
 
+  // Cerrar con tecla ESC
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   // Limpiar el chat cuando se cierra el modal
   useEffect(() => {
     if (!isOpen) {

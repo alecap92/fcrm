@@ -118,7 +118,19 @@ export const useChatSidebar = (
   // Función para obtener contacto
   const handleFetchContact = useCallback(async () => {
     try {
-      if (!conversation || !conversation.participants?.contact?.contactId) {
+      if (!conversation) {
+        setContactError(true);
+        return;
+      }
+
+      // Intentar obtener el contactId desde diferentes ubicaciones
+      const contactIdFromParticipants =
+        (conversation as any)?.participants?.contact?.contactId ||
+        (conversation as any)?.participants?.contact?.displayInfo?.contactId;
+      const contactRef =
+        (conversation as any)?.participants?.contact?.reference || null;
+
+      if (!contactIdFromParticipants && !contactRef) {
         setContactError(true);
         return;
       }
@@ -126,9 +138,25 @@ export const useChatSidebar = (
       setContactLoading(true);
       setContactError(false);
 
-      const { data } = await contactsService.getContactById(
-        conversation.participants.contact.contactId
-      );
+      let resolvedContactId = contactIdFromParticipants as string | null;
+
+      // Si no hay contactId pero tenemos la referencia (teléfono), buscar el contacto
+      if (!resolvedContactId && contactRef) {
+        const searchResp: any = await contactsService.searchContacts(
+          contactRef
+        );
+        if (Array.isArray(searchResp) && searchResp.length > 0) {
+          resolvedContactId = searchResp[0]._id;
+        }
+      }
+
+      if (!resolvedContactId) {
+        setContactError(true);
+        setContactLoading(false);
+        return;
+      }
+
+      const { data } = await contactsService.getContactById(resolvedContactId);
 
       const parsedContact = [data.contact].map(normalizeContact)[0];
       setContact(parsedContact);
@@ -145,7 +173,7 @@ export const useChatSidebar = (
   const handleCreateContact = useCallback(
     async (contactData: any) => {
       try {
-        await contactsService.createContact(contactData);
+        const created: any = await contactsService.createContact(contactData);
 
         toast.show({
           title: "Contacto creado correctamente",
@@ -160,13 +188,15 @@ export const useChatSidebar = (
         setNewTag("");
 
         // Asociar contacto al chat
-        await conversationService.editConversation(chatId, {
-          participants: {
-            contact: {
-              contactId: contactData.mobile,
+        if (created?._id) {
+          await conversationService.editConversation(chatId, {
+            participants: {
+              contact: {
+                contactId: created._id,
+              },
             },
-          },
-        });
+          });
+        }
 
         // Actualizar contacto
         await handleFetchContact();
@@ -250,6 +280,10 @@ export const useChatSidebar = (
     handleCreateDeal,
 
     // Propiedades computadas
-    hasContactId: !!conversation?.participants?.contact?.contactId,
+    hasContactId: !!(
+      (conversation as any)?.participants?.contact?.contactId ||
+      (conversation as any)?.participants?.contact?.displayInfo?.contactId ||
+      contact?._id
+    ),
   };
 };

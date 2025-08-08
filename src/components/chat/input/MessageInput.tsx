@@ -110,7 +110,6 @@ export function MessageInput({
   uploadError,
   onClearUploadError,
 }: MessageInputProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -136,13 +135,10 @@ export function MessageInput({
   ];
 
   const handleSend = async () => {
-    if (isSubmitting || isDisabled || isUploadingFile) return;
-    setIsSubmitting(true);
-    try {
-      await onSend();
-    } finally {
-      setIsSubmitting(false);
-    }
+    if (isDisabled || isUploadingFile) return;
+    await onSend();
+    // Mantener foco en el textarea para escribir el siguiente mensaje
+    setTimeout(() => textareaRef?.current?.focus(), 0);
   };
 
   const handleAttachmentClick = () => {
@@ -203,8 +199,7 @@ export function MessageInput({
             }
             className={cn(
               "w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-action focus:border-transparent resize-none",
-              (isSubmitting || isDisabled || isUploadingFile) &&
-                "opacity-50 cursor-not-allowed"
+              (isDisabled || isUploadingFile) && "opacity-50 cursor-not-allowed"
             )}
             value={message}
             onChange={(e) => onMessageChange(e.target.value)}
@@ -214,7 +209,7 @@ export function MessageInput({
                 handleSend();
               }
             }}
-            disabled={isSubmitting || isDisabled || isUploadingFile}
+            disabled={isDisabled || isUploadingFile}
             rows={3}
             style={{ minHeight: "60px", maxHeight: "120px" }}
           />

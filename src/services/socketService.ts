@@ -48,8 +48,23 @@ socket.on("newNotification", (data) => {
   console.log("[DEBUG] Socket received newNotification:", data);
 });
 
+// Mantener un mapa de listeners envueltos para poder removerlos correctamente
+const __listenerMap: Map<
+  string,
+  Map<(...args: any[]) => void, (...args: any[]) => void>
+> = new Map();
+
+const getEventListenerMap = (event: string) => {
+  if (!__listenerMap.has(event)) {
+    __listenerMap.set(event, new Map());
+  }
+  return __listenerMap.get(event)!;
+};
+
 // Listener genérico para capturar cualquier evento
 const originalOn = socket.on.bind(socket);
+const originalOff = socket.off.bind(socket);
+
 socket.on = function (event: string, listener: (...args: any[]) => void) {
   const wrappedListener = (...args: any[]) => {
     if (!["connect", "disconnect", "connect_error", "error"].includes(event)) {
@@ -57,7 +72,27 @@ socket.on = function (event: string, listener: (...args: any[]) => void) {
     }
     return listener(...args);
   };
+  // Guardar el mapeo para permitir off(listener) posteriormente
+  const eventMap = getEventListenerMap(event);
+  eventMap.set(listener, wrappedListener);
   return originalOn(event, wrappedListener);
+};
+
+// Asegurar que off remueva el listener envuelto correspondiente
+socket.off = function (event: string, listener?: (...args: any[]) => void) {
+  if (listener) {
+    const eventMap = getEventListenerMap(event);
+    const wrapped = eventMap.get(listener);
+    if (wrapped) {
+      eventMap.delete(listener);
+      return originalOff(event, wrapped);
+    }
+    // Si no encontramos el wrapper, intentar igualmente con el original
+    return originalOff(event, listener);
+  }
+  // Si no pasaron listener, remover todos los de ese evento y limpiar mapa
+  __listenerMap.delete(event);
+  return originalOff(event);
 };
 
 // Listener genérico para capturar cualquier evento

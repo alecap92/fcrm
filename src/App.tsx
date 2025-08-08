@@ -36,7 +36,7 @@ import Analytics from "./pages/Analytics";
 import Strategy from "./pages/Strategy";
 import Conversations from "./pages/Conversations";
 import DealDetails from "./pages/DealDetails";
-import { FloatingChat } from "./components/chat/floating";
+// import { FloatingChat } from "./components/chat/floating";
 import { ChatProvider } from "./components/chat/floating/context/ChatContext";
 
 function App() {
@@ -115,7 +115,7 @@ function App() {
                 <Route path="/strategy" element={<Strategy />} />
                 <Route path="/conversations" element={<Conversations />} />
               </Routes>
-              <FloatingChat />
+              {/* <FloatingChat /> */}
             </ChatProvider>
           </PrivateRoute>
         }

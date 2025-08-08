@@ -12,6 +12,10 @@ import { Button } from "../components/ui/button";
 import ManageColumnsModal from "../components/chat/modal/ManageColumnsModal";
 import NewChatModal from "../components/chat/modal/NewChatModal";
 import ConversationCard from "../components/chat/list/ConversationCard";
+import {
+  VariableSizeList as List,
+  ListChildComponentProps,
+} from "react-window";
 import ConfirmModal from "../components/ui/confirmModal";
 import SearchModal from "../components/chat/modal/SearchModal";
 import templatesService from "../services/templatesService";
@@ -53,6 +57,9 @@ const ConversationColumn: React.FC<{
 }) => {
   const [isFetching, setIsFetching] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const listRef = useRef<any>(null);
+  const sizesRef = useRef<number[]>([]);
+  const defaultItemSize = 164;
 
   useEffect(() => {
     if (!isFetching) return;
@@ -79,9 +86,9 @@ const ConversationColumn: React.FC<{
       const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
       const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
 
-      // Trigger when 85% scrolled and conditions are met
+      // Prefetch cuando alcance 70% del scroll
       if (
-        scrollPercentage >= 0.85 &&
+        scrollPercentage >= 0.7 &&
         hasMore &&
         !isColumnLoading &&
         !isFetching
@@ -97,6 +104,50 @@ const ConversationColumn: React.FC<{
       }
     },
     [hasMore, isColumnLoading, isFetching]
+  );
+
+  // item renderer con medición dinámica (VariableSizeList)
+  const Row = useCallback(
+    ({ index: rowIndex, style }: ListChildComponentProps) => {
+      const chat = columnChats[rowIndex];
+      if (!chat) return null;
+
+      return (
+        <div style={style}>
+          <div
+            ref={(el) => {
+              if (!el) return;
+              const height = el.getBoundingClientRect().height;
+              if (height && sizesRef.current[rowIndex] !== height) {
+                sizesRef.current[rowIndex] = height;
+                // Recalcular tamaños desde este índice
+                listRef.current?.resetAfterIndex(rowIndex);
+              }
+            }}
+            className="px-2 pt-2 cursor-pointer"
+            draggable
+            onDragStart={(e) => onDragStart(e, chat.id)}
+            onClick={() => onChatClick(chat)}
+          >
+            <ConversationCard
+              title={chat.title}
+              lastMessage={truncateMessage(chat.lastMessage)}
+              lastMessageDate={chat.lastMessageTimestamp}
+              lastMessageDirection={chat.lastMessageDirection}
+              priority={chat.priority}
+              createdAt={chat.createdAt}
+              assignedTo={chat.assignedTo}
+              tags={chat.tags}
+              isRead={chat.isRead}
+              onDelete={() => onDeleteFromCard(chat)}
+              status={chat.status}
+              currentStage={chat.currentStage}
+            />
+          </div>
+        </div>
+      );
+    },
+    [columnChats, onDragStart, onChatClick, onDeleteFromCard, truncateMessage]
   );
 
   return (
@@ -128,30 +179,31 @@ const ConversationColumn: React.FC<{
 
       {/* Column Content with Infinite Scroll */}
       <div
-        className="flex-1 p-2 space-y-2 overflow-y-auto overflow-x-visible"
+        className="flex-1 overflow-y-hidden overflow-x-visible"
         style={{ maxHeight: "calc(100vh - 200px)" }}
-        onScroll={handleScroll}
       >
-        {columnChats.map((chat) => (
-          <div
-            key={chat.id}
-            draggable
-            onDragStart={(e) => onDragStart(e, chat.id)}
-            onClick={() => onChatClick(chat)}
-            className="cursor-pointer"
-          >
-            <ConversationCard
-              title={chat.title}
-              lastMessage={truncateMessage(chat.lastMessage)}
-              priority={chat.priority}
-              createdAt={chat.createdAt}
-              assignedTo={chat.assignedTo}
-              tags={chat.tags}
-              isRead={chat.isRead}
-              onDelete={() => onDeleteFromCard(chat)}
-            />
-          </div>
-        ))}
+        <List
+          ref={listRef}
+          height={Math.max(200, window.innerHeight - 240)}
+          itemCount={columnChats.length}
+          itemSize={(index) => sizesRef.current[index] || defaultItemSize}
+          estimatedItemSize={defaultItemSize}
+          width={320}
+          onScroll={({ scrollOffset }: any) => {
+            const totalHeight =
+              (columnChats.length || 0) * (defaultItemSize || 1);
+            const visible = Math.max(200, window.innerHeight - 240);
+            const percent = totalHeight
+              ? (scrollOffset + visible) / totalHeight
+              : 0;
+            if (percent >= 0.7 && hasMore && !isColumnLoading && !isFetching) {
+              if (timeoutRef.current) clearTimeout(timeoutRef.current);
+              timeoutRef.current = setTimeout(() => setIsFetching(true), 100);
+            }
+          }}
+        >
+          {Row}
+        </List>
 
         {/* Loading indicator */}
         {isColumnLoading && (
@@ -191,7 +243,6 @@ const Conversations: React.FC = () => {
   const [selectedChat, setSelectedChat] = useState<any | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showDebugPanel, setShowDebugPanel] = useState(false);
 
   // Estado para verificación de WhatsApp
   const [hasWhatsAppConfig, setHasWhatsAppConfig] = useState<boolean | null>(
@@ -238,11 +289,6 @@ const Conversations: React.FC = () => {
 
     // Funciones de limpieza
     cleanupChat,
-
-    // Funciones de debug
-    checkSocketStatus,
-    forceSocketReconnect,
-    testSocket,
   } = useChatContext();
 
   const toast = useToast();
@@ -566,9 +612,35 @@ const Conversations: React.FC = () => {
     setShowConfirmModal(true);
   }, []);
 
-  // Memoizar el renderizado de columnas para evitar re-renderizados innecesarios
+  // Lazy render de columnas: sólo renderizar las visibles en el viewport horizontal
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [visibleRange, setVisibleRange] = useState({ start: 0, end: 4 });
+
+  const onHorizontalScroll = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const scrollLeft = container.scrollLeft;
+    const width = container.clientWidth;
+    const columnWidth = 320 + 24; // ancho col + gap aprox
+    const start = Math.max(0, Math.floor(scrollLeft / columnWidth) - 1);
+    const end = Math.min(
+      columns.length,
+      Math.ceil((scrollLeft + width) / columnWidth) + 1
+    );
+    setVisibleRange({ start, end });
+  }, [columns.length]);
+
+  useEffect(() => {
+    onHorizontalScroll();
+  }, [columns.length, onHorizontalScroll]);
+
   const renderedColumns = useMemo(() => {
     return columns.map((column, index) => {
+      if (index < visibleRange.start || index > visibleRange.end) {
+        return (
+          <div key={column.id} style={{ width: 320 }} className="shrink-0" />
+        );
+      }
       const columnChats = conversationsByColumn[column.id] || [];
       const isColumnLoading = columnLoadingStates[column.id] || false;
       const hasMore = column.pagination?.hasMore || false;
@@ -602,6 +674,8 @@ const Conversations: React.FC = () => {
     handleChatClick,
     handleDeleteFromCard,
     truncateMessage,
+    visibleRange.start,
+    visibleRange.end,
   ]);
 
   // Memoizar el estado de error para evitar re-renderizados
@@ -756,15 +830,7 @@ const Conversations: React.FC = () => {
                     />
                     Actualizar
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowDebugPanel(!showDebugPanel)}
-                    className="flex items-center gap-2"
-                  >
-                    <AlertCircle className="w-4 h-4" />
-                    Debug
-                  </Button>
+                  {/* Debug button removed */}
                   <Button
                     variant="outline"
                     size="sm"
@@ -793,73 +859,20 @@ const Conversations: React.FC = () => {
             </div>
           </div>
 
-          {/* Debug Panel */}
-          {showDebugPanel && (
-            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-              <h3 className="text-sm font-medium text-yellow-800 mb-3">
-                Panel de Debug - Socket
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={checkSocketStatus}
-                    className="w-full"
-                  >
-                    Verificar Estado
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={forceSocketReconnect}
-                    className="w-full"
-                  >
-                    Forzar Reconexión
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={testSocket}
-                    className="w-full"
-                  >
-                    Probar Socket
-                  </Button>
-                </div>
-                <div className="text-xs space-y-1">
-                  <div>
-                    <strong>Conversaciones:</strong> {conversations.length}
-                  </div>
-                  <div>
-                    <strong>Columnas:</strong> {columns.length}
-                  </div>
-                  <div>
-                    <strong>Pipeline:</strong>{" "}
-                    {pipeline ? "Cargado" : "No cargado"}
-                  </div>
-                  <div>
-                    <strong>Error:</strong> {conversationsError || "Ninguno"}
-                  </div>
-                </div>
-                <div className="text-xs text-gray-600">
-                  <p>
-                    Revisa la consola del navegador para logs detallados del
-                    socket.
-                  </p>
-                  <p className="mt-1">
-                    Los eventos de socket aparecerán con el prefijo [DEBUG].
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Debug panel removed */}
 
           {/* Content */}
           <div
             className="flex-1 overflow-x-auto p-6"
             style={{ height: "calc(100vh - 120px)" }}
           >
-            <div className="flex gap-6 h-full">{renderedColumns}</div>
+            <div
+              ref={containerRef}
+              onScroll={onHorizontalScroll}
+              className="flex gap-6 h-full overflow-x-auto"
+            >
+              {renderedColumns}
+            </div>
           </div>
         </div>
 

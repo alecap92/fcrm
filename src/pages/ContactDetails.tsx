@@ -25,7 +25,7 @@ import {
   File,
 } from "lucide-react";
 import { contactsService } from "../services/contactsService";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Activity, Contact } from "../types/contact";
 import { normalizeContact } from "../lib/parseContacts";
 import AddContact from "../components/contacts/AddContact";
@@ -134,6 +134,7 @@ export function ContactDetails() {
   const [leadScore, setLeadScore] = useState<number>(0);
 
   const { showLoading, hideLoading } = useLoading();
+  const navigate = useNavigate();
 
   const [aiComments, setAiComments] = useState<string>("");
   const [isLoadingAiComments, setIsLoadingAiComments] = useState(false);
@@ -549,7 +550,26 @@ export function ContactDetails() {
                 <Printer className="h-5 w-5 text-gray-600" />
                 <span>Print</span>
               </button>
-              <button className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+              <button
+                className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                onClick={() => {
+                  const phoneToOpen =
+                    contactDetails.mobile || contactDetails.phone;
+                  if (phoneToOpen) {
+                    navigate(
+                      `/conversations?openPhone=${encodeURIComponent(
+                        phoneToOpen
+                      )}`
+                    );
+                  } else {
+                    toast.show({
+                      title: "Sin número",
+                      description: "Este contacto no tiene número de teléfono",
+                      type: "warning",
+                    });
+                  }
+                }}
+              >
                 <MessageCircle className="h-5 w-5" />
                 <span>WhatsApp</span>
               </button>

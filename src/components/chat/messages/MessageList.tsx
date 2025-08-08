@@ -220,7 +220,7 @@ export function MessageList({
                   )}
                   <div
                     className={`
-                      flex items-center gap-1 text-xs mt-1.5
+                      flex items-center gap-2 text-xs mt-1.5
                       ${
                         isIncomingMessage(message)
                           ? "text-gray-500"
@@ -229,6 +229,17 @@ export function MessageList({
                     `}
                   >
                     {formatTime(message.timestamp)}
+                    {/* Estado de envío para mensajes salientes */}
+                    {!isIncomingMessage(message) && (
+                      <span>
+                        {message.status === "queued" && "⏳"}
+                        {message.status === "sending" && (
+                          <span className="inline-block w-3 h-3 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
+                        )}
+                        {message.status === "sent" && "✔️"}
+                        {message.status === "error" && "⚠️"}
+                      </span>
+                    )}
                   </div>
                 </div>
                 {/* Eliminamos la visualización del ID de replyToMessage fuera del bubble */}
