@@ -103,8 +103,9 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({ chatId, messages }) => {
                     )}
                   </div>
                 )}
+                {/* Mostrar caption si hay media y texto */}
                 <p className="whitespace-pre-wrap">
-                  {message.mediaUrl ? "" : message.message}
+                  {message.mediaUrl ? (message.message || "") : message.message}
                 </p>
                 <p
                   className={`text-xs mt-1 ${

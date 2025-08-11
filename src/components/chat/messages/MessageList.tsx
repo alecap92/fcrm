@@ -108,23 +108,41 @@ export function MessageList({
     }
   };
 
-  // Función para obtener una previsualización del mensaje al que se responde
-  const getRepliedMessagePreview = (replyId: string): string | null => {
+  // Renderiza una previsualización del mensaje al que se responde (incluye miniatura si es imagen)
+  const renderRepliedMessagePreview = (replyId: string): JSX.Element | null => {
     const replied = messages.find((msg) => msg._id === replyId);
     if (!replied) return null;
 
-    switch (replied.type) {
-      case "text":
-        return replied.message;
-      case "image":
-        return "📷 Imagen";
-      case "document":
-        return "📄 Documento";
-      case "audio":
-        return "🎵 Audio";
-      default:
-        return "Mensaje";
+    if (replied.type === "image" && getMessageMediaUrl(replied)) {
+      return (
+        <div className="flex items-center gap-2">
+          <img
+            src={getMessageMediaUrl(replied)!}
+            alt="Imagen referenciada"
+            className="w-10 h-10 rounded object-cover"
+          />
+          <span className="truncate">
+            {replied.message || "Imagen"}
+          </span>
+        </div>
+      );
     }
+
+    if (replied.type === "document") {
+      return (
+        <div className="flex items-center gap-2">
+          <FileText className="w-4 h-4" />
+          <span className="truncate">Documento</span>
+        </div>
+      );
+    }
+
+    if (replied.type === "audio") {
+      return <span>Audio</span>;
+    }
+
+    // Texto u otros
+    return <span>{replied.message || "Mensaje"}</span>;
   };
 
   return (
@@ -178,20 +196,28 @@ export function MessageList({
                           : "border-white/60 text-white/80"
                       }`}
                     >
-                      {getRepliedMessagePreview(message.replyToMessage) ||
-                        "Mensaje no disponible"}
+                      {renderRepliedMessagePreview(message.replyToMessage) || (
+                        <span>Mensaje no disponible</span>
+                      )}
                     </div>
                   )}
                   {message.type === "image" && getMessageMediaUrl(message) ? (
-                    <img
-                      src={getMessageMediaUrl(message)!}
-                      alt="Imagen del mensaje"
-                      className="w-full rounded-xl shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
-                      style={{ maxWidth: "300px" }}
-                      onClick={() =>
-                        setSelectedImage(getMessageMediaUrl(message)!)
-                      }
-                    />
+                    <div className="space-y-2">
+                      <img
+                        src={getMessageMediaUrl(message)!}
+                        alt="Imagen del mensaje"
+                        className="w-full rounded-xl shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                        style={{ maxWidth: "300px" }}
+                        onClick={() =>
+                          setSelectedImage(getMessageMediaUrl(message)!)
+                        }
+                      />
+                      {message.message && (
+                        <p className="text-sm leading-relaxed">
+                          {message.message}
+                        </p>
+                      )}
+                    </div>
                   ) : message.type === "document" &&
                     getMessageMediaUrl(message) ? (
                     <div className="mt-2 space-y-2">
