@@ -194,21 +194,15 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       currentChatId,
       conversationsCount: conversations.length,
     };
-    // eslint-disable-next-line no-console
-    console.log("[SOCKET] Estado actual:", status);
     return status;
   }, [user?.organizationId, currentChatId, conversations.length]);
 
   const forceSocketReconnect = useCallback(() => {
-    // eslint-disable-next-line no-console
-    console.log("[SOCKET] Forzando reconexión");
     socket.disconnect();
     setTimeout(() => socket.connect(), 1000);
   }, []);
 
   const testSocket = useCallback(() => {
-    // eslint-disable-next-line no-console
-    console.log("[SOCKET] Probando conexión");
     if (user?.organizationId) {
       const orgRoom = `organization_${user.organizationId}`;
       socket.emit("joinRoom", orgRoom);

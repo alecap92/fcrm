@@ -112,13 +112,7 @@ export function useChatMessages() {
 
     // Crear mensaje en cola sin bloquear el input
     const queuedId = `q_${Date.now()}`;
-    // DEBUG
-    // eslint-disable-next-line no-console
-    console.log("[SEND] Queue message", {
-      queuedId,
-      currentChatId,
-      text: message,
-    });
+
     const queuedMessage: Message = {
       _id: queuedId,
       message,
@@ -157,8 +151,6 @@ export function useChatMessages() {
             m._id === queuedId ? { ...m, status: "sending" } : m
           )
         );
-        // eslint-disable-next-line no-console
-        console.log("[SEND] Sending...", { queuedId, to: destinationPhone });
 
         const messageData = {
           to: destinationPhone,
@@ -170,13 +162,7 @@ export function useChatMessages() {
           conversation: currentChatId,
         };
         const sent = await chatService.sendMessage(messageData);
-        // eslint-disable-next-line no-console
-        console.log("[SEND] Response", {
-          queuedId,
-          ok: !!sent,
-          keys: sent ? Object.keys(sent) : [],
-          sent,
-        });
+
         if (sent) {
           setMessages((prev) =>
             prev.map((m) =>
@@ -199,20 +185,12 @@ export function useChatMessages() {
           );
         }
       } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error("[SEND] Error", err);
         const status = (err as any)?.status || (err as any)?.response?.status;
         const messageText =
           (err as any)?.message || (err as any)?.response?.data?.error || "";
 
         // Caso común: backend devuelve 409 por mensaje duplicado (ya fue enviado)
         if (status === 409 || /duplicad/i.test(messageText)) {
-          // eslint-disable-next-line no-console
-          console.warn("[SEND] Duplicate detected → mark as sent", {
-            queuedId,
-            status,
-            messageText,
-          });
           setMessages((prev) =>
             prev.map((m) =>
               m._id === queuedId
@@ -225,8 +203,6 @@ export function useChatMessages() {
           );
           // Reconciliar contra backend para asegurar consistencia
           try {
-            // eslint-disable-next-line no-console
-            console.log("[SEND] Forcing reload after duplicate", { queuedId });
             await loadMessages(1, true);
           } catch {}
           return;
@@ -236,14 +212,6 @@ export function useChatMessages() {
         const isNetworkError =
           (err as any)?.code === "NETWORK_ERROR" || status === 0 || !status;
         if (isNetworkError) {
-          // eslint-disable-next-line no-console
-          console.warn(
-            "[SEND] Network error → keep as 'sending' awaiting socket",
-            {
-              queuedId,
-              status,
-            }
-          );
           setMessages((prev) =>
             prev.map((m) =>
               m._id === queuedId ? { ...m, status: "sending" } : m
@@ -253,11 +221,6 @@ export function useChatMessages() {
         }
 
         // Error real
-        // eslint-disable-next-line no-console
-        console.warn("[SEND] Real error → mark as 'error'", {
-          queuedId,
-          status,
-        });
         setMessages((prev) =>
           prev.map((m) => (m._id === queuedId ? { ...m, status: "error" } : m))
         );

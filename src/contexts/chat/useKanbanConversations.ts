@@ -422,9 +422,20 @@ export function useKanbanConversations(
   const conversationsByColumn = useMemo(() => {
     const grouped: Record<string, Conversation[]> = {};
     columns.forEach((column) => {
-      grouped[column.id] = conversations.filter(
+      const chatsForColumn = conversations.filter(
         (chat) => chat.status === column.id
       );
+      // Ordenar por la fecha del último mensaje (fallback a createdAt)
+      chatsForColumn.sort((a, b) => {
+        const aTime = new Date(
+          a.lastMessageTimestamp || a.createdAt || 0
+        ).getTime();
+        const bTime = new Date(
+          b.lastMessageTimestamp || b.createdAt || 0
+        ).getTime();
+        return bTime - aTime;
+      });
+      grouped[column.id] = chatsForColumn;
     });
     return grouped;
   }, [conversations, columns]);
