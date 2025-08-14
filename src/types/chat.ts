@@ -18,6 +18,8 @@ export interface Message {
   message: string;
   mediaUrl: string | null;
   mediaId: string;
+  filename?: string;
+  mimeType?: string;
   timestamp: string;
   type: string;
   direction: "incoming" | "outgoing";

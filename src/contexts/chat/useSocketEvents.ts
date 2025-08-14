@@ -94,6 +94,8 @@ export function useSocketEvents({
           messageId: messageData.messageId || "",
           reactions: messageData.reactions || [],
           conversation: chatId,
+          filename: messageData.filename,
+          mimeType: messageData.mimeType,
         } as any;
         // Intentar conciliar con mensaje en cola (queued/sending) y evitar duplicados exactos
         setMessages((prev) => {

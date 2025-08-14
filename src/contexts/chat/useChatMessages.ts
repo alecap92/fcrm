@@ -72,6 +72,8 @@ export function useChatMessages() {
               direction: apiMsg.direction,
               isRead: apiMsg.isRead,
               replyToMessage: apiMsg.replyToMessage,
+              filename: (apiMsg as any).filename,
+              mimeType: (apiMsg as any).mimeType,
             })
           );
           const pagination = response.data.pagination;
