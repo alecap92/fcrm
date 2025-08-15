@@ -4,9 +4,6 @@ import { authService } from "../config/authConfig";
 // const SOCKET_URL = "http://localhost:3001"; // Temporalmente forzado a local
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:3001";
 
-console.log("[DEBUG] Socket URL:", SOCKET_URL);
-console.log("[DEBUG] Initial token:", authService.getToken());
-
 export const socket = io(SOCKET_URL, {
   autoConnect: true,
   reconnection: true,
@@ -17,36 +14,25 @@ export const socket = io(SOCKET_URL, {
   },
 });
 
-socket.on("connect", () => {
-  console.log("[DEBUG] Socket conectado exitosamente:", socket.id);
-  console.log("[DEBUG] Socket auth:", socket.auth);
-});
+socket.on("connect", () => {});
 
-socket.on("disconnect", (reason) => {
-  console.log("[DEBUG] Socket desconectado:", reason);
-});
+socket.on("disconnect", (_reason) => {});
 
 socket.on("connect_error", (error) => {
-  console.error("[DEBUG] Error de conexión del socket:", error);
+  console.error("Socket connect_error:", error);
 });
 
 socket.on("error", (error: Error) => {
-  console.error("[DEBUG] Error en la conexión del socket:", error);
+  console.error("Socket error:", error);
 });
 
 // Agregar listeners para eventos específicos para debugging
-socket.on("newMessage", (data) => {
-  console.log("[DEBUG] Socket received newMessage:", data);
-});
+socket.on("newMessage", (_data) => {});
 
-socket.on("whatsapp_message", (data) => {
-  console.log("[DEBUG] Socket received whatsapp_message:", data);
-});
+socket.on("whatsapp_message", (_data) => {});
 
 // Agregar listener para newNotification
-socket.on("newNotification", (data) => {
-  console.log("[DEBUG] Socket received newNotification:", data);
-});
+socket.on("newNotification", (_data) => {});
 
 // Mantener un mapa de listeners envueltos para poder removerlos correctamente
 const __listenerMap: Map<
@@ -66,12 +52,7 @@ const originalOn = socket.on.bind(socket);
 const originalOff = socket.off.bind(socket);
 
 socket.on = function (event: string, listener: (...args: any[]) => void) {
-  const wrappedListener = (...args: any[]) => {
-    if (!["connect", "disconnect", "connect_error", "error"].includes(event)) {
-      console.log(`[DEBUG] Socket event '${event}' received:`, args);
-    }
-    return listener(...args);
-  };
+  const wrappedListener = (...args: any[]) => listener(...args);
   // Guardar el mapeo para permitir off(listener) posteriormente
   const eventMap = getEventListenerMap(event);
   eventMap.set(listener, wrappedListener);
@@ -98,31 +79,25 @@ socket.off = function (event: string, listener?: (...args: any[]) => void) {
 // Listener genérico para capturar cualquier evento
 const originalEmit = socket.emit.bind(socket);
 socket.emit = function (event: string, ...args: any[]) {
-  console.log(`[DEBUG] Socket emitting '${event}':`, args);
   return originalEmit(event, ...args);
 };
 
-// Interceptar todos los eventos que llegan
-socket.onAny((event: string, ...args: any[]) => {
-  console.log(`[DEBUG] Socket received event '${event}':`, args);
-});
+// Interceptar todos los eventos que llegan (silencioso)
+socket.onAny((_event: string, ..._args: any[]) => {});
 
 // Función para reconectar con un nuevo token
 export const reconnectWithNewToken = (token: string) => {
-  console.log("[DEBUG] Reconnecting with new token:", token);
   socket.auth = { token };
   socket.disconnect().connect();
 };
 
 // Función para suscribirse a una conversación
 export const subscribeToConversation = (conversationId: string) => {
-  console.log("[DEBUG] Subscribing to conversation:", conversationId);
   socket.emit("subscribe_to_conversation", { conversationId });
 };
 
 // Función para desuscribirse de una conversación
 export const unsubscribeFromConversation = (conversationId: string) => {
-  console.log("[DEBUG] Unsubscribing from conversation:", conversationId);
   socket.emit("unsubscribe_from_conversation", { conversationId });
 };
 
@@ -134,18 +109,15 @@ export const getSocketStatus = () => {
     auth: socket.auth,
     url: SOCKET_URL,
   };
-  console.log("[DEBUG] Socket status:", status);
   return status;
 };
 
 // Función para unirse a una sala
 export const joinRoom = (room: string) => {
-  console.log("[DEBUG] Joining room:", room);
   socket.emit("joinRoom", room);
 };
 
 // Función para salir de una sala
 export const leaveRoom = (room: string) => {
-  console.log("[DEBUG] Leaving room:", room);
   socket.emit("leaveRoom", room);
 };

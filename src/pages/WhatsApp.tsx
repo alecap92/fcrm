@@ -24,6 +24,7 @@ import type { Chat, Message, Deal } from "../types/chat";
 import chatService from "../services/chatService";
 import { useNavigate, useParams } from "react-router-dom";
 import { useChatContext } from "../contexts/ChatContext";
+import { conversationService } from "../services/conversationService";
 
 const dummyDeals: Deal[] = [
   {
@@ -125,8 +126,14 @@ export function WhatsApp() {
           replyToMessage: "",
         };
         setMessages([...messages, newMsg]);
-        console.log(newMsg, 1);
         setNewMessage("");
+        
+        // Marcar la conversación como leída después de enviar el mensaje exitosamente
+        try {
+          await conversationService.markConversationAsRead(selectedChat._id);
+        } catch (markError) {
+          console.warn("Error al marcar conversación como leída:", markError);
+        }
       }
     } catch (error) {
       console.error("Error sending message:", error);
@@ -198,7 +205,7 @@ export function WhatsApp() {
       if (newMessages.length < 100) {
         setHasMore(false);
       }
-      console.log(newMessages, 1);
+      // silent
       if (pageNumber === 1) {
         setMessages(newMessages);
       } else {
@@ -254,6 +261,13 @@ export function WhatsApp() {
           replyToMessage: "",
         };
         setMessages([...messages, newMsg]);
+        
+        // Marcar la conversación como leída después de enviar el archivo exitosamente
+        try {
+          await conversationService.markConversationAsRead(selectedChat._id);
+        } catch (markError) {
+          console.warn("Error al marcar conversación como leída:", markError);
+        }
       }
     } catch (error) {
       console.error("Error sending file:", error);

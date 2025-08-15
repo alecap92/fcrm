@@ -5,7 +5,17 @@ import { conversationService } from "../../services/conversationService";
 import chatService from "../../services/chatService";
 import { groupMessagesByDate, getHoursDifference } from "../../lib";
 
-export function useChatMessages() {
+interface UseChatMessagesOptions {
+  onUpdateConversationReadState?: (chatId: string, isRead: boolean) => void;
+  onUpdateConversationPreviewOptimistic?: (
+    chatId: string,
+    data: { lastMessage: string; type?: string }
+  ) => void;
+}
+
+export function useChatMessages(options?: UseChatMessagesOptions) {
+  const { onUpdateConversationReadState, onUpdateConversationPreviewOptimistic } = options || {};
+  
   const [message, setMessage] = useState("");
   const [conversationDetail, setConversationDetail] = useState<any | null>(
     null
@@ -175,10 +185,43 @@ export function useChatMessages() {
                     messageId: sent.messageId || m.messageId,
                     timestamp: sent.timestamp || m.timestamp,
                     status: "sent",
+                    isRead: true,
                   }
                 : m
             )
           );
+
+          // Actualizar optimistamente la card en /conversations
+          if (currentChatId) {
+            onUpdateConversationPreviewOptimistic?.(currentChatId, {
+              lastMessage: queuedMessage.message,
+              type: queuedMessage.type,
+            });
+          }
+
+          // Marcar la conversación como leída después de enviar el mensaje exitosamente
+          try {
+            await conversationService.markConversationAsRead(currentChatId);
+            // Actualizar el estado local de las conversaciones
+            if (onUpdateConversationReadState) {
+              onUpdateConversationReadState(currentChatId, true);
+            }
+            // Reflejar lectura en la lista local de mensajes (entrantes)
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.direction === "incoming" ? { ...msg, isRead: true } : msg
+              )
+            );
+            
+            // Refrescar conversaciones después de un breve delay para asegurar sincronización
+            setTimeout(() => {
+              if (onUpdateConversationReadState) {
+                onUpdateConversationReadState(currentChatId, true);
+              }
+            }, 1000);
+          } catch (markError) {
+            console.warn("Error al marcar conversación como leída:", markError);
+          }
         } else {
           setMessages((prev) =>
             prev.map((m) =>
@@ -228,7 +271,7 @@ export function useChatMessages() {
         );
       }
     })();
-  }, [message, currentChatId, conversationDetail]);
+  }, [message, currentChatId, conversationDetail, onUpdateConversationReadState]);
 
   const handlePriorityChange = useCallback(
     async (e: React.ChangeEvent<HTMLSelectElement>) => {

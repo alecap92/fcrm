@@ -50,12 +50,30 @@ export function useKanbanConversations(
             }`.trim()
           : conv.title || conv.participants?.contact?.reference || "Sin nombre";
 
+        const lastDir = conv.lastMessage?.direction;
+        const lastIsRead = conv.lastMessage?.isRead;
+        // Nueva regla UI: solo importa el último mensaje
+        // - Si el último es entrante: isRead = lastMessage.isRead
+        // - Si el último es saliente: isRead = true
+        const isRead = lastDir === "incoming" ? !!lastIsRead : true;
+
+        // Log minimal si se necesita: desactivado por defecto
+        /* console.log("[KANBAN] Transform", {
+          id: conv._id,
+          title: contactName,
+          unreadCount: conv.unreadCount,
+          isRead,
+          lastMessageDirection: lastDir,
+          lastMessageIsRead: lastIsRead,
+          rule: "isRead = lastDir==='incoming'? lastIsRead : true",
+        }); */
+
         return {
           id: conv._id,
           title: contactName,
           lastMessage: conv.lastMessage?.message || "",
           lastMessageTimestamp: conv.lastMessage?.timestamp || "",
-          lastMessageDirection: conv.lastMessage?.direction || "",
+          lastMessageDirection: lastDir || "",
           priority: conv.priority,
           status: stageId,
           currentStage: conv.currentStage,
@@ -64,7 +82,7 @@ export function useKanbanConversations(
             "Sin asignar",
           tags: conv.tags,
           createdAt: conv.createdAt,
-          isRead: conv.lastMessage?.isRead || false,
+          isRead,
           mobile: conv.mobile || conv.participants?.contact?.reference,
         } as Conversation;
       });
@@ -89,6 +107,8 @@ export function useKanbanConversations(
 
         const results = await Promise.all(requests);
 
+        // Limpieza de logs: sin trazas crudas en producción
+
         const nextConversations: Conversation[] = [];
         const nextColumnsPagination: Record<string, any> = {};
 
@@ -103,6 +123,8 @@ export function useKanbanConversations(
               res.data.pagination;
           }
         });
+
+        // Limpieza de logs
 
         setConversations(nextConversations);
         setColumns((prev) =>
@@ -289,14 +311,37 @@ export function useKanbanConversations(
 
   const markConversationAsRead = useCallback(
     async (chatId: string, mobile?: string) => {
-      if (mobile) {
-        await chatService.markAsRead(mobile);
+      try {
+        // Preferimos endpoint por conversación (resetea unreadCount en backend)
+        await conversationService.markConversationAsRead(chatId);
+        // Compatibilidad: también marcar mensajes por número si está disponible
+        if (mobile) {
+          try {
+            await chatService.markAsRead(mobile);
+          } catch (e) {
+            console.error("markAsRead(mobile) error:", e);
+          }
+        }
+      } catch (e) {
+        console.error("markConversationAsRead backend error:", e);
       }
+
+      // Actualizar estado local inmediatamente
       setConversations((prev) =>
         prev.map((c) => (c.id === chatId ? { ...c, isRead: true } : c))
       );
+
+      // Refrescar conversaciones para asegurar sincronización con backend
+      try {
+        if (pipeline) {
+          await fetchConversations(pipeline);
+          // sin logs extra
+        }
+      } catch (error) {
+        console.error("Error al refrescar conversaciones tras marcar leído:", error);
+      }
     },
-    []
+    [pipeline, fetchConversations, conversations]
   );
 
   const deleteConversation = useCallback(async (chatId: string) => {
@@ -510,8 +555,20 @@ export function useKanbanConversations(
 
   const updateConversationPreview = useCallback(
     (chatId: string, data: Partial<Conversation>) => {
+      console.log("[DEBUG] Actualizando conversación:", { chatId, data });
       setConversations((prev) =>
-        prev.map((conv) => (conv.id === chatId ? { ...conv, ...data } : conv))
+        prev.map((conv) => {
+          if (conv.id === chatId) {
+            const updated = { ...conv, ...data };
+            console.log("[DEBUG] Conversación actualizada:", { 
+              id: conv.id, 
+              oldIsRead: conv.isRead, 
+              newIsRead: updated.isRead 
+            });
+            return updated;
+          }
+          return conv;
+        })
       );
     },
     []

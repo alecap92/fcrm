@@ -45,8 +45,7 @@ export function useSocketEvents({
 
   const handleNewMessage = useCallback(
     (newMessage: any) => {
-      // eslint-disable-next-line no-console
-      console.log("[SOCKET] Incoming event", newMessage);
+      // Limpieza de logs ruidosos
       let messageData;
       let chatId;
       if (newMessage.message && newMessage.conversationId) {
@@ -56,12 +55,11 @@ export function useSocketEvents({
         messageData = newMessage;
         chatId = newMessage.conversation;
       } else if (newMessage.type && newMessage.contact) {
-        // eslint-disable-next-line no-console
-        console.log("[SOCKET] Notification-type event", newMessage);
+        // Notificación simple
         showNewMessageNotification(newMessage.contact);
         return;
       } else {
-        console.warn("[CHAT] Formato de mensaje desconocido:", newMessage);
+        console.error("Formato de mensaje desconocido:", newMessage);
         return;
       }
       // Normalizar a string para comparaciones seguras
@@ -88,7 +86,9 @@ export function useSocketEvents({
           timestamp: messageData.timestamp || new Date().toISOString(),
           type: messageData.type || "text",
           direction: messageData.direction,
-          isRead: messageData.isRead || false,
+          // Si el chat está abierto, marcamos como leído de forma optimista
+          isRead:
+            messageData.direction === "incoming" ? true : messageData.isRead || false,
           possibleName: messageData.possibleName || "",
           replyToMessage: messageData.replyToMessage || null,
           messageId: messageData.messageId || "",
@@ -99,12 +99,7 @@ export function useSocketEvents({
         } as any;
         // Intentar conciliar con mensaje en cola (queued/sending) y evitar duplicados exactos
         setMessages((prev) => {
-          // eslint-disable-next-line no-console
-          console.log("[SOCKET] Try reconcile with queued/sending", {
-            formattedMessage,
-            currentChatId,
-            chatId,
-          });
+          // conciliación silenciosa
           // Evitar duplicados por messageId o por combinación clave
           const alreadyExists = prev.some(
             (m) =>
@@ -118,13 +113,7 @@ export function useSocketEvents({
                 m.type === formattedMessage.type)
           );
           if (alreadyExists) {
-            console.warn(
-              "[SOCKET] Duplicate message detected. Skipping append",
-              {
-                messageId: formattedMessage.messageId,
-                text: formattedMessage.message,
-              }
-            );
+            // duplicado detectado, evitar anexar
             return prev;
           }
           const idx = prev.findIndex(
@@ -138,33 +127,31 @@ export function useSocketEvents({
           if (idx !== -1) {
             const copy = [...prev];
             copy[idx] = { ...formattedMessage, status: "sent" } as any;
-            // eslint-disable-next-line no-console
-            console.log("[SOCKET] Reconciled queued → sent", { idx });
+            // reconciliado queued → sent
             return copy;
           }
-          // eslint-disable-next-line no-console
-          console.log("[SOCKET] No queued match; append as new");
+          // anexar como nuevo
           return [...prev, formattedMessage];
         });
         if (messageData.direction === "incoming") {
           updateConversationPreview(chatId, { isRead: true });
+          // Asegurar consistencia en backend sin bloquear UI
+          (async () => {
+            try {
+              await conversationService.markConversationAsRead(chatId);
+            } catch {}
+          })();
         }
       }
       const exists = conversations.some((conv) => conv.id === chatId);
       if (exists) {
-        // eslint-disable-next-line no-console
-        console.log("[SOCKET] Update preview", {
-          last: messageData.message,
-          ts: messageData.timestamp,
-          dir: messageData.direction,
-        });
         updateConversationPreview(chatId, {
           lastMessage: messageData.message,
           lastMessageTimestamp:
             messageData.timestamp || new Date().toISOString(),
           lastMessageDirection: messageData.direction,
           createdAt: messageData.timestamp || new Date().toISOString(),
-          isRead: chatId === currentChatId || false,
+          isRead: messageData.direction === "outgoing" || chatId === currentChatId,
         });
       } else {
         (async () => {

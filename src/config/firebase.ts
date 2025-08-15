@@ -24,14 +24,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Verificar configuración en desarrollo
-if (import.meta.env.DEV) {
-  console.log("🔧 Firebase Config:", {
-    authDomain: firebaseConfig.authDomain,
-    projectId: firebaseConfig.projectId,
-    currentOrigin: window.location.origin,
-  });
-}
+// Silenciar logs de configuración en desarrollo
 
 // Initialize Analytics (opcional, solo en producción)
 let analytics;

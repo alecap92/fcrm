@@ -33,11 +33,7 @@ class ApiService {
       },
     });
 
-    // Log para debugging
-    console.log("🔧 API Config:", {
-      baseURL: this.api.defaults.baseURL,
-      env: import.meta.env.MODE,
-    });
+    // Silenciar logs de configuración
 
     this.setupInterceptors();
   }

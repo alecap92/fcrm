@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import chatService, { UploadFileResponse } from "../../services/chatService";
+import { conversationService } from "../../services/conversationService";
 
 export interface FileDocument {
   name: string;
@@ -12,11 +13,13 @@ export function useAttachments({
   getCurrentChatId,
   reloadMessages,
   refreshConversations,
+  onUpdateConversationReadState,
 }: {
   getDestinationPhone: () => string | "";
   getCurrentChatId: () => string | null;
   reloadMessages: () => Promise<void>;
   refreshConversations: () => void;
+  onUpdateConversationReadState?: (chatId: string, isRead: boolean) => void;
 }) {
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -29,12 +32,23 @@ export function useAttachments({
         await chatService.sendMessage(formData);
         await reloadMessages();
         refreshConversations();
+        
+        // Marcar la conversación como leída después de enviar el archivo exitosamente
+        const currentChatId = getCurrentChatId();
+        if (currentChatId && onUpdateConversationReadState) {
+          try {
+            await conversationService.markConversationAsRead(currentChatId);
+            onUpdateConversationReadState(currentChatId, true);
+          } catch (markError) {
+            console.warn("Error al marcar conversación como leída:", markError);
+          }
+        }
       } catch (err) {
         console.error("Error al enviar archivo:", err);
         throw err;
       }
     },
-    [reloadMessages, refreshConversations]
+    [reloadMessages, refreshConversations, getCurrentChatId, onUpdateConversationReadState]
   );
 
   const handleAttachmentClick = useCallback(

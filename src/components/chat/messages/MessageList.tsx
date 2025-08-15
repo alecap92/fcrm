@@ -28,7 +28,7 @@ export function MessageList({
   const { groupedMessages } = useChatContext();
   const prevMessagesLengthRef = useRef<number>(messages.length);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  console.log(messages, 1);
+  // silent
   const handleScroll = () => {
     if (!messageListRef.current) return;
 

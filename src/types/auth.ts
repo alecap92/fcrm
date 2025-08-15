@@ -20,7 +20,7 @@ export interface User {
     smtpSettings: {
       host: string;
       port: number;
-      tls: boolean;
+      secure: boolean;
       user: string;
       password: string;
     };

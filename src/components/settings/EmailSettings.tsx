@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Save, Mail, Eye, EyeOff, Send } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuth } from "../../contexts/AuthContext";
-import { organizationService } from "../../services/organizationService";
+import { userService } from "../../services/userService";
+import { useAuthStore } from "../../store/authStore";
+import { useToast } from "../ui/toast";
 
 export function EmailSettings() {
   const [showPassword, setShowPassword] = useState(false);
@@ -10,54 +12,102 @@ export function EmailSettings() {
   const [showTestEmailModal, setShowTestEmailModal] = useState(false);
 
   const { user } = useAuth();
-  const emailConfig = user?.emailSettings;
+  const updateUserInStore = useAuthStore((state) => state.updateUser);
+  const toast = useToast();
 
-  const handleUpdate = async (partialConfig: any) => {
-    const updatedConfig = {
-      ...emailConfig,
-      ...partialConfig,
-    };
-    const response = await organizationService.updateOrganization({
-      ...user,
-      emailSettings: updatedConfig,
-    });
-    console.log("Update response:", response);
-  };
+  const [emailConfig, setEmailConfig] = useState(() =>
+    user?.emailSettings || {
+      emailAddress: user?.email || "",
+      imapSettings: {
+        host: "",
+        port: 993,
+        user: "",
+        password: "",
+        tls: true,
+        lastUID: 0,
+      },
+      smtpSettings: {
+        host: "",
+        port: 587,
+        user: "",
+        password: "",
+        secure: false,
+      },
+    }
+  );
+
+  useEffect(() => {
+    if (user?.emailSettings) {
+      setEmailConfig(user.emailSettings);
+    }
+  }, [user?.emailSettings]);
 
   const updateSmtpField = (field: string, value: any) => {
-    handleUpdate({
+    setEmailConfig((prev: any) => ({
+      ...prev,
       smtpSettings: {
-        ...emailConfig?.smtpSettings,
+        ...prev?.smtpSettings,
         [field]: value,
       },
-    });
+    }));
   };
 
   const updateImapField = (field: string, value: any) => {
-    handleUpdate({
+    setEmailConfig((prev: any) => ({
+      ...prev,
       imapSettings: {
-        ...emailConfig?.imapSettings,
+        ...prev?.imapSettings,
         [field]: value,
       },
-    });
+    }));
   };
 
   const handleTestConnection = async () => {
-    alert("Lógica de prueba de conexión pendiente");
+    toast.show({
+      title: "Prueba de conexión",
+      description: "La lógica de prueba de conexión está pendiente.",
+      type: "warning",
+      duration: 4000,
+    });
   };
 
   const handleSendTestEmail = async () => {
-    alert(`Enviando correo de prueba a ${testEmail}`);
-    setShowTestEmailModal(false);
+    try {
+      // Aquí iría la lógica real de envío de email de prueba
+      setShowTestEmailModal(false);
+      toast.show({
+        title: "Correo de prueba",
+        description: `Se enviará un correo de prueba a ${testEmail}`,
+        type: "success",
+      });
+    } catch (error: any) {
+      toast.show({
+        title: "Error",
+        description: error?.message || "No se pudo enviar el correo de prueba",
+        type: "error",
+      });
+    }
   };
 
   const handleSave = async () => {
-    const response = await organizationService.updateOrganization({
-      ...user,
-      emailSettings: emailConfig,
-    });
-    alert("Configuración guardada correctamente");
-    console.log(response);
+    try {
+      const response = await userService.updateUser({
+        emailSettings: emailConfig,
+      });
+      updateUserInStore({ emailSettings: emailConfig } as any);
+      toast.show({
+        title: "Guardado",
+        description: "Configuración de email guardada correctamente",
+        type: "success",
+      });
+      console.log(response);
+    } catch (error: any) {
+      toast.show({
+        title: "Error",
+        description: error?.message || "No se pudo guardar la configuración",
+        type: "error",
+      });
+    }
   };
 
   return (
@@ -149,19 +199,19 @@ export function EmailSettings() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Encriptación
+                    Conexión segura (SSL/TLS)
                   </label>
-                  <select
-                    value={emailConfig?.smtpSettings?.tls ? "ssl" : "none"}
-                    onChange={(e) =>
-                      updateSmtpField("encryption", e.target.value)
-                    }
-                    className="input"
-                  >
-                    <option value="none">Ninguna</option>
-                    <option value="ssl">SSL</option>
-                    <option value="tls">TLS</option>
-                  </select>
+                  <div className="mt-1">
+                    <input
+                      id="smtp-secure"
+                      type="checkbox"
+                      checked={!!(emailConfig as any)?.smtpSettings?.secure}
+                      onChange={(e) => updateSmtpField("secure", e.target.checked)}
+                    />
+                    <label htmlFor="smtp-secure" className="ml-2 text-sm text-gray-700">
+                      Habilitar
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>

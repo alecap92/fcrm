@@ -40,37 +40,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     soundVolume: 0.6,
   });
 
-  // Mensajería
-  const {
-    message,
-    setMessage,
-    conversationDetail,
-    messages,
-    page,
-    hasMore,
-    isLoading,
-    isInitialLoad,
-    error,
-    isSubmitting,
-    textareaRef,
-    loadMessages,
-    handleLoadMore,
-    handleSendMessage,
-    handlePriorityChange,
-    isConversationExpired,
-    groupedMessages,
-    setConversationDetail,
-    setMessages,
-    setPage,
-    setHasMore,
-    setIsLoading,
-    setIsInitialLoad,
-    setError,
-    setIsSubmitting,
-    currentChatId,
-    setCurrentChatId,
-  } = useChatMessages();
-
   // Kanban/pipeline
   const {
     conversations,
@@ -104,6 +73,59 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     onHideLoading: hideLoading,
   });
 
+  // Función para actualizar el estado de las conversaciones
+  const updateConversationReadState = useCallback((chatId: string, isRead: boolean) => {
+    updateConversationPreview(chatId, { isRead });
+  }, [updateConversationPreview]);
+
+  // Nueva: actualización optimista del preview al enviar
+  const updateConversationPreviewOptimistic = useCallback(
+    (chatId: string, data: { lastMessage: string; type?: string }) => {
+      updateConversationPreview(chatId, {
+        lastMessage: data.lastMessage,
+        lastMessageDirection: "outgoing" as any,
+        lastMessageTimestamp: new Date().toISOString(),
+        isRead: true,
+      });
+    },
+    [updateConversationPreview]
+  );
+
+  // Mensajería
+  const {
+    message,
+    setMessage,
+    conversationDetail,
+    messages,
+    page,
+    hasMore,
+    isLoading,
+    isInitialLoad,
+    error,
+    isSubmitting,
+    textareaRef,
+    loadMessages,
+    handleLoadMore,
+    handleSendMessage,
+    handlePriorityChange,
+    isConversationExpired,
+    groupedMessages,
+    setConversationDetail,
+    setMessages,
+    setPage,
+    setHasMore,
+    setIsLoading,
+    setIsInitialLoad,
+    setError,
+    setIsSubmitting,
+    currentChatId,
+    setCurrentChatId,
+  } = useChatMessages({
+    onUpdateConversationReadState: updateConversationReadState,
+    // Pasar optimista de preview
+    onUpdateConversationPreviewOptimistic: updateConversationPreviewOptimistic,
+  });
+
   // Adjuntos
   const {
     isUploadingFile,
@@ -120,6 +142,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       if (conversationDetail) await loadMessages(1, true);
     },
     refreshConversations,
+    onUpdateConversationReadState: updateConversationReadState,
   });
 
   // La actualización de preview viene del hook de Kanban
@@ -147,7 +170,13 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         setIsInitialLoad(true);
         setError(null);
         setIsLoading(true);
-        loadMessages(1, true, chatId);
+        // Primero marcar como leída y luego cargar para reflejar isRead=true
+        (async () => {
+          try {
+            await markConversationAsRead(chatId);
+          } catch {}
+          await loadMessages(1, true, chatId);
+        })();
       }
     },
     [
@@ -159,6 +188,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       setError,
       setIsLoading,
       loadMessages,
+      markConversationAsRead,
     ]
   );
 

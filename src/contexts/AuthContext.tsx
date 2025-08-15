@@ -186,11 +186,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initializeAuth = async () => {
       // PRIMERO: Manejar resultado del redirect de Firebase (para producción)
       try {
-        console.log("🔍 Verificando resultado del redirect de Firebase...");
+        // Silenciar logs informativos
         const result = await handleRedirectResult();
         if (result && result.user) {
-          console.log("🎉 Firebase redirect result found:", result.user.email);
-          console.log("🔄 Procesando autenticación desde redirect...");
+          // info logs removidos
 
           // Obtener el token y procesar como login normal
           const idToken = await result.user.getIdToken();
@@ -199,10 +198,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             "google"
           );
 
-          console.log(
-            "✅ Autenticación desde redirect exitosa:",
-            response.user?.email
-          );
+          // info logs removidos
 
           setUser(response.user);
           if (response.organization) {
@@ -217,12 +213,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           // Redirigir después del login exitoso
           const from = location.state?.from || "/deals";
-          console.log("🔄 Redirigiendo desde redirect a:", from);
           navigate(from);
           setIsLoading(false);
           return;
         } else {
-          console.log("ℹ️ No hay resultado de redirect de Firebase");
+          // no-op
         }
       } catch (error) {
         console.error("❌ Error handling Firebase redirect result:", error);
@@ -471,10 +466,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithGoogle = async () => {
     try {
       setIsLoading(true);
-      console.log("🔄 Iniciando login con Google...");
 
       const response = await authService.loginWithGoogle();
-      console.log("✅ Login con Google exitoso:", response.user?.email);
 
       setUser(response.user);
       if (response.organization) {
@@ -488,7 +481,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setupTokenRefresh();
 
       const from = location.state?.from || "/deals";
-      console.log("🔄 Redirigiendo a:", from);
       navigate(from);
     } catch (error) {
       console.error("❌ Error en login con Google:", error);

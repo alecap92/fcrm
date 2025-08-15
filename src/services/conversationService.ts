@@ -96,6 +96,16 @@ const sendMessage = async (message: any) => {
   try {
     const response: any = await apiService.post("/chat/send", message);
     console.log("response", response);
+    
+    // Marcar la conversación como leída después de enviar el mensaje exitosamente
+    if (response?.data && message.conversation) {
+      try {
+        await markConversationAsRead(message.conversation);
+      } catch (markError) {
+        console.warn("Error al marcar conversación como leída:", markError);
+      }
+    }
+    
     return response.data;
   } catch (error) {
     console.error("Error sending message:", error);
@@ -171,6 +181,18 @@ const findConversationByPhone = async (phoneNumber: string) => {
   }
 };
 
+const markConversationAsRead = async (conversationId: string) => {
+  try {
+    const response: any = await apiService.put(
+      `/conversation/${conversationId}/read`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error marking conversation as read:", error);
+    throw error;
+  }
+};
+
 const getDefaultPipeline = async () => {
   try {
     const response: any = await apiService.get(
@@ -200,4 +222,5 @@ export const conversationService = {
   deleteConversation,
   searchConversations,
   findConversationByPhone,
+  markConversationAsRead,
 };

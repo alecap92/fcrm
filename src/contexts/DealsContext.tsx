@@ -718,17 +718,13 @@ export function DealsProvider({ children }: DealsProviderProps) {
   // Cargar deals al montar el componente SOLO si el usuario está autenticado
   useEffect(() => {
     if (isUserAuthenticated) {
-      console.log("DealsContext: Usuario autenticado, cargando deals");
       fetchDeals(true); // Reset = true para cargar desde la primera página
-    } else {
-      console.log("DealsContext: Usuario no autenticado, no cargando deals");
     }
   }, [pipelineId, isUserAuthenticated]);
 
   // Limpiar estado cuando el usuario se desautentica
   useEffect(() => {
     if (!isUserAuthenticated) {
-      console.log("DealsContext: Usuario desautenticado, limpiando estado");
       setDeals([]);
       setColumns([]);
       setActiveDeal(null);
