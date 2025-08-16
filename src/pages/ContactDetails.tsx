@@ -43,6 +43,15 @@ import AiComments from "../components/contacts/AiComments";
 import { ComposeEmail } from "../components/email/ComposeEmail";
 import emailsService from "../services/emailService";
 import { useChatModule } from "../components/chat/floating";
+import ContactLayout from "../components/contacts/ContactLayout";
+import ContactProfileCard from "../components/contacts/ContactProfileCard";
+import ContactKpis from "../components/contacts/ContactKpis";
+import Tabs from "../components/ui/Tabs";
+import ActivityList from "../components/contacts/ActivityList";
+import DealsList from "../components/contacts/DealsList";
+import DocumentsList from "../components/contacts/DocumentsList";
+import QuotationsList from "../components/contacts/QuotationsList";
+import NotesPanel from "../components/contacts/NotesPanel";
 
 interface Document {
   _id?: string;
@@ -106,6 +115,7 @@ export function ContactDetails() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [isLoadingActivities, setIsLoadingActivities] = useState<boolean>(false);
   const [activityFormData, setActivityFormData] = useState<Activity>({
     activityType: "Reunion",
     title: "",
@@ -132,6 +142,7 @@ export function ContactDetails() {
   );
   const [quotations, setQuotations] = useState<Quote[]>([]);
   const [leadScore, setLeadScore] = useState<number>(0);
+  const [activeTab, setActiveTab] = useState<string>("activity");
 
   const { showLoading, hideLoading } = useLoading();
   const navigate = useNavigate();
@@ -282,9 +293,13 @@ export function ContactDetails() {
   };
 
   const getActivities = async (contactId: string) => {
-    const response: any = await contactsService.getActivities(contactId);
-    console.log(response.data);
-    setActivities(response.data);
+    setIsLoadingActivities(true);
+    try {
+      const response: any = await contactsService.getActivities(contactId);
+      setActivities(response.data);
+    } finally {
+      setIsLoadingActivities(false);
+    }
   };
 
   const handleAddActivity = async (e: React.FormEvent) => {
@@ -500,499 +515,253 @@ export function ContactDetails() {
   }, [contactDetails, deals, leadScore, dailyMetrics]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="h-20 w-20 rounded-full bg-indigo-100 flex items-center justify-center">
-                <User className="h-10 w-10 text-indigo-600" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {contactDetails.firstName} {contactDetails.lastName}{" "}
-                </h1>
-                <p className="text-gray-500">{contactDetails.companyType}</p>
-                {/* Tags */}
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {tags.map((tag, index) => (
-                    <div
-                      key={index}
-                      className="bg-indigo-100 text-indigo-800 text-sm px-3 py-1 rounded-full flex items-center"
-                    >
-                      <Tag className="h-3 w-3 mr-1" />
-                      {tag}
-                      <button
-                        onClick={() => removeTag(tag)}
-                        className="ml-1 hover:text-indigo-600"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                  <input
-                    type="text"
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    onKeyDown={addTag}
-                    placeholder="Add tag..."
-                    className="bg-transparent border-none text-sm focus:outline-none w-24"
-                  />
-                </div>
-              </div>
-            </div>
+    <ContactLayout
+      header={
+        <div className="bg-white shadow">
+          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <h1 className="text-xl font-semibold text-gray-900">Contact Details</h1>
             <div className="flex items-center gap-2">
               <button
                 className="flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                onClick={() => setShowPrintModal(true)}
-              >
-                <Printer className="h-5 w-5 text-gray-600" />
-                <span>Print</span>
-              </button>
-              <button
-                className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-                onClick={() => {
-                  const phoneToOpen =
-                    contactDetails.mobile || contactDetails.phone;
-                  if (phoneToOpen) {
-                    navigate(
-                      `/conversations?openPhone=${encodeURIComponent(
-                        phoneToOpen
-                      )}`
-                    );
-                  } else {
-                    toast.show({
-                      title: "Sin número",
-                      description: "Este contacto no tiene número de teléfono",
-                      type: "warning",
-                    });
-                  }
-                }}
-              >
-                <MessageCircle className="h-5 w-5" />
-                <span>WhatsApp</span>
-              </button>
-              <button
-                onClick={() => setShowEmailModal(true)}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                <Send className="h-5 w-5" />
-                <span>Email</span>
-              </button>
-              <button
-                className="flex items-center space-x-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
                 onClick={() => setShowEditModal(true)}
               >
-                <Pencil className="h-5 w-5" />
-                <span>Edit</span>
+                <Pencil className="h-5 w-5 text-gray-600" />
+                <span>Editar</span>
+              </button>
+              <button
+                className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                onClick={() => {
+                  // Abrir modal de nuevo deal a través de ruta (reutilizamos Deals page) o contexto si disponible
+                  // Como fallback, navegamos a /deals con flag de crear
+                  navigate("/deals?create=true");
+                }}
+              >
+                <PlusCircle className="h-5 w-5" />
+                <span>Nuevo Deal</span>
               </button>
             </div>
           </div>
         </div>
+      }
+      kpis={
+        <ContactKpis
+          totalRevenue={Number(dailyMetrics.totalRevenue || 0)}
+          lastDealDate={dailyMetrics?.lastDeal?.createdAt || null}
+          leadScore={leadScore}
+        />
+      }
+      sidebar={
+        <ContactProfileCard
+          avatar={<User className="h-10 w-10 text-indigo-600" />}
+          fullName={`${contactDetails.firstName} ${contactDetails.lastName}`}
+          position={contactDetails.position}
+          company={contactDetails.companyName}
+          onWhatsApp={() => {
+            const phoneToOpen = contactDetails.mobile || contactDetails.phone;
+            if (phoneToOpen) {
+              navigate(
+                `/conversations?openPhone=${encodeURIComponent(phoneToOpen)}`
+              );
+            } else {
+              toast.show({
+                title: "Sin número",
+                description: "Este contacto no tiene número de teléfono",
+                type: "warning",
+              });
+            }
+          }}
+          onEmail={() => setShowEmailModal(true)}
+          onCall={() => {
+            const phone = contactDetails.mobile || contactDetails.phone;
+            if (phone) {
+              window.open(`tel:${phone}`, "_self");
+            } else {
+              toast.show({
+                title: "Sin número",
+                description: "Este contacto no tiene número de teléfono",
+                type: "warning",
+              });
+            }
+          }}
+          onSchedule={() => setShowActivityModal(true)}
+          info={[
+            {
+              icon: <Building2 className="h-5 w-5" />,
+              label: "Empresa",
+              value: contactDetails.companyName,
+            },
+            {
+              icon: <PhoneCall className="h-5 w-5" />,
+              label: "Celular",
+              value: contactDetails.mobile || contactDetails.phone,
+            },
+            {
+              icon: <Mail className="h-5 w-5" />,
+              label: "Email",
+              value: contactDetails.email,
+            },
+            {
+              icon: <MapPin className="h-5 w-5" />,
+              label: "Ubicación",
+              value: (
+                <span>
+                  {contactDetails.address?.street}
+                  {contactDetails.address?.city
+                    ? `, ${contactDetails.address.city}`
+                    : ""}
+                  {contactDetails.address?.state
+                    ? `, ${contactDetails.address.state}`
+                    : ""}
+                </span>
+              ),
+            },
+          ]}
+          tags={tags}
+          onRemoveTag={removeTag}
+          newTag={newTag}
+          onNewTagChange={setNewTag}
+          onAddTagKeyDown={addTag}
+          showDetails={showDetails}
+          onToggleDetails={() => setShowDetails(!showDetails)}
+          extraDetails={[
+            { label: "Telefono", value: contactDetails.phone },
+            { label: "ID Type", value: contactDetails.idType },
+            { label: "Número de Identificación", value: contactDetails.idNumber },
+            { label: "Digito de Verificación", value: contactDetails.dv },
+            { label: "Notas", value: contactDetails.notas },
+          ]}
+        />
+      }
+    >
+      <div className="space-y-8">
+
+        <Tabs
+          value={activeTab}
+          onChange={setActiveTab}
+          items={[
+            {
+              id: "activity",
+              label: "Activity",
+              content: (
+                <ActivityList
+                  activities={activities}
+                  searchValue={newNote}
+                  onSearchChange={(v) => setNewNote(v)}
+                  onCreate={() => setShowActivityModal(true)}
+                  onSelect={(a) => {
+                    setActivityFormData(a);
+                    setShowActivityModal(true);
+                  }}
+                  onDelete={(id) => deleteActivity(id)}
+                  isLoading={isLoadingActivities}
+                />
+              ),
+            },
+            {
+              id: "deals",
+              label: "Deals",
+              content: (
+                <DealsList
+                  deals={deals as any}
+                  onOpen={(dId) => {
+                    setDealId(dId);
+                    setShowDealDetailsModal(true);
+                  }}
+                />
+              ),
+            },
+            {
+              id: "quotations",
+              label: "Quotations",
+              content: (
+                <QuotationsList
+                  quotations={quotations}
+                  onPrint={(num) => handlePrint(num)}
+                />
+              ),
+            },
+            {
+              id: "files",
+              label: "Files",
+              content: (
+                <DocumentsList
+                  title="Files"
+                  documents={documents as any}
+                  onPreview={(doc) => {
+                    setSelectedDocument(doc as any);
+                    setShowPreviewModal(true);
+                  }}
+                  onDelete={(docId) => deleteDocument(docId)}
+                  onOpenUpload={() => setShowUploadDocumentModal(true)}
+                />
+              ),
+            },
+            {
+              id: "notes",
+              label: "Notes",
+              content: (
+                <NotesPanel
+                  initialNotes={contactDetails.notas || ""}
+                  onSave={async (value) => {
+                    // persiste las notas usando la API de updateContact existente
+                    await handleUpdateContact({ ...contactDetails, notas: value });
+                  }}
+                />
+              ),
+            },
+          ]}
+        />
+
+        <PreviewModal
+          isOpen={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          document={selectedDocument as any}
+        />
+
+        <UploadModal
+          isOpen={showUploadDocumentModal}
+          onClose={() => setShowUploadDocumentModal(false)}
+          onUpload={handleUploadDocument}
+        />
+
+        <ActivityModal
+          isOpen={showActivityModal}
+          onClose={() => setShowActivityModal(false)}
+          onSubmit={handleAddActivity}
+          formData={activityFormData}
+          setFormData={setActivityFormData}
+        />
+
+        {showEmailModal ? (
+          <ComposeEmail
+            onClose={() => setShowEmailModal(false)}
+            handleSendEmail={handleSendEmail}
+            defaultRecipientsEmail={[contactDetails.email as any]}
+          />
+        ) : null}
+
+        {/* Edit Contact Modal */}
+        <AddContact
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onSubmit={handleUpdateContact}
+          initialData={contactDetails}
+        />
+
+        {showPrintModal && (
+          <PrintModal contact={contact} onClose={() => setShowPrintModal(false)} />
+        )}
+
+        {showDealDetailsModal && (
+          <DealDetailsModal
+            // isOpen={showDealDetailsModal}
+            onClose={() => setShowDealDetailsModal(false)}
+            dealId={dealId}
+            deal={[] as any}
+            onEdit={() => setShowDealDetailsModal(true)}
+          />
+        )}
       </div>
-
-      {/* Daily Metrics */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  ${dailyMetrics.totalRevenue.toLocaleString()}
-                </p>
-              </div>
-              <BarChart3 className="h-8 w-8 text-indigo-500" />
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total Negocios</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {dailyMetrics.totalDeals}
-                </p>
-              </div>
-              <PlusCircle className="h-8 w-8 text-green-500" />
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Lead Score</p>
-                <p className="text-2xl font-bold text-gray-900">{leadScore}</p>
-              </div>
-              <CheckCircle2 className="h-8 w-8 text-blue-500" />
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Ultimo pedido</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {dailyMetrics?.lastDeal?.createdAt
-                    ? new Date(
-                        dailyMetrics.lastDeal.createdAt
-                      ).toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      })
-                    : "Sin negocios"}
-                </p>
-              </div>
-              <Timer className="h-8 w-8 text-orange-500" />
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Info */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Contact Details */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Contact Information</h2>
-                <button
-                  onClick={() => setShowDetails(!showDetails)}
-                  className="text-indigo-600 hover:text-indigo-800 flex items-center"
-                >
-                  {showDetails ? "Show Less" : "Show More"}
-                  <ChevronDown
-                    className={`h-4 w-4 ml-1 transform transition-transform ${
-                      showDetails ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center space-x-3">
-                  <Building2 className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-500">Company</p>
-                    <p className="text-gray-700">
-                      {contactDetails.companyName}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <PhoneCall className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-500">Celular</p>
-                    <p className="text-gray-700">{contactDetails.mobile}</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-500">Email</p>
-                    <p className="text-gray-700">{contactDetails.email}</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <MapPin className="h-5 w-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-500">Location</p>
-                    <p className="text-gray-700">
-                      {contactDetails.address?.street}
-                    </p>
-                    <p className="text-gray-700">
-                      {contactDetails.address?.city},{" "}
-                      {contactDetails.address?.state}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Extended Details */}
-              {showDetails && (
-                <div className="mt-6 border-t pt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">
-                        Telefono
-                      </p>
-                      <p className="mt-1">{contactDetails.phone}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">
-                        ID Type
-                      </p>
-                      <p className="mt-1">{contactDetails.idType}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">
-                        Número de Identificación
-                      </p>
-                      <p className="mt-1">{contactDetails.idNumber}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">
-                        Digito de Verificación
-                      </p>
-                      <p className="mt-1">{contactDetails.dv}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Notas</p>
-                      <p className="mt-1">{contactDetails.notas}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Deals */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">Deals</h2>
-              <div className="space-y-4">
-                {deals.length > 0 ? (
-                  deals.map((deal) => (
-                    <div key={deal._id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h3
-                            className="font-medium cursor-pointer hover:text-indigo-600 transition-colors text-blue-500"
-                            onClick={() => {
-                              setDealId(deal._id);
-                              setShowDealDetailsModal(true);
-                            }}
-                          >
-                            {deal.title}
-                          </h3>
-                          <p className="text-sm text-gray-500">
-                            Due:{" "}
-                            {new Date(deal.closingDate).toLocaleDateString()}
-                          </p>
-                          <p>
-                            <span className="text-sm text-gray-500">
-                              Etapa:{" "}
-                            </span>
-                            {deal?.status?.name}
-                            {console.log(deal.status) as any}
-                          </p>
-                        </div>
-                        <div className="flex items-center">
-                          <DollarSign className="h-5 w-5 text-green-500" />
-                          <span className="font-semibold text-green-500">
-                            {deal.amount.toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-green-500 h-2 rounded-full"
-                            style={{ width: `${100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500">No hay negocios</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Notes Section */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">Actividades</h2>
-              <div className="space-y-4">
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={newNote}
-                    onChange={(e) => setNewNote(e.target.value)}
-                    placeholder="Buscar Actividad..."
-                    className="flex-1 border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                  <button
-                    onClick={() => setShowActivityModal(true)}
-                    className="bg-indigo-600 text-white rounded-lg px-4 py-2 hover:bg-indigo-700 transition-colors"
-                  >
-                    <PlusCircle className="h-5 w-5" />
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {activities.map((activity) => (
-                    <div
-                      key={activity._id}
-                      className="bg-gray-50 rounded-lg p-3 cursor-pointer hover:bg-gray-100 transition-colors"
-                      onClick={() => {
-                        setActivityFormData(activity);
-                        setShowActivityModal(true);
-                      }}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center space-x-2">
-                          {activity.activityType === "Reunion" && (
-                            <Users className="h-4 w-4 text-blue-500" />
-                          )}
-                          {activity.activityType === "Llamada" && (
-                            <Phone className="h-4 w-4 text-green-500" />
-                          )}
-                          {activity.activityType === "Correo" && (
-                            <Mail className="h-4 w-4 text-red-500" />
-                          )}
-                          {activity.activityType === "Nota" && (
-                            <StickyNote className="h-4 w-4 text-yellow-500" />
-                          )}
-                          <p className="text-gray-700">{activity.title}</p>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteActivity(activity._id);
-                          }}
-                          className="text-gray-400 hover:text-red-500 transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <div className="flex items-center mt-2 text-sm text-gray-500">
-                        <Clock className="h-4 w-4 mr-1" />
-                        {activity.date}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6 mt-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold mb-4">Documentos</h2>
-                <button
-                  onClick={() => setShowUploadDocumentModal(true)}
-                  className="bg-indigo-600 text-white rounded-lg px-4 py-2 hover:bg-indigo-700 transition-colors hover:scale-105"
-                >
-                  <PlusCircle className="h-5 w-5" />
-                </button>
-              </div>
-              {documents.length === 0 && (
-                <p className="text-gray-500">No hay documentos</p>
-              )}
-              {documents.length > 0 &&
-                documents.map((document) => (
-                  <div className="space-y-4" key={document._id}>
-                    <div className="flex items-center justify-between">
-                      <div
-                        className="flex items-center space-x-2 cursor-pointer"
-                        onClick={() => {
-                          setSelectedDocument(document);
-                          setShowPreviewModal(true);
-                        }}
-                      >
-                        <File className="h-5 w-5 text-gray-400" />
-                        <p className="text-gray-700">{document.name}</p>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteDocument(document._id);
-                        }}
-                        className="text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-            </div>
-            <div className="bg-white rounded-lg shadow p-6 mt-4">
-              <h2 className="text-lg font-semibold mb-4">Cotizaciones</h2>
-              <div className="space-y-4">
-                <div className="flex flex-col gap-2">
-                  {quotations.length > 0 ? (
-                    quotations.map((quotation) => (
-                      <div
-                        className="flex items-center space-x-2"
-                        key={quotation._id}
-                      >
-                        <File className="h-5 w-5 text-gray-400" />
-                        <div className="flex gap-2">
-                          <p
-                            className="text-gray-700 cursor-pointer hover:text-blue-500 transition-colors"
-                            onClick={() =>
-                              handlePrint(quotation.quotationNumber)
-                            }
-                          >
-                            {quotation.quotationNumber}
-                          </p>
-                          <p className="text-gray-500">
-                            (
-                            {new Date(
-                              quotation.creationDate
-                            ).toLocaleDateString()}
-                            )
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-500">No hay cotizaciones</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <PreviewModal
-        isOpen={showPreviewModal}
-        onClose={() => setShowPreviewModal(false)}
-        document={selectedDocument as any}
-      />
-
-      <UploadModal
-        isOpen={showUploadDocumentModal}
-        onClose={() => setShowUploadDocumentModal(false)}
-        onUpload={handleUploadDocument}
-      />
-
-      <ActivityModal
-        isOpen={showActivityModal}
-        onClose={() => setShowActivityModal(false)}
-        onSubmit={handleAddActivity}
-        formData={activityFormData}
-        setFormData={setActivityFormData}
-      />
-
-      {showEmailModal ? (
-        <ComposeEmail
-          onClose={() => setShowEmailModal(false)}
-          handleSendEmail={handleSendEmail}
-          defaultRecipientsEmail={[contactDetails.email as any]}
-        />
-      ) : null}
-
-      {/* Edit Contact Modal */}
-      <AddContact
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        onSubmit={handleUpdateContact}
-        initialData={contactDetails}
-      />
-
-      {showPrintModal && (
-        <PrintModal
-          contact={contact}
-          onClose={() => setShowPrintModal(false)}
-        />
-      )}
-
-      {showDealDetailsModal && (
-        <DealDetailsModal
-          // isOpen={showDealDetailsModal}
-          onClose={() => setShowDealDetailsModal(false)}
-          dealId={dealId}
-          deal={[] as any}
-          onEdit={() => setShowDealDetailsModal(true)}
-        />
-      )}
-    </div>
+    </ContactLayout>
   );
 }

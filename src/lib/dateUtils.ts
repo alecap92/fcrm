@@ -1,3 +1,14 @@
+import { formatDistanceToNow } from "date-fns";
+
+export function timeAgo(date?: string | Date | null) {
+  if (!date) return "";
+  try {
+    return formatDistanceToNow(new Date(date), { addSuffix: true });
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Formatea una fecha para mostrar "Hoy", "Ayer" o la fecha completa
  */
