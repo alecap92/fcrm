@@ -34,5 +34,6 @@ export const normalizeContact = (rawContact: any): Contact => {
     idType: propertyMap.idType || "",
     notas: propertyMap.notas || "",
     lifeCycle: propertyMap.lifeCycle || "",
+    totalRevenue: rawContact.totalRevenue || 0,
   };
 };

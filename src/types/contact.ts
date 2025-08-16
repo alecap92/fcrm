@@ -37,6 +37,7 @@ export interface Contact {
   dv?: string | undefined;
   notas?: string;
   lifeCycle?: string;
+  totalRevenue?: number;
 }
 
 export interface ContactFilters {

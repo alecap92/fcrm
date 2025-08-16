@@ -29,7 +29,7 @@ export function useAttachments({
   const sendFile = useCallback(
     async (formData: FormData) => {
       try {
-        await chatService.sendMessage(formData);
+        await conversationService.sendMessage(formData);
         await reloadMessages();
         refreshConversations();
         

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { conversationService } from "../../services/conversationService";
-import chatService from "../../services/chatService";
 import {
   ApiConversation,
   Column,
@@ -314,14 +313,6 @@ export function useKanbanConversations(
       try {
         // Preferimos endpoint por conversación (resetea unreadCount en backend)
         await conversationService.markConversationAsRead(chatId);
-        // Compatibilidad: también marcar mensajes por número si está disponible
-        if (mobile) {
-          try {
-            await chatService.markAsRead(mobile);
-          } catch (e) {
-            console.error("markAsRead(mobile) error:", e);
-          }
-        }
       } catch (e) {
         console.error("markConversationAsRead backend error:", e);
       }

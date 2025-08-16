@@ -92,23 +92,62 @@ const getConversationsByStage = async (
   }
 };
 
-const sendMessage = async (message: any) => {
+const sendMessage = async (payload: any) => {
   try {
-    const response: any = await apiService.post("/chat/send", message);
-    console.log("response", response);
-    
-    // Marcar la conversación como leída después de enviar el mensaje exitosamente
-    if (response?.data && message.conversation) {
+    // Soportar payload como objeto o FormData, normalizando para el endpoint de conversaciones
+    let conversationId: string | null = null;
+    let to = "";
+    let type = "text";
+    let messageText = "";
+    let mediaUrl: string | undefined;
+    let replyToMessage: string | undefined;
+
+    if (payload instanceof FormData) {
+      conversationId = (payload.get("conversation") as string) || null;
+      to = ((payload.get("to") as string) || "").trim();
+      type = ((payload.get("type") as string) || (payload.get("messageType") as string) || "text").trim();
+      mediaUrl = (payload.get("mediaUrl") as string) || undefined;
+      messageText = ((payload.get("message") as string) || (payload.get("caption") as string) || "").toString();
+      replyToMessage = (payload.get("replyToMessage") as string) || undefined;
+    } else {
+      conversationId = payload.conversation || null;
+      to = (payload.to || "").trim();
+      type = (payload.type || payload.messageType || "text").trim();
+      mediaUrl = payload.mediaUrl || undefined;
+      messageText = (payload.message || payload.caption || "").toString();
+      replyToMessage = payload.replyToMessage || undefined;
+    }
+
+    if (!conversationId) throw new Error("conversationId requerido");
+    if (!to) throw new Error("destinatario (to) requerido");
+
+    const body = {
+      from: undefined, // opcional, backend puede inferir
+      to,
+      message: messageText,
+      mediaUrl,
+      type,
+      direction: "outgoing",
+      replyToMessage,
+    } as any;
+
+    const response: any = await apiService.post(
+      `/conversation/${conversationId}/messages`,
+      body
+    );
+
+    if (conversationId) {
       try {
-        await markConversationAsRead(message.conversation);
+        await markConversationAsRead(conversationId);
       } catch (markError) {
         console.warn("Error al marcar conversación como leída:", markError);
       }
     }
-    
-    return response.data;
+
+    return response?.data ?? response;
   } catch (error) {
     console.error("Error sending message:", error);
+    throw error;
   }
 };
 

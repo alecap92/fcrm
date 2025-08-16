@@ -2,7 +2,6 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Message } from "../../types/chat";
 import { ApiMessage } from "../../types/conversations";
 import { conversationService } from "../../services/conversationService";
-import chatService from "../../services/chatService";
 import { groupMessagesByDate, getHoursDifference } from "../../lib";
 
 interface UseChatMessagesOptions {
@@ -173,7 +172,7 @@ export function useChatMessages(options?: UseChatMessagesOptions) {
           caption: "",
           conversation: currentChatId,
         };
-        const sent = await chatService.sendMessage(messageData);
+        const sent = await conversationService.sendMessage(messageData);
 
         if (sent) {
           setMessages((prev) =>

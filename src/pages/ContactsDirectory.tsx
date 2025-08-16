@@ -503,14 +503,12 @@ export function ContactsDirectory() {
                       <span>{contact.city}</span>
                     </div>
                   )}
-                  {contact.lifeCycle && (
-                    <div className="flex items-center text-gray-700">
-                      <DollarSign className="w-4 h-4 mr-2 text-gray-400" />
-                      <span className="text-emerald-600 font-medium">
-                        {contact.lifeCycle}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex items-center text-gray-700">
+                    <DollarSign className="w-4 h-4 mr-2 text-gray-400" />
+                    <span className="text-emerald-600 font-medium">
+                      ${Number(contact.totalRevenue || 0).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -533,7 +531,13 @@ export function ContactsDirectory() {
                   <Button
                     className="bg-emerald-600 hover:bg-emerald-700 text-white w-full"
                     size="sm"
-                    onClick={() => navigate(`/whatsapp/${contact._id}`)}
+                    onClick={() =>
+                      navigate(
+                        `/conversations?openPhone=${encodeURIComponent(
+                          contact.mobile || ""
+                        )}`
+                      )
+                    }
                   >
                     <MessageCircle className="w-4 h-4 mr-2 text-white" />
                     WhatsApp

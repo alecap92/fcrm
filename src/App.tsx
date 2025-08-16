@@ -8,9 +8,6 @@ import { TopBar } from "./components/TopBar";
 import { ContactsDirectory } from "./pages/ContactsDirectory";
 import { ContactLists } from "./pages/ContactLists";
 import { CreateContactList } from "./pages/CreateContactList";
-import { WhatsApp } from "./pages/WhatsApp";
-import { WhatsAppMass } from "./pages/WhatsAppMass";
-import { WhatsAppMassNew } from "./pages/WhatsAppMassNew";
 import { EmailMass } from "./pages/EmailMass";
 import { EmailMassNew } from "./pages/EmailMassNew";
 import { Deals } from "./pages/Deals";
@@ -79,13 +76,8 @@ function App() {
                   path="/contacts/lists/:id"
                   element={<CreateContactList />}
                 />
-                <Route path="/whatsapp" element={<WhatsApp />} />
-                <Route path="/whatsapp/:contactId" element={<WhatsApp />} />
-                <Route path="/mass-whatsapp" element={<WhatsAppMass />} />
-                <Route
-                  path="/mass-whatsapp/new"
-                  element={<WhatsAppMassNew />}
-                />
+                <Route path="/whatsapp/*" element={<Navigate to="/conversations" replace />} />
+                <Route path="/mass-whatsapp/*" element={<Navigate to="/conversations" replace />} />
                 <Route path="/mass-email" element={<EmailMass />} />
                 <Route path="/documents" element={<Documents />} />
                 <Route path="/mass-email/new" element={<EmailMassNew />} />
