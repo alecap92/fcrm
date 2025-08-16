@@ -138,6 +138,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ chatId, conversation }) => {
         onSubmit={handleCreateDealWrapper}
         initialStage="66c6370ad573dacc51e620f0"
         initialData={null}
+        preselectedContact={contact as any}
       />
     </div>
   );

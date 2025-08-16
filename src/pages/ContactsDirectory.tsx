@@ -1,16 +1,18 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Search,
   Plus,
   Filter,
-  MoreVertical,
-  Edit2,
+  // MoreVertical,
+  // Edit2,
   Trash2,
   Mail,
   Phone,
   MapPin,
-  Building2,
-  Tags,
+  // Building2,
+  // Tags,
+  DollarSign,
+  MessageCircle,
   Download,
   Upload,
   RefreshCw,
@@ -42,7 +44,7 @@ export function ContactsDirectory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<ContactFilters>({});
+  const [filters] = useState<ContactFilters>({});
   const [pagination, setPagination] = useState<PaginationParams>({
     page: 1,
     limit: 10,
@@ -52,11 +54,38 @@ export function ContactsDirectory() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
+  const [companyFilter, setCompanyFilter] = useState<string>("all");
+  const [tagFilter, setTagFilter] = useState<string>("all");
   const navigate = useNavigate();
 
   const toast = useToast();
 
   const debouncedSearch = useDebouncer(searchTerm, 500);
+
+  const getInitials = (first?: string, last?: string) => {
+    const a = (first || "").trim();
+    const b = (last || "").trim();
+    const firstChar = a ? a[0] : "";
+    const lastChar = b ? b[0] : "";
+    return (firstChar + lastChar || (a || "? ").slice(0, 2)).toUpperCase();
+  };
+
+  const avatarBg = (key: string) => {
+    const colors = [
+      "bg-gradient-to-br from-violet-500 to-blue-500",
+      "bg-gradient-to-br from-emerald-500 to-teal-500",
+      "bg-gradient-to-br from-fuchsia-500 to-rose-500",
+      "bg-gradient-to-br from-orange-500 to-amber-500",
+      "bg-gradient-to-br from-sky-500 to-cyan-500",
+      "bg-gradient-to-br from-indigo-500 to-purple-500",
+      "bg-gradient-to-br from-lime-500 to-green-500",
+      "bg-gradient-to-br from-pink-500 to-rose-500",
+    ];
+    let hash = 0;
+    for (let i = 0; i < key.length; i++)
+      hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    return colors[hash % colors.length];
+  };
 
   const loadContacts = async () => {
     try {
@@ -108,21 +137,39 @@ export function ContactsDirectory() {
     }
   }, [debouncedSearch, pagination.page, pagination.limit, filters]);
 
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedContacts(contacts.map((contact) => contact._id));
-    } else {
-      setSelectedContacts([]);
-    }
-  };
+  // Opciones dinámicas para filtros rápidos
+  const uniqueCompanies = useMemo(() => {
+    const set = new Set<string>();
+    contacts.forEach((c) => c.companyName && set.add(c.companyName));
+    return Array.from(set).sort();
+  }, [contacts]);
 
-  const handleSelectContact = (contactId: string) => {
-    setSelectedContacts((current) =>
-      current.includes(contactId)
-        ? current.filter((id) => id !== contactId)
-        : [...current, contactId]
-    );
-  };
+  const uniqueTags = useMemo(() => {
+    const set = new Set<string>();
+    contacts.forEach((c) => c.tags?.forEach((t) => set.add(t)));
+    if (contacts.some((c) => c.companyType)) set.add("companyType");
+    return Array.from(set).filter(Boolean).sort();
+  }, [contacts]);
+
+  const filteredContacts = useMemo(() => {
+    return contacts.filter((c) => {
+      const byCompany =
+        companyFilter === "all" ||
+        (c.companyName || "").toLowerCase() === companyFilter.toLowerCase();
+      const byTag =
+        tagFilter === "all" ||
+        (tagFilter === "companyType"
+          ? Boolean(c.companyType)
+          : (c.tags || [])
+              .map((t) => t.toLowerCase())
+              .includes(tagFilter.toLowerCase()));
+      return byCompany && byTag;
+    });
+  }, [contacts, companyFilter, tagFilter]);
+
+  // Eliminada selección masiva por UI de tarjetas
+
+  // Eliminada selección individual por UI de tarjetas
 
   const handleCreateContact = async (contactData: any) => {
     try {
@@ -291,13 +338,21 @@ export function ContactsDirectory() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-semibold text-gray-900">
-                Directorio de Contactos
+                Contactos
               </h1>
               <p className="mt-1 text-sm text-gray-500">
-                {totalContacts} contactos en total
+                {totalContacts} contactos
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportContacts}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Exportar
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -308,21 +363,49 @@ export function ContactsDirectory() {
               </Button>
               <Button onClick={() => setShowCreateModal(true)}>
                 <Plus className="w-4 h-4 mr-2" />
-                Nuevo Contacto
+                Añadir contacto
               </Button>
             </div>
           </div>
 
-          <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar contactos..."
+                placeholder="Buscar contactos por nombre, email, empresa..."
                 className="w-full pl-10 pr-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-action focus:border-transparent"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+            </div>
+            <div className="sm:col-span-1">
+              <select
+                value={companyFilter}
+                onChange={(e) => setCompanyFilter(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-action"
+              >
+                <option value="all">Todas las empresas</option>
+                {uniqueCompanies.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="sm:col-span-1">
+              <select
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-action"
+              >
+                <option value="all">Todas las etiquetas</option>
+                {uniqueTags.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
             </div>
             <Button
               variant={showFilters ? "default" : "outline"}
@@ -355,177 +438,154 @@ export function ContactsDirectory() {
       </div>
 
       <div className="p-4 sm:p-6">
-        <div className="bg-white rounded-lg shadow">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th className="px-6 py-3 bg-gray-50 text-left">
-                    <input
-                      type="checkbox"
-                      className="rounded border-gray-300 text-action focus:ring-action"
-                      checked={selectedContacts.length === contacts.length}
-                      onChange={handleSelectAll}
-                    />
-                  </th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nombre
-                  </th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Contacto
-                  </th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Empresa
-                  </th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Etiquetas
-                  </th>
-                  <th className="px-6 py-3 bg-gray-50"></th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center">
-                      <Loader2 className="w-6 h-6 animate-spin mx-auto" />
-                    </td>
-                  </tr>
-                ) : contacts.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-6 py-4 text-center text-gray-500"
-                    >
-                      No se encontraron contactos
-                    </td>
-                  </tr>
-                ) : (
-                  contacts.map((contact) => (
-                    <tr key={contact._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <input
-                          type="checkbox"
-                          className="rounded border-gray-300 text-action focus:ring-action"
-                          checked={selectedContacts.includes(contact._id)}
-                          onChange={() => handleSelectContact(contact._id)}
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          <button
-                            className="hover:underline"
-                            onClick={() => handleViewContact(contact._id)}
-                          >
-                            {contact.firstName} {contact.lastName}
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          <div className="flex items-center text-sm text-gray-500">
-                            <Mail className="w-4 h-4 mr-1" />
-                            {contact.email}
-                          </div>
-                          {contact.mobile && (
-                            <div className="flex items-center text-sm text-gray-500">
-                              <Phone className="w-4 h-4 mr-1" />
-                              {contact.mobile}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {contact.companyName && (
-                          <div className="flex items-center">
-                            <Building2 className="w-4 h-4 mr-2 text-gray-400" />
-                            <div className="text-sm text-gray-900">
-                              {contact.companyName}
-                            </div>
-                          </div>
-                        )}
-                        {contact.address && (
-                          <div className="flex items-center text-sm text-gray-500 mt-1">
-                            <MapPin className="w-4 h-4 mr-1" />
-                            {[
-                              contact.address.street,
-                              contact.address.city,
-                              contact.address.state,
-                              contact.address.country,
-                            ]
-                              .filter(Boolean)
-                              .join(", ")}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-wrap gap-1">
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                              contact.companyType === "Sin tipo de empresa"
-                                ? "bg-red-100 text-yellow-800"
-                                : "bg-yellow-100 bg-red-100 text-red-800"
-                            }`}
-                          >
-                            <Tags className="w-3 h-3 mr-1" />
-                            {contact.companyType}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => {
-                              setSelectedContacts([contact._id]);
-                              setShowDeleteDialog(true);
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+        {isLoading ? (
+          <div className="bg-white rounded-lg shadow p-10 text-center">
+            <Loader2 className="w-6 h-6 animate-spin mx-auto" />
           </div>
+        ) : filteredContacts.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-10 text-center text-gray-500">
+            No se encontraron contactos
+          </div>
+        ) : (
+          <div className="grid gap-5 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredContacts.map((contact) => (
+              <div
+                key={contact._id}
+                className="bg-white rounded-2xl shadow-sm border p-6"
+              >
+                <div className="flex items-center justify-center mb-4">
+                  <div
+                    className={`w-16 h-16 rounded-full text-white flex items-center justify-center text-lg font-semibold shadow-sm ${avatarBg(
+                      (contact.firstName || "") + (contact.lastName || "")
+                    )}`}
+                  >
+                    {getInitials(contact.firstName, contact.lastName)}
+                  </div>
+                </div>
 
-          {/* Pagination */}
-          {totalContacts > 0 && (
-            <div className="px-6 py-4 border-t flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Mostrando {(pagination.page - 1) * pagination.limit + 1} a{" "}
-                {Math.min(pagination.page * pagination.limit, totalContacts)} de{" "}
-                {totalContacts} contactos
+                <div className="text-center">
+                  <button
+                    className="block w-full text-center text-base font-semibold text-gray-900 hover:underline leading-6 min-h-[48px] max-h-[48px] overflow-hidden line-clamp-2"
+                    onClick={() => handleViewContact(contact._id)}
+                  >
+                    {contact.firstName} {contact.lastName}
+                  </button>
+                  <div className="min-h-[40px]">
+                    {contact.position && (
+                      <div className="mt-1 text-sm text-gray-600 line-clamp-1">
+                        {contact.position}
+                      </div>
+                    )}
+                    {contact.companyName && (
+                      <div className="text-sm text-gray-400 -mt-0.5 line-clamp-1">
+                        {contact.companyName}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2 text-sm">
+                  {contact.email && (
+                    <div className="flex items-center text-gray-700">
+                      <Mail className="w-4 h-4 mr-2 text-gray-400" />
+                      <span className="truncate">{contact.email}</span>
+                    </div>
+                  )}
+                  {contact.mobile && (
+                    <div className="flex items-center text-gray-700">
+                      <Phone className="w-4 h-4 mr-2 text-gray-400" />
+                      <span>{contact.mobile}</span>
+                    </div>
+                  )}
+                  {contact.city && (
+                    <div className="flex items-center text-gray-700">
+                      <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+                      <span>{contact.city}</span>
+                    </div>
+                  )}
+                  {contact.lifeCycle && (
+                    <div className="flex items-center text-gray-700">
+                      <DollarSign className="w-4 h-4 mr-2 text-gray-400" />
+                      <span className="text-emerald-600 font-medium">
+                        {contact.lifeCycle}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {contact.companyType && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                      {contact.companyType}
+                    </span>
+                  )}
+                  {(contact.tags || []).slice(0, 3).map((t) => (
+                    <span
+                      key={t}
+                      className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <Button
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white w-full"
+                    size="sm"
+                    onClick={() => navigate(`/whatsapp/${contact._id}`)}
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2 text-white" />
+                    WhatsApp
+                  </Button>
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700 text-white w-full"
+                    size="sm"
+                    onClick={() => navigate(`/email`)}
+                  >
+                    <Mail className="w-4 h-4 mr-2 text-white" />
+                    Email
+                  </Button>
+                </div>
+
+                {/* Footer de acciones eliminado (eliminar y ver). El título ya lleva al detalle. */}
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={pagination.page === 1}
-                  onClick={() =>
-                    setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
-                  }
-                >
-                  Anterior
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={pagination.page * pagination.limit >= totalContacts}
-                  onClick={() =>
-                    setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
-                  }
-                >
-                  Siguiente
-                </Button>
-              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalContacts > 0 && (
+          <div className="mt-6 flex items-center justify-between">
+            <div className="text-sm text-gray-500">
+              Mostrando {(pagination.page - 1) * pagination.limit + 1} a{" "}
+              {Math.min(pagination.page * pagination.limit, totalContacts)} de{" "}
+              {totalContacts} contactos
             </div>
-          )}
-        </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagination.page === 1}
+                onClick={() =>
+                  setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
+                }
+              >
+                Anterior
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pagination.page * pagination.limit >= totalContacts}
+                onClick={() =>
+                  setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
+                }
+              >
+                Siguiente
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}

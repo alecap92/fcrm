@@ -30,6 +30,7 @@ interface CreateDealModalProps {
   onSubmit: (deal: any) => void;
   initialStage?: string;
   initialData?: any;
+  preselectedContact?: Contact | null;
 }
 
 interface DealField {
@@ -55,6 +56,7 @@ export function CreateDealModal({
   onSubmit,
   initialStage = "",
   initialData = null,
+  preselectedContact = null,
 }: CreateDealModalProps) {
   // Usar el contexto para obtener datos compartidos
   const { columns: stages, pipelineId } = useDeals();
@@ -287,6 +289,32 @@ export function CreateDealModal({
       }
     }
   }, [initialData, isOpen, initialStage]);
+
+  // Preseleccionar contacto cuando se provee desde el llamador (por ejemplo, detalle del contacto)
+  useEffect(() => {
+    if (!isOpen) return;
+    if (initialData) return; // en edición ya manejamos el contacto arriba
+    if (!preselectedContact || !preselectedContact._id) return;
+
+    const fullName = `${preselectedContact.firstName || ""} ${
+      preselectedContact.lastName || ""
+    }`.trim();
+
+    setFormData((prev) => ({
+      ...prev,
+      contact: {
+        id: preselectedContact._id,
+        name: fullName,
+        email: (preselectedContact as any).email || "",
+        phone:
+          (preselectedContact as any).mobile ||
+          (preselectedContact as any).phone ||
+          "",
+      },
+    }));
+    setSearchTerm(fullName || (preselectedContact as any).email || "");
+    setShowContactResults(false);
+  }, [preselectedContact, isOpen, initialData]);
 
   useEffect(() => {
     const searchContacts = async () => {

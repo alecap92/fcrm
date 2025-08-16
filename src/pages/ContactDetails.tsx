@@ -52,6 +52,8 @@ import DealsList from "../components/contacts/DealsList";
 import DocumentsList from "../components/contacts/DocumentsList";
 import QuotationsList from "../components/contacts/QuotationsList";
 import NotesPanel from "../components/contacts/NotesPanel";
+import { useDeals } from "../contexts/DealsContext";
+import { CreateDealModal } from "../components/deals/CreateDealModal";
 
 interface Document {
   _id?: string;
@@ -65,7 +67,10 @@ export function ContactDetails() {
   const [newNote, setNewNote] = useState("");
   const [showDetails, setShowDetails] = useState(false);
   const [showPrintModal, setShowPrintModal] = useState(false);
-  const [tags, setTags] = useState<string[]>(["VIP Client", "Tech Industry"]);
+  const [tags, setTags] = useState<string[]>([
+    "Cliente VIP",
+    "Industria tecnológica",
+  ]);
   const [newTag, setNewTag] = useState("");
   const { id } = useParams();
   const [contact, setContact] = useState([]);
@@ -99,9 +104,9 @@ export function ContactDetails() {
       amount: 0,
       closingDate: new Date(),
       createdAt: new Date(),
-      pipeline: "Sales",
+      pipeline: "Ventas",
       status: { name: "as" },
-      title: "New Deal",
+      title: "Nuevo negocio",
     },
   ]);
   const [dailyMetrics, setDailyMetrics] = useState({
@@ -115,7 +120,8 @@ export function ContactDetails() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [isLoadingActivities, setIsLoadingActivities] = useState<boolean>(false);
+  const [isLoadingActivities, setIsLoadingActivities] =
+    useState<boolean>(false);
   const [activityFormData, setActivityFormData] = useState<Activity>({
     activityType: "Reunion",
     title: "",
@@ -146,6 +152,12 @@ export function ContactDetails() {
 
   const { showLoading, hideLoading } = useLoading();
   const navigate = useNavigate();
+  const {
+    openCreateDealModal,
+    showCreateDealModal,
+    closeCreateDealModal,
+    createDeal,
+  } = useDeals();
 
   const [aiComments, setAiComments] = useState<string>("");
   const [isLoadingAiComments, setIsLoadingAiComments] = useState(false);
@@ -186,10 +198,10 @@ export function ContactDetails() {
       await getActivities(response.data.contact._id);
       await handleGetQuotations();
     } catch (error) {
-      console.error("Error fetching contact details:", error);
+      console.error("Error al obtener los detalles del contacto:", error);
       toast.show({
         title: "Error",
-        description: "Failed to load contact details",
+        description: "No se pudieron cargar los detalles del contacto",
         type: "error",
       });
     } finally {
@@ -220,7 +232,7 @@ export function ContactDetails() {
 
       setQuotations(response.data.quotations);
     } catch (error) {
-      console.error("Error fetching quotations:", error);
+      console.error("Error al obtener cotizaciones:", error);
     }
   };
 
@@ -238,7 +250,7 @@ export function ContactDetails() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error generating PDF:", error);
+      console.error("Error generando el PDF:", error);
     } finally {
       hideLoading();
     }
@@ -275,18 +287,18 @@ export function ContactDetails() {
         ...contact,
         properties,
       });
-      await getContact(); // Refresh contact data
+      await getContact(); // Refrescar datos del contacto
       setShowEditModal(false);
       toast.show({
-        title: "Success",
-        description: "Contact updated successfully",
+        title: "Éxito",
+        description: "Contacto actualizado correctamente",
         type: "success",
       });
     } catch (error) {
-      console.error("Error updating contact:", error);
+      console.error("Error actualizando el contacto:", error);
       toast.show({
         title: "Error",
-        description: "Failed to update contact",
+        description: "No se pudo actualizar el contacto",
         type: "error",
       });
     }
@@ -313,7 +325,7 @@ export function ContactDetails() {
           contactId: contactDetails._id,
         });
         toast.show({
-          title: "Success",
+          title: "Éxito",
           description: "Actividad actualizada correctamente",
           type: "success",
         });
@@ -325,7 +337,7 @@ export function ContactDetails() {
           contactId: contactDetails._id,
         });
         toast.show({
-          title: "Success",
+          title: "Éxito",
           description: "Actividad creada correctamente",
           type: "success",
         });
@@ -363,16 +375,16 @@ export function ContactDetails() {
     try {
       await contactsService.deleteActivity(activityId);
       toast.show({
-        title: "Success",
-        description: "Activity deleted successfully",
+        title: "Éxito",
+        description: "Actividad eliminada correctamente",
         type: "success",
       });
       await getActivities(contactDetails._id);
     } catch (error) {
-      console.error("Error deleting activity:", error);
+      console.error("Error eliminando la actividad:", error);
       toast.show({
         title: "Error",
-        description: "Failed to delete activity",
+        description: "No se pudo eliminar la actividad",
         type: "error",
       });
     }
@@ -384,7 +396,7 @@ export function ContactDetails() {
       await contactsService.deleteFile(contactDetails._id, fileId);
       setDocuments(documents.filter((doc) => doc._id !== fileId));
       toast.show({
-        title: "Success",
+        title: "Éxito",
         description: "Documento eliminado correctamente",
         type: "success",
       });
@@ -414,7 +426,7 @@ export function ContactDetails() {
       await contactsService.uploadDocument(formData);
 
       toast.show({
-        title: "Success",
+        title: "Éxito",
         description: "Documento subido correctamente",
         type: "success",
       });
@@ -485,7 +497,7 @@ export function ContactDetails() {
       };
 
       chatModule.updateChatContext(contactDataForChat, {
-        currentPage: "contact-details",
+        currentPage: "detalles-contacto",
         totalCount: deals.length,
       });
 
@@ -519,7 +531,9 @@ export function ContactDetails() {
       header={
         <div className="bg-white shadow">
           <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-gray-900">Contact Details</h1>
+            <h1 className="text-xl font-semibold text-gray-900">
+              Detalles del contacto
+            </h1>
             <div className="flex items-center gap-2">
               <button
                 className="flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
@@ -531,9 +545,7 @@ export function ContactDetails() {
               <button
                 className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
                 onClick={() => {
-                  // Abrir modal de nuevo deal a través de ruta (reutilizamos Deals page) o contexto si disponible
-                  // Como fallback, navegamos a /deals con flag de crear
-                  navigate("/deals?create=true");
+                  openCreateDealModal();
                 }}
               >
                 <PlusCircle className="h-5 w-5" />
@@ -626,7 +638,10 @@ export function ContactDetails() {
           extraDetails={[
             { label: "Telefono", value: contactDetails.phone },
             { label: "ID Type", value: contactDetails.idType },
-            { label: "Número de Identificación", value: contactDetails.idNumber },
+            {
+              label: "Número de Identificación",
+              value: contactDetails.idNumber,
+            },
             { label: "Digito de Verificación", value: contactDetails.dv },
             { label: "Notas", value: contactDetails.notas },
           ]}
@@ -634,14 +649,13 @@ export function ContactDetails() {
       }
     >
       <div className="space-y-8">
-
         <Tabs
           value={activeTab}
           onChange={setActiveTab}
           items={[
             {
               id: "activity",
-              label: "Activity",
+              label: "Actividad",
               content: (
                 <ActivityList
                   activities={activities}
@@ -659,7 +673,7 @@ export function ContactDetails() {
             },
             {
               id: "deals",
-              label: "Deals",
+              label: "Negocios",
               content: (
                 <DealsList
                   deals={deals as any}
@@ -672,7 +686,7 @@ export function ContactDetails() {
             },
             {
               id: "quotations",
-              label: "Quotations",
+              label: "Cotizaciones",
               content: (
                 <QuotationsList
                   quotations={quotations}
@@ -682,10 +696,10 @@ export function ContactDetails() {
             },
             {
               id: "files",
-              label: "Files",
+              label: "Archivos",
               content: (
                 <DocumentsList
-                  title="Files"
+                  title="Archivos"
                   documents={documents as any}
                   onPreview={(doc) => {
                     setSelectedDocument(doc as any);
@@ -698,15 +712,45 @@ export function ContactDetails() {
             },
             {
               id: "notes",
-              label: "Notes",
+              label: "Notas",
               content: (
                 <NotesPanel
                   initialNotes={contactDetails.notas || ""}
                   onSave={async (value) => {
                     // persiste las notas usando la API de updateContact existente
-                    await handleUpdateContact({ ...contactDetails, notas: value });
+                    await handleUpdateContact({
+                      ...contactDetails,
+                      notas: value,
+                    });
                   }}
                 />
+              ),
+            },
+            {
+              id: "plugins",
+              label: "Complementos",
+              content: (
+                <div className="space-y-4">
+                  <div className="bg-white rounded-lg shadow p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Printer className="h-5 w-5 text-gray-600" />
+                        <div>
+                          <div className="font-medium">Imprimir</div>
+                          <div className="text-sm text-gray-500">
+                            Imprime la vista actual del contacto.
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                        onClick={() => setShowPrintModal(true)}
+                      >
+                        Imprimir
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ),
             },
           ]}
@@ -748,8 +792,21 @@ export function ContactDetails() {
           initialData={contactDetails}
         />
 
+        {/* Create Deal Modal (desde contexto) */}
+        <CreateDealModal
+          isOpen={showCreateDealModal}
+          onClose={closeCreateDealModal}
+          onSubmit={createDeal}
+          initialStage={""}
+          initialData={null}
+          preselectedContact={contactDetails}
+        />
+
         {showPrintModal && (
-          <PrintModal contact={contact} onClose={() => setShowPrintModal(false)} />
+          <PrintModal
+            contact={contact}
+            onClose={() => setShowPrintModal(false)}
+          />
         )}
 
         {showDealDetailsModal && (
