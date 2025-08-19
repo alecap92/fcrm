@@ -1,3 +1,5 @@
+import { vi } from "vitest";
+
 // Mocks para las llamadas a la API
 
 export const mockApiEndpoints = {
@@ -116,7 +118,7 @@ export const createMockResponse = (data: any, status = 200, delay = 0) => {
 
 // Mock de fetch personalizado
 export const mockFetch = (responses: Record<string, any>) => {
-  return jest.fn().mockImplementation((url: string, options?: RequestInit) => {
+  return vi.fn().mockImplementation((url: string, options?: RequestInit) => {
     const method = options?.method || "GET";
     const key = `${method} ${url}`;
 
