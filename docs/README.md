@@ -33,6 +33,7 @@ Esta es la documentación completa del frontend de FUSIONCOL. Aquí encontrarás
 - [**Gestión de Estado**](./guides/state-management.md) - Patrones y arquitectura de estado
 - [**Testing**](./guides/testing.md) - Estrategias y herramientas de testing
 - [**Convenciones de Código**](./guides/code-conventions.md) - Estándares de código y estilo
+- [**Deployment**](./guides/deployment.md) - Variables de entorno y despliegue
 
 ### 🔌 **API y Servicios**
 
@@ -192,12 +193,12 @@ frontend/
 - [x] Guías de desarrollo
 - [x] Documentación de funcionalidades core
 - [x] Estructura y organización
+- [x] Documentación de deployment
 
 ### 🚧 En Progreso
 
 - [ ] Documentación de API services
 - [ ] Guías de testing específicas
-- [ ] Documentación de deployment
 
 ### 📋 Pendiente
 
