@@ -1,4 +1,5 @@
 import { apiService } from "../config/apiConfig";
+import { authService } from "../config/authConfig";
 
 /**
  * Get all conversations
@@ -121,8 +122,12 @@ const sendMessage = async (payload: any) => {
     if (!conversationId) throw new Error("conversationId requerido");
     if (!to) throw new Error("destinatario (to) requerido");
 
+    const currentUser = authService.getUser();
+    const userId = currentUser?.id || currentUser?._id;
+
     const body = {
-      from: "system", // asegurar valor no vacío para backends que lo requieren
+      // Fallback explícito a "system" si no se encuentra un identificador de usuario
+      from: userId ?? "system",
       to,
       message: messageText,
       mediaUrl,
