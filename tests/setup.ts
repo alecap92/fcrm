@@ -1,59 +1,52 @@
-import "@testing-library/jest-dom";
 import { vi } from "vitest";
 
-// Mock de WebSocket para las pruebas
-global.WebSocket = vi.fn(() => ({
+(global as any).WebSocket = vi.fn(() => ({
   addEventListener: vi.fn(),
   removeEventListener: vi.fn(),
   send: vi.fn(),
   close: vi.fn(),
   readyState: 1,
-})) as any;
+}));
 
-// Mock de fetch
-global.fetch = vi.fn();
+(global as any).fetch = vi.fn();
 
-// Mock de localStorage
 const localStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
   removeItem: vi.fn(),
   clear: vi.fn(),
 };
-global.localStorage = localStorageMock as any;
+(global as any).localStorage = localStorageMock;
 
-// Mock de sessionStorage
 const sessionStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
   removeItem: vi.fn(),
   clear: vi.fn(),
 };
-global.sessionStorage = sessionStorageMock as any;
+(global as any).sessionStorage = sessionStorageMock;
 
-// Mock de window.matchMedia
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: vi.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(), // deprecated
-    removeListener: vi.fn(), // deprecated
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
-});
+const globalWindow = (global as any).window || ((global as any).window = {});
 
-// Mock de ResizeObserver
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
+globalWindow.matchMedia = vi.fn().mockImplementation((query: string) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
 }));
 
-// Configuración global para las pruebas
+(global as any).ResizeObserver = vi
+  .fn()
+  .mockImplementation(() => ({
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
+  }));
+
 beforeEach(() => {
   vi.clearAllMocks();
   localStorageMock.clear();

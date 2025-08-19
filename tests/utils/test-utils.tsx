@@ -1,6 +1,7 @@
 import React, { ReactElement } from "react";
 import { render, RenderOptions } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
+import { vi } from "vitest";
 
 // Wrapper personalizado para las pruebas
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
@@ -47,8 +48,8 @@ export const createMockWorkflow = (overrides = {}) => ({
 
 // Helpers para eventos
 export const mockEvent = (overrides = {}) => ({
-  preventDefault: jest.fn(),
-  stopPropagation: jest.fn(),
+  preventDefault: vi.fn(),
+  stopPropagation: vi.fn(),
   target: { value: "" },
   ...overrides,
 });
