@@ -3,6 +3,7 @@ import { Message } from "../../types/chat";
 import { ApiMessage } from "../../types/conversations";
 import { conversationService } from "../../services/conversationService";
 import { groupMessagesByDate, getHoursDifference } from "../../lib";
+import { useToast } from "../../components/ui/toast";
 
 interface UseChatMessagesOptions {
   onUpdateConversationReadState?: (chatId: string, isRead: boolean) => void;
@@ -14,6 +15,8 @@ interface UseChatMessagesOptions {
 
 export function useChatMessages(options?: UseChatMessagesOptions) {
   const { onUpdateConversationReadState, onUpdateConversationPreviewOptimistic } = options || {};
+
+  const toast = useToast();
   
   const [message, setMessage] = useState("");
   const [conversationDetail, setConversationDetail] = useState<any | null>(
@@ -121,6 +124,31 @@ export function useChatMessages(options?: UseChatMessagesOptions) {
   const handleSendMessage = useCallback(async () => {
     if (!message.trim() || !currentChatId) return;
 
+    const destinationPhone =
+      conversationDetail?.conversation?.participants?.contact?.reference ||
+      conversationDetail?.conversation?.participants?.contact?.phone ||
+      conversationDetail?.conversation?.participants?.contact?.displayInfo?.mobile ||
+      conversationDetail?.conversation?.mobile ||
+      conversationDetail?.conversation?.metadata?.find((m: any) => {
+        const key = (m?.key || "").toLowerCase();
+        return (
+          key === "phone" ||
+          key === "mobile" ||
+          key === "contact.phone" ||
+          key === "contact_phone"
+        );
+      })?.value ||
+      "";
+
+    if (!destinationPhone) {
+      toast.show({
+        title: "Número de destino no encontrado",
+        description: "No se pudo determinar el número de destino.",
+        type: "error",
+      });
+      return;
+    }
+
     // Crear mensaje en cola sin bloquear el input
     const queuedId = `q_${Date.now()}`;
 
@@ -150,12 +178,6 @@ export function useChatMessages(options?: UseChatMessagesOptions) {
     // Envío asíncrono
     (async () => {
       try {
-        const destinationPhone =
-          conversationDetail?.conversation?.participants?.contact?.reference ||
-          "";
-        if (!destinationPhone)
-          throw new Error("No se pudo determinar el número de destino");
-
         // Marcar como enviando
         setMessages((prev) =>
           prev.map((m) =>
@@ -211,7 +233,7 @@ export function useChatMessages(options?: UseChatMessagesOptions) {
                 msg.direction === "incoming" ? { ...msg, isRead: true } : msg
               )
             );
-            
+
             // Refrescar conversaciones después de un breve delay para asegurar sincronización
             setTimeout(() => {
               if (onUpdateConversationReadState) {
@@ -270,7 +292,13 @@ export function useChatMessages(options?: UseChatMessagesOptions) {
         );
       }
     })();
-  }, [message, currentChatId, conversationDetail, onUpdateConversationReadState]);
+  }, [
+    message,
+    currentChatId,
+    conversationDetail,
+    onUpdateConversationReadState,
+    toast,
+  ]);
 
   const handlePriorityChange = useCallback(
     async (e: React.ChangeEvent<HTMLSelectElement>) => {
