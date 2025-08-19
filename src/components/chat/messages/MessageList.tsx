@@ -222,20 +222,27 @@ export function MessageList({
                     getMessageMediaUrl(message) ? (
                     <div className="mt-2 space-y-2">
                       <div className="rounded-lg overflow-hidden bg-white shadow-sm border border-gray-200">
-                        <object
-                          data={getMessageMediaUrl(message)!}
-                          type="application/pdf"
-                          width="220"
-                          height="280"
-                          className="block"
-                        >
+                        {isPdfUrl(getMessageMediaUrl(message)) ? (
+                          <object
+                            data={getMessageMediaUrl(message)!}
+                            type="application/pdf"
+                            width="220"
+                            height="280"
+                            className="block"
+                          >
+                            <div className="flex flex-col items-center justify-center w-[220px] h-[280px] text-gray-500 gap-2">
+                              <FileText className="w-8 h-8" />
+                              <span className="text-xs">
+                                No se pudo mostrar la vista previa
+                              </span>
+                            </div>
+                          </object>
+                        ) : (
                           <div className="flex flex-col items-center justify-center w-[220px] h-[280px] text-gray-500 gap-2">
                             <FileText className="w-8 h-8" />
-                            <span className="text-xs">
-                              No se pudo mostrar la vista previa
-                            </span>
+                            <span className="text-xs">Vista previa no disponible</span>
                           </div>
-                        </object>
+                        )}
                       </div>
 
                       <a
