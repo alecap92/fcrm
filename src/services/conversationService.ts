@@ -122,7 +122,7 @@ const sendMessage = async (payload: any) => {
     if (!to) throw new Error("destinatario (to) requerido");
 
     const body = {
-      from: undefined, // opcional, backend puede inferir
+      from: "system", // asegurar valor no vacío para backends que lo requieren
       to,
       message: messageText,
       mediaUrl,
