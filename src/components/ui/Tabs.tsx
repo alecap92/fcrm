@@ -54,5 +54,3 @@ export function Tabs({ items, value, onChange }: TabsProps) {
 }
 
 export default Tabs;
-
-

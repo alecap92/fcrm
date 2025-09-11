@@ -1,186 +1,269 @@
 import React, { useState, useEffect } from "react";
-import { Bot, Clock, Pause, Play } from "lucide-react";
-import {
-  pauseAutomations,
-  resumeAutomations,
-  getAutomationStatus,
-  AutomationSettings,
-} from "../../../services/automationService";
+import { Bot, Play, Settings } from "lucide-react";
+import { useToast } from "../../ui/toast";
+import n8nService, { N8nAutomation } from "../../../services/n8nService";
+import { useNavigate } from "react-router-dom";
+import { AutomationDataModal } from "./AutomationDataModal";
+import { parseN8nError } from "../../../utils/n8nErrorHandler";
 
 interface AutomationsSectionProps {
   conversationId: string;
+  contactId: string;
+  organizationId: string;
+  userId: string;
 }
+
+/*
+Como hacemos para enviar el body de la automatizacion? Deberia tener un endpoint para ejecutarlas diferente al de listarla? 
+Podria enviar algo como:
+{
+  automationId: string;
+  body: any;
+}
+y que el backend se encargue de revisar si coincide con el body, escoger el method, y responder. 
+pero como le pasamos el body? cual contexto necesitamos? // depende de la vista donde estemos.
+En el contexto de la vista de chat, necesitamos el chat, preparar el formulario, y enviar la peticion. 
+Deberia enviar el chat o que lo saque del backend? // que lo saque del backend. entonces deberia enviar el id de la conversacion, inclusive podria enviarle todo para que tenga mas contexto el back y asi elegir que enviar a n8n.
+{
+  conversationId: string;
+  contactId: string;
+  organizationId: string;
+  userId: string;
+  target: "chat" | "whatsapp" | "email" | "crm" | "custom" | "contactos";
+}
+*/
 
 export const AutomationsSection: React.FC<AutomationsSectionProps> = ({
   conversationId,
+  contactId,
+  organizationId,
+  userId,
 }) => {
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [automationSettings, setAutomationSettings] =
-    useState<AutomationSettings>({
-      isPaused: false,
-      automationHistory: [],
-    });
+  const [automations, setAutomations] = useState<N8nAutomation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [executingAutomations, setExecutingAutomations] = useState<Set<string>>(
+    new Set()
+  );
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedAutomation, setSelectedAutomation] =
+    useState<N8nAutomation | null>(null);
+  const [isSubmittingData, setIsSubmittingData] = useState(false);
+  const toast = useToast();
+  const navigate = useNavigate();
+  const fetchAutomations = async () => {
+    const automations = await n8nService.getN8nAutomations();
+    setAutomations(automations.data);
+    setIsLoading(false);
+  };
 
-  // Cargar el estado inicial de automatizaciones
   useEffect(() => {
-    const loadAutomationStatus = async () => {
-      try {
-        const response = await getAutomationStatus(conversationId);
-        if (response.success && response.data.automationSettings) {
-          setAutomationSettings(response.data.automationSettings);
-        }
-      } catch (error) {
-        console.error("Error cargando estado de automatizaciones:", error);
-      }
-    };
-
-    if (conversationId) {
-      loadAutomationStatus();
-    }
+    fetchAutomations();
   }, [conversationId]);
 
-  const getButtonText = () => {
-    if (automationSettings.isPaused) {
-      if (automationSettings.pausedUntil) {
-        const now = new Date();
-        const pausedUntil = new Date(automationSettings.pausedUntil);
-        if (pausedUntil > now) {
-          return "Pausado";
-        }
-      }
-      return "Pausado para Siempre";
+  const handleExecuteAutomation = async (automation: N8nAutomation) => {
+    // Si la automatización necesita datos, abrir el modal
+    if (automation.needData) {
+      setSelectedAutomation(automation);
+      setModalOpen(true);
+      return;
     }
-    return "Pausar";
+
+    // Si no necesita datos, ejecutar directamente
+    await executeAutomationWithData(automation);
   };
 
-  const getButtonIcon = () => {
-    return automationSettings.isPaused ? (
-      <Pause className="w-4 h-4" />
-    ) : (
-      <Play className="w-4 h-4" />
-    );
-  };
+  const executeAutomationWithData = async (
+    automation: N8nAutomation,
+    additionalData?: string
+  ) => {
+    // Marcar como ejecutándose
+    setExecutingAutomations((prev) => new Set(prev).add(automation._id));
 
-  const handleDurationSelect = async (duration: string) => {
-    setLoading(true);
+    console.log({
+      conversationId,
+      contactId,
+      organizationId,
+      userId,
+      additionalData,
+    });
+
     try {
-      let response;
+      const response = await n8nService.executeN8nAutomation(automation._id, {
+        conversationId,
+        contactId,
+        organizationId,
+        userId,
+        target: ["Mensajes"],
+        additionalData,
+      });
 
-      if (duration === "resume") {
-        response = await resumeAutomations(conversationId);
-      } else {
-        response = await pauseAutomations(conversationId, duration);
+      console.log(response.data, "ACA");
+
+      if (response.data.statusCode === 404) {
+        toast.show({
+          title: "Error de N8N",
+          description: "Automatización no encontrada o hook invalido",
+          type: "error",
+          duration: 10000,
+        });
+        return;
       }
 
-      if (response.success && response.data.automationSettings) {
-        setAutomationSettings(response.data.automationSettings);
+      if (response.data.statusCode === 500) {
+        toast.show({
+          title: "Error Interno del Servidor",
+          description: response.data.response.error,
+          type: "error",
+          duration: 10000,
+        });
+        return;
       }
 
-      setShowDropdown(false);
-    } catch (error) {
-      console.error("Error actualizando automatizaciones:", error);
-      // Aquí podrías mostrar un toast de error
+      toast.show({
+        title: "✅ Éxito",
+        description: `Automatización "${automation.name}" ejecutada correctamente`,
+        type: "success",
+      });
+    } catch (error: any) {
+      console.error("Error ejecutando automatización:", error);
+
+      // Usar la utilidad para procesar el error
+      const errorInfo = parseN8nError(error, automation.name);
+
+      toast.show({
+        title: errorInfo.title,
+        description: errorInfo.description,
+        type: "error",
+      });
     } finally {
-      setLoading(false);
+      // Remover de ejecutándose
+      setExecutingAutomations((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(automation._id);
+        return newSet;
+      });
     }
   };
 
-  const handleButtonClick = () => {
-    if (automationSettings.isPaused) {
-      // Si está pausado, reanudar directamente
-      handleDurationSelect("resume");
-    } else {
-      // Si está activo, mostrar dropdown para pausar
-      setShowDropdown(!showDropdown);
+  const handleModalSubmit = async (data: string) => {
+    if (!selectedAutomation) return;
+
+    setIsSubmittingData(true);
+    try {
+      await executeAutomationWithData(selectedAutomation, data);
+      setModalOpen(false);
+      setSelectedAutomation(null);
+    } catch (error) {
+      console.error("Error submitting automation data:", error);
+    } finally {
+      setIsSubmittingData(false);
     }
   };
 
-  const durationOptions = [
-    { label: "30 minutos", value: "30m" },
-    { label: "1 hora", value: "1h" },
-    { label: "3 horas", value: "3h" },
-    { label: "6 horas", value: "6h" },
-    { label: "12 horas", value: "12h" },
-    { label: "1 día", value: "1d" },
-  ];
+  const handleModalClose = () => {
+    setModalOpen(false);
+    setSelectedAutomation(null);
+  };
 
   return (
-    <div className="border-b border-gray-200 pb-4 px-4">
-      <div className="flex items-center">
-        <Bot className="w-4 h-4 text-gray-500 mr-2" />
-        <div className="flex flex-col py-3">
+    <div className="border-b border-gray-200 pb-4 px-4 pt-4">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center">
+          <Bot className="w-4 h-4 text-gray-500 mr-2" />
           <h3 className="font-semibold text-gray-900">Automatizaciones</h3>
         </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate("/settings/n8n")}
+            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+            title="Configurar automatizaciones"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        </div>
       </div>
-      <div className="flex flex-col relative">
-        <button
-          className={`w-full px-3 py-2 border rounded-lg text-sm flex items-center justify-between transition-colors ${
-            automationSettings.isPaused
-              ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
-              : "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
-          } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-          onClick={handleButtonClick}
-          disabled={loading}
-        >
-          <span className="flex items-center">
-            {loading ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-            ) : (
-              getButtonIcon()
-            )}
-            <span className="ml-2">{getButtonText()}</span>
-          </span>
-          {!automationSettings.isPaused && <Clock className="w-4 h-4" />}
-        </button>
 
-        {showDropdown && !automationSettings.isPaused && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-            <div className="py-2">
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Establecer duración
-              </div>
-              {durationOptions.map((option) => (
-                <button
-                  key={option.value}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center transition-colors"
-                  onClick={() => handleDurationSelect(option.value)}
-                  disabled={loading}
+      <div className="max-h-64 overflow-y-auto pr-2">
+        {isLoading ? (
+          <div className="text-sm text-gray-500 text-center py-6">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400 mx-auto mb-2"></div>
+            Cargando automatizaciones...
+          </div>
+        ) : automations.length === 0 ? (
+          <div className="text-center py-8">
+            <Bot className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            <p className="text-sm text-gray-500 mb-2">
+              No hay automatizaciones disponibles
+            </p>
+            <p className="text-xs text-gray-400">
+              Configura automatizaciones en el panel de administración
+            </p>
+            <button
+              onClick={() => navigate("/settings/n8n")}
+              className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+            >
+              Ir a configuración
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {automations.map((automation) => {
+              const isExecuting = executingAutomations.has(automation._id);
+
+              return (
+                <div
+                  key={automation._id}
+                  className="px-3 py-2.5 bg-white rounded-lg hover:bg-gray-50 transition-all duration-200 border border-gray-200 hover:border-gray-300 shadow-sm"
                 >
-                  <Clock className="w-4 h-4 text-gray-400 mr-2" />
-                  {option.label}
-                </button>
-              ))}
-              <div className="border-t border-gray-200 mt-2 pt-2">
-                <button
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center transition-colors"
-                  onClick={() => handleDurationSelect("forever")}
-                  disabled={loading}
-                >
-                  <Pause className="w-4 h-4 text-red-500 mr-2" />
-                  Pausar para siempre
-                </button>
-              </div>
-            </div>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-gray-900 text-sm truncate">
+                          {automation.name}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                      <button
+                        onClick={() => handleExecuteAutomation(automation)}
+                        disabled={isExecuting}
+                        className={`p-2 rounded-lg transition-all duration-200 flex-shrink-0 ${
+                          isExecuting
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            : "bg-blue-100 text-blue-600 hover:bg-blue-200 cursor-pointer"
+                        }`}
+                        title={
+                          isExecuting
+                            ? "Ejecutando..."
+                            : automation.needData
+                            ? "Ejecutar (requiere datos)"
+                            : "Ejecutar"
+                        }
+                      >
+                        {isExecuting ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                        ) : (
+                          <Play className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
-
-        {/* Overlay para cerrar el dropdown al hacer click fuera */}
-        {showDropdown && (
-          <div
-            className="fixed inset-0 z-5"
-            onClick={() => setShowDropdown(false)}
-          />
-        )}
       </div>
 
-      {/* Mostrar información adicional si está pausado */}
-      {automationSettings.isPaused && automationSettings.pausedUntil && (
-        <div className="mt-2 text-xs text-gray-500">
-          Pausado hasta:{" "}
-          {new Date(automationSettings.pausedUntil).toLocaleString("es-ES")}
-        </div>
-      )}
+      {/* Modal para automatizaciones que requieren datos */}
+      <AutomationDataModal
+        isOpen={modalOpen}
+        onClose={handleModalClose}
+        automation={selectedAutomation}
+        onSubmit={handleModalSubmit}
+        isSubmitting={isSubmittingData}
+      />
     </div>
   );
 };

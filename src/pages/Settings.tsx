@@ -13,6 +13,7 @@ import {
   LeadScoringSettings,
 } from "../components/settings";
 import type { SettingsSection } from "../types/settings";
+import N8nSettings from "./settings/components/N8n";
 
 export function Settings() {
   const [activeSection, setActiveSection] =
@@ -42,6 +43,7 @@ export function Settings() {
               {activeSection === "invoice" && <InvoiceSettings />}
               {activeSection === "quotation" && <QuotationSettings />}
               {activeSection === "deals" && <DealsSettings />}
+              {activeSection === "n8n" && <N8nSettings />}
               {activeSection === "lead-scoring" && <LeadScoringSettings />}
             </div>
           </div>

@@ -106,9 +106,17 @@ const sendMessage = async (payload: any) => {
     if (payload instanceof FormData) {
       conversationId = (payload.get("conversation") as string) || null;
       to = ((payload.get("to") as string) || "").trim();
-      type = ((payload.get("type") as string) || (payload.get("messageType") as string) || "text").trim();
+      type = (
+        (payload.get("type") as string) ||
+        (payload.get("messageType") as string) ||
+        "text"
+      ).trim();
       mediaUrl = (payload.get("mediaUrl") as string) || undefined;
-      messageText = ((payload.get("message") as string) || (payload.get("caption") as string) || "").toString();
+      messageText = (
+        (payload.get("message") as string) ||
+        (payload.get("caption") as string) ||
+        ""
+      ).toString();
       replyToMessage = (payload.get("replyToMessage") as string) || undefined;
     } else {
       conversationId = payload.conversation || null;

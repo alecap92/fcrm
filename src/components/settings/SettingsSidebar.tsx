@@ -9,6 +9,7 @@ import {
   DollarSign,
   Quote,
   User2,
+  Zap,
 } from "lucide-react";
 import type { SettingsSection } from "../../types/settings";
 
@@ -67,6 +68,11 @@ const menuItems = [
     id: "lead-scoring" as const,
     label: "Lead Scoring",
     icon: User2,
+  },
+  {
+    id: "n8n" as const,
+    label: "N8n",
+    icon: Zap,
   },
 ];
 

@@ -241,6 +241,7 @@ const Conversations: React.FC = () => {
   const [showColumnsModal, setShowColumnsModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedChat, setSelectedChat] = useState<any | null>(null);
+  const [chatToDelete, setChatToDelete] = useState<any | null>(null);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -483,14 +484,14 @@ const Conversations: React.FC = () => {
 
   // Handler para confirmar eliminación (optimizado)
   const handleConfirm = useCallback(async () => {
-    if (!selectedChat) return;
+    if (!chatToDelete) return;
 
     const { showLoading, hideLoading } = loadingRef.current;
     const toast = toastRef.current;
 
     try {
       showLoading("eliminando conversación...");
-      await deleteConversation(selectedChat.id);
+      await deleteConversation(chatToDelete.id);
 
       toast?.show({
         title: "Conversación eliminada",
@@ -499,7 +500,7 @@ const Conversations: React.FC = () => {
       });
 
       setShowConfirmModal(false);
-      setSelectedChat(null);
+      setChatToDelete(null);
     } catch (error) {
       console.error("Error al eliminar la conversación:", error);
       toast?.show({
@@ -510,7 +511,7 @@ const Conversations: React.FC = () => {
     } finally {
       hideLoading();
     }
-  }, [selectedChat, deleteConversation]);
+  }, [chatToDelete, deleteConversation]);
 
   // Handler para nueva conversación (optimizado)
   const handleNewChatSubmit = useCallback(
@@ -608,7 +609,8 @@ const Conversations: React.FC = () => {
 
   // Handler para eliminar conversación desde la tarjeta (estable)
   const handleDeleteFromCard = useCallback((chat: any) => {
-    setSelectedChat(chat);
+    // Usar chatToDelete en lugar de selectedChat para evitar que se abra el modal del chat
+    setChatToDelete(chat);
     setShowConfirmModal(true);
   }, []);
 
@@ -918,7 +920,10 @@ const Conversations: React.FC = () => {
 
       <ConfirmModal
         isOpen={showConfirmModal}
-        onClose={modalHandlers.closeConfirm}
+        onClose={() => {
+          modalHandlers.closeConfirm();
+          setChatToDelete(null);
+        }}
         onConfirm={handleConfirm}
         title="Eliminar Conversación"
         message="¿Estás seguro de querer eliminar esta conversación?"

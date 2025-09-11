@@ -39,8 +39,17 @@ const sendQuote = async (form: {
   subject: string;
   templateId: string;
   from: string;
-}) =>
-  await apiService.post("/quotations/send-email",  form );
+}) => await apiService.post("/quotations/send-email", form);
+
+interface NextQuotationNumberResponse {
+  quotationNumber: number;
+  message: string;
+}
+
+const getNextQuotationNumber = async () =>
+  await apiService.get<NextQuotationNumberResponse>(
+    "/quotations/next-quotation-number"
+  );
 
 const quotesService = {
   getQuotes,
@@ -51,6 +60,7 @@ const quotesService = {
   searchQuotes,
   printQuote,
   sendQuote,
+  getNextQuotationNumber,
 };
 
 export default quotesService;

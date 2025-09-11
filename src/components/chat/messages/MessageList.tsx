@@ -7,7 +7,7 @@ import {
 } from "../../../lib";
 import { useChatContext } from "../../../contexts/ChatContext";
 import { ImagePreviewModal } from "./ImagePreviewModal";
-import { Download, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 
 interface MessageListProps {
   messages: Message[];
@@ -97,17 +97,6 @@ export function MessageList({
     return parts[parts.length - 1];
   };
 
-  // Detecta si una URL apunta a un PDF (por extensión)
-  const isPdfUrl = (url: string | null | undefined): boolean => {
-    if (!url) return false;
-    try {
-      const cleanUrl = url.split("?")[0].split("#")[0];
-      return /\.pdf$/i.test(cleanUrl);
-    } catch {
-      return false;
-    }
-  };
-
   // Renderiza una previsualización del mensaje al que se responde (incluye miniatura si es imagen)
   const renderRepliedMessagePreview = (replyId: string): JSX.Element | null => {
     const replied = messages.find((msg) => msg._id === replyId);
@@ -121,9 +110,7 @@ export function MessageList({
             alt="Imagen referenciada"
             className="w-10 h-10 rounded object-cover"
           />
-          <span className="truncate">
-            {replied.message || "Imagen"}
-          </span>
+          <span className="truncate">{replied.message || "Imagen"}</span>
         </div>
       );
     }
@@ -240,7 +227,9 @@ export function MessageList({
                         ) : (
                           <div className="flex flex-col items-center justify-center w-[220px] h-[280px] text-gray-500 gap-2">
                             <FileText className="w-8 h-8" />
-                            <span className="text-xs">Vista previa no disponible</span>
+                            <span className="text-xs">
+                              Vista previa no disponible
+                            </span>
                           </div>
                         )}
                       </div>
@@ -249,19 +238,21 @@ export function MessageList({
                         href={getMessageMediaUrl(message)!}
                         target="_blank"
                         rel="noopener noreferrer"
-                        download={getFileNameFromUrl(
-                          getMessageMediaUrl(message)!
-                        )}
-                        className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
+                        className={`flex items-center gap-2 p-3 rounded-lg transition-colors border-2 border-dashed ${
                           isIncomingMessage(message)
-                            ? "bg-white hover:bg-gray-50 text-gray-800"
-                            : "bg-action-dark hover:bg-action-darker text-white"
+                            ? "bg-white hover:bg-gray-50 text-gray-800 border-gray-300 hover:border-gray-400"
+                            : "bg-action-dark hover:bg-action-darker text-white border-white/30 hover:border-white/50"
                         }`}
                       >
-                        <Download className="w-4 h-4" />
-                        <span className="text-sm truncate max-w-[240px]">
-                          {getFileNameFromUrl(getMessageMediaUrl(message)!)}
-                        </span>
+                        <FileText className="w-5 h-5" />
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium">
+                            Abrir archivo
+                          </span>
+                          <span className="text-xs opacity-75 truncate max-w-[200px]">
+                            {getFileNameFromUrl(getMessageMediaUrl(message)!)}
+                          </span>
+                        </div>
                       </a>
                     </div>
                   ) : message.type === "audio" &&

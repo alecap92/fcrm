@@ -1,26 +1,26 @@
-import * as React from 'react';
-import { cn } from '../../lib/utils';
-import { X } from 'lucide-react';
+import * as React from "react";
+import { cn } from "../../lib/utils";
+import { X } from "lucide-react";
 
 interface ToastProps {
   title: string;
   description?: string;
-  type?: 'default' | 'success' | 'error' | 'warning';
+  type?: "default" | "success" | "error" | "warning";
   duration?: number;
   onClose: () => void;
 }
 
 const toastStyles = {
-  default: 'bg-white border-gray-200',
-  success: 'bg-green-50 border-green-200',
-  error: 'bg-red-50 border-red-200',
-  warning: 'bg-yellow-50 border-yellow-200',
+  default: "bg-white border-gray-200",
+  success: "bg-green-50 border-green-200",
+  error: "bg-red-50 border-red-200",
+  warning: "bg-yellow-50 border-yellow-200",
 };
 
 function Toast({
   title,
   description,
-  type = 'default',
+  type = "default",
   duration = 3000,
   onClose,
 }: ToastProps) {
@@ -32,8 +32,8 @@ function Toast({
   return (
     <div
       className={cn(
-        'fixed bottom-4 right-4 w-full max-w-sm rounded-lg border p-4 shadow-lg',
-        'animate-in slide-in-from-bottom-5',
+        "fixed bottom-4 right-4 w-full max-w-sm rounded-lg border p-4 shadow-lg",
+        "animate-in slide-in-from-bottom-5",
         toastStyles[type]
       )}
     >
@@ -44,10 +44,7 @@ function Toast({
             <p className="mt-1 text-sm text-gray-600">{description}</p>
           )}
         </div>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-500"
-        >
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -56,25 +53,28 @@ function Toast({
 }
 
 interface ToastContextType {
-  show: (props: Omit<ToastProps, 'onClose'>) => void;
+  show: (props: Omit<ToastProps, "onClose">) => void;
 }
 
 const ToastContext = React.createContext<ToastContextType | null>(null);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = React.useState<Array<ToastProps & { id: string }>>(
-    []
-  );
+  const [toasts, setToasts] = React.useState<
+    Array<ToastProps & { id: string }>
+  >([]);
 
-  const show = React.useCallback(
-    (props: Omit<ToastProps, 'onClose'>) => {
-      const id = Math.random().toString(36).substr(2, 9);
-      setToasts((current) => [...current, { ...props, id, onClose: () => 
-        setToasts((current) => current.filter((t) => t.id !== id))
-      }]);
-    },
-    []
-  );
+  const show = React.useCallback((props: Omit<ToastProps, "onClose">) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    setToasts((current) => [
+      ...current,
+      {
+        ...props,
+        id,
+        onClose: () =>
+          setToasts((current) => current.filter((t) => t.id !== id)),
+      },
+    ]);
+  }, []);
 
   return (
     <ToastContext.Provider value={{ show }}>
@@ -91,7 +91,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 export function useToast() {
   const context = React.useContext(ToastContext);
   if (!context) {
-    throw new Error('useToast must be used within a ToastProvider');
+    throw new Error("useToast must be used within a ToastProvider");
   }
   return context;
 }

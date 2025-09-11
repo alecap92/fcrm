@@ -1,16 +1,13 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import {
   Search,
   Plus,
   Filter,
-  // MoreVertical,
-  // Edit2,
+  MoreVertical,
   Trash2,
   Mail,
   Phone,
   MapPin,
-  // Building2,
-  // Tags,
   DollarSign,
   MessageCircle,
   Download,
@@ -56,6 +53,9 @@ export function ContactsDirectory() {
   const [activeFilters, setActiveFilters] = useState<FilterCondition[]>([]);
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [contactToDelete, setContactToDelete] = useState<string | null>(null);
+  const menuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const navigate = useNavigate();
 
   const toast = useToast();
@@ -314,6 +314,51 @@ export function ContactsDirectory() {
     }
   };
 
+  const handleDeleteContact = async (contactId: string) => {
+    try {
+      await contactsService.deleteContact(contactId);
+      toast.show({
+        title: "Éxito",
+        description: "Contacto eliminado correctamente",
+        type: "success",
+      });
+      loadContacts();
+    } catch (err) {
+      toast.show({
+        title: "Error",
+        description: "No se pudo eliminar el contacto",
+        type: "error",
+      });
+    }
+    setContactToDelete(null);
+  };
+
+  const handleMenuToggle = (contactId: string) => {
+    setOpenMenuId(openMenuId === contactId ? null : contactId);
+  };
+
+  const handleDeleteClick = (contactId: string) => {
+    setContactToDelete(contactId);
+    setOpenMenuId(null);
+  };
+
+  // Cerrar menú cuando se hace clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openMenuId && menuRefs.current[openMenuId]) {
+        const menuElement = menuRefs.current[openMenuId];
+        if (menuElement && !menuElement.contains(event.target as Node)) {
+          setOpenMenuId(null);
+        }
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openMenuId]);
+
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -451,8 +496,45 @@ export function ContactsDirectory() {
             {filteredContacts.map((contact) => (
               <div
                 key={contact._id}
-                className="bg-white rounded-2xl shadow-sm border p-6"
+                className="bg-white rounded-2xl shadow-sm border p-6 relative"
               >
+                {/* Menú desplegable */}
+                <div
+                  className="absolute top-3 right-3 z-10"
+                  ref={(el) => {
+                    menuRefs.current[contact._id] = el;
+                  }}
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMenuToggle(contact._id);
+                    }}
+                    className="h-8 w-8 p-0 hover:bg-gray-100"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+
+                  {openMenuId === contact._id && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-20">
+                      <div className="py-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(contact._id);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-center mb-4">
                   <div
                     className={`w-16 h-16 rounded-full text-white flex items-center justify-center text-lg font-semibold shadow-sm ${avatarBg(
@@ -616,6 +698,36 @@ export function ContactsDirectory() {
                 Cancelar
               </Button>
               <Button variant="destructive" onClick={handleDeleteContacts}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Eliminar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Individual Contact Delete Confirmation Dialog */}
+      {contactToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Eliminar contacto
+            </h3>
+            <p className="text-gray-500 mb-6">
+              ¿Estás seguro de que quieres eliminar este contacto? Esta acción
+              no se puede deshacer.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setContactToDelete(null)}
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => handleDeleteContact(contactToDelete)}
+              >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Eliminar
               </Button>

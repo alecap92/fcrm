@@ -39,7 +39,6 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, chat }) => {
     handleAttachmentClick,
     handleLibraryUpload,
     isConversationExpired,
-    groupedMessages,
     initializeChat,
     cleanupChat,
   } = useChatContext();

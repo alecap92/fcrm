@@ -70,7 +70,7 @@ export function QuoteEditor() {
   }
 
   const [quote, setQuote] = useState<Quote>({
-    quotationNumber: quotationSettings.quotationNumber || "COT-001",
+    quotationNumber: "Cargando...", // Se obtendrá vía API si es nueva cotización
     expirationDate: format(
       new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       "yyyy-MM-dd"
@@ -302,16 +302,38 @@ export function QuoteEditor() {
     getQuote();
   }, [id]);
 
+  // Obtener número de cotización para cotizaciones nuevas
   useEffect(() => {
-    const currentQuotationNumber =
-      organization?.settings?.quotations?.quotationNumber;
-    if (currentQuotationNumber) {
-      setQuote((prev) => ({
-        ...prev,
-        quotationNumber: currentQuotationNumber,
-      }));
-    }
-  }, [organization?.settings?.quotations?.quotationNumber]);
+    const fetchQuotationNumber = async () => {
+      if (!id) {
+        // Solo para cotizaciones nuevas
+        try {
+          const response = await quotesService.getNextQuotationNumber();
+          setQuote((prev) => ({
+            ...prev,
+            quotationNumber: response.data.quotationNumber.toString(),
+          }));
+        } catch (error) {
+          console.error("Error obteniendo número de cotización:", error);
+          toast({
+            title: "Error",
+            description:
+              "No se pudo obtener el número de cotización. Usando número temporal.",
+            variant: "destructive",
+          });
+          // Fallback al número del store si falla la API
+          const fallbackNumber =
+            organization?.settings?.quotations?.quotationNumber || "COT-001";
+          setQuote((prev) => ({
+            ...prev,
+            quotationNumber: fallbackNumber.toString(),
+          }));
+        }
+      }
+    };
+
+    fetchQuotationNumber();
+  }, [id, organization?.settings?.quotations?.quotationNumber, toast]);
 
   const handleSelectContact = (contact: Contact) => {
     setQuote((prev) => {

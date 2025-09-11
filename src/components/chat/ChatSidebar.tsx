@@ -93,10 +93,16 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ chatId, conversation }) => {
       </div>
     );
   }
+  console.log(conversation);
 
   return (
     <div className="w-80 border-l border-gray-200 flex flex-col">
-      <AutomationsSection conversationId={conversation._id} />
+      <AutomationsSection
+        conversationId={conversation._id}
+        contactId={conversation.participants.contact.reference}
+        userId={conversation.participants.user.reference}
+        organizationId={conversation.organization}
+      />
 
       <TagsSection
         tags={tags}
