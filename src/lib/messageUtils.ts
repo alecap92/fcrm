@@ -123,3 +123,23 @@ export const countUnreadMessages = (messages: Message[]): number => {
     (message) => !message.isRead && message.direction === "incoming"
   ).length;
 };
+
+/**
+ * Verifica si una URL es de un archivo PDF
+ */
+export const isPdfUrl = (url: string | null): boolean => {
+  if (!url) return false;
+
+  // Verificar por extensión de archivo
+  const lowercaseUrl = url.toLowerCase();
+  if (lowercaseUrl.endsWith(".pdf")) return true;
+
+  // Verificar por tipo MIME en la URL
+  if (lowercaseUrl.includes("application/pdf")) return true;
+
+  // Verificar por parámetros de consulta que indiquen PDF
+  if (lowercaseUrl.includes("type=pdf") || lowercaseUrl.includes("format=pdf"))
+    return true;
+
+  return false;
+};

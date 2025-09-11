@@ -4,6 +4,7 @@ import {
   formatTime,
   isIncomingMessage,
   getMessageMediaUrl,
+  isPdfUrl,
 } from "../../../lib";
 import { useChatContext } from "../../../contexts/ChatContext";
 import { ImagePreviewModal } from "./ImagePreviewModal";
