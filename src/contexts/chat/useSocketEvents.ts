@@ -88,7 +88,9 @@ export function useSocketEvents({
           direction: messageData.direction,
           // Si el chat está abierto, marcamos como leído de forma optimista
           isRead:
-            messageData.direction === "incoming" ? true : messageData.isRead || false,
+            messageData.direction === "incoming"
+              ? true
+              : messageData.isRead || false,
           possibleName: messageData.possibleName || "",
           replyToMessage: messageData.replyToMessage || null,
           messageId: messageData.messageId || "",
@@ -150,8 +152,8 @@ export function useSocketEvents({
           lastMessageTimestamp:
             messageData.timestamp || new Date().toISOString(),
           lastMessageDirection: messageData.direction,
-          createdAt: messageData.timestamp || new Date().toISOString(),
-          isRead: messageData.direction === "outgoing" || chatId === currentChatId,
+          isRead:
+            messageData.direction === "outgoing" || chatId === currentChatId,
         });
       } else {
         (async () => {

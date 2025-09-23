@@ -67,11 +67,16 @@ export function useKanbanConversations(
           rule: "isRead = lastDir==='incoming'? lastIsRead : true",
         }); */
 
+        // Mejorar el manejo del último mensaje
+        const lastMessage = conv.lastMessage?.message || "Sin mensajes";
+        const lastMessageTimestamp =
+          conv.lastMessage?.timestamp || conv.createdAt;
+
         return {
           id: conv._id,
           title: contactName,
-          lastMessage: conv.lastMessage?.message || "",
-          lastMessageTimestamp: conv.lastMessage?.timestamp || "",
+          lastMessage,
+          lastMessageTimestamp,
           lastMessageDirection: lastDir || "",
           priority: conv.priority,
           status: stageId,
@@ -329,7 +334,10 @@ export function useKanbanConversations(
           // sin logs extra
         }
       } catch (error) {
-        console.error("Error al refrescar conversaciones tras marcar leído:", error);
+        console.error(
+          "Error al refrescar conversaciones tras marcar leído:",
+          error
+        );
       }
     },
     [pipeline, fetchConversations, conversations]
@@ -551,10 +559,10 @@ export function useKanbanConversations(
         prev.map((conv) => {
           if (conv.id === chatId) {
             const updated = { ...conv, ...data };
-            console.log("[DEBUG] Conversación actualizada:", { 
-              id: conv.id, 
-              oldIsRead: conv.isRead, 
-              newIsRead: updated.isRead 
+            console.log("[DEBUG] Conversación actualizada:", {
+              id: conv.id,
+              oldIsRead: conv.isRead,
+              newIsRead: updated.isRead,
             });
             return updated;
           }

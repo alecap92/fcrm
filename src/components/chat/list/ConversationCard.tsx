@@ -159,6 +159,19 @@ const ConversationCard: React.FC<ConversationCardProps> = ({
           maxHeight: "2.8em",
         }}
       >
+        <span
+          style={{
+            color: lastMessageDirection === "incoming" ? "#10b981" : "#6b7280",
+            fontSize: "12px",
+            marginRight: "4px",
+          }}
+        >
+          {lastMessageDirection === "incoming"
+            ? "↓"
+            : lastMessageDirection === "outgoing"
+            ? "↑"
+            : ""}
+        </span>
         {lastMessage}
       </div>
       <div style={{ marginBottom: 12 }}>
@@ -192,7 +205,7 @@ const ConversationCard: React.FC<ConversationCardProps> = ({
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <span style={{ fontSize: "14px" }}>📅</span>
           <span style={{ fontSize: "14px", color: "#666" }}>
-            {formatDate(createdAt)}
+            {formatDate(lastMessageDate || createdAt)}
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
