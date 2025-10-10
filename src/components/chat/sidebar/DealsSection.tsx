@@ -38,7 +38,7 @@ export const DealsSection: React.FC<DealsSectionProps> = ({
             </button>
           </div>
         </div>
-        <div className="flex flex-col gap-3 mt-4 h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+        <div className="flex flex-col gap-3 mt-4 max-h-[200px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
           {deals.length === 0 ? (
             <div className="text-center py-4 text-gray-500">
               No hay negocios asociados

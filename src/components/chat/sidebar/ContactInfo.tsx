@@ -59,7 +59,7 @@ export const ContactInfo: React.FC<ContactInfoProps> = ({
           </p>
         </div>
       ) : (
-        <div className="space-y-3 max-h-[200px] overflow-y-auto">
+        <div className="space-y-3 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
           {attributes.map((attr) => (
             <div
               key={attr.id}

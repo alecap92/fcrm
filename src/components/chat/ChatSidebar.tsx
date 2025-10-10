@@ -21,6 +21,14 @@ interface ConversationData {
       reference: string;
       type: "Contact";
       contactId: string;
+      displayInfo?: {
+        mobile?: string;
+        name?: string;
+        lastName?: string;
+        email?: string;
+        position?: string;
+        contactId?: string;
+      };
     };
   };
   unreadCount: number;
@@ -75,6 +83,124 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ chatId, conversation }) => {
     handleCreateDeal,
   } = useChatSidebar(chatId, conversation);
 
+  // Función para extraer datos del contacto de la conversación
+  const extractContactDataFromConversation = (
+    conversation: ConversationData
+  ) => {
+    // Extraer datos del displayInfo del contacto
+    const displayInfo = conversation.participants?.contact?.displayInfo;
+
+    if (displayInfo) {
+      // Remover el + del número de teléfono para guardar solo el número
+      const formattedPhone = displayInfo.mobile?.startsWith("+")
+        ? displayInfo.mobile.substring(1)
+        : displayInfo.mobile;
+
+      // Usar el título para el nombre ya que displayInfo.name tiene el número
+      const titleParts = conversation.title.split(" ");
+      const firstName = titleParts[0] || "";
+      const lastName = titleParts.slice(1).join(" ") || "";
+
+      const extractedData = {
+        firstName,
+        lastName,
+        mobile: formattedPhone,
+        email: displayInfo.email || "",
+        phone: "",
+        companyName: "",
+        companyType: "",
+        idNumber: "",
+        position: displayInfo.position || "",
+        website: "",
+        address: "",
+        city: "",
+        state: "",
+        country: "",
+        postalCode: "",
+        source: "",
+        tags: "",
+        notas: "",
+        dv: "",
+        idType: "",
+        lifeCycle: "",
+      };
+
+      console.log("Datos extraídos de la conversación:", {
+        conversation,
+        extractedData,
+      });
+      return extractedData;
+    }
+
+    // Fallback: extraer del título si no hay displayInfo
+    const title = conversation.title;
+    const parts = title.split(" - ");
+    if (parts.length >= 2) {
+      const name = parts[0].trim();
+      const phone = parts[1].trim();
+
+      const nameParts = name.split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+      const formattedPhone = phone.startsWith("+") ? phone.substring(1) : phone;
+
+      const fallbackData = {
+        firstName,
+        lastName,
+        mobile: formattedPhone,
+        email: "",
+        phone: "",
+        companyName: "",
+        companyType: "",
+        idNumber: "",
+        position: "",
+        website: "",
+        address: "",
+        city: "",
+        state: "",
+        country: "",
+        postalCode: "",
+        source: "",
+        tags: "",
+        notas: "",
+        dv: "",
+        idType: "",
+        lifeCycle: "",
+      };
+
+      console.log("Datos de fallback desde título:", { title, fallbackData });
+      return fallbackData;
+    }
+
+    // Último fallback: solo el nombre del título
+    const finalFallback = {
+      firstName: title.trim(),
+      lastName: "",
+      mobile: "",
+      email: "",
+      phone: "",
+      companyName: "",
+      companyType: "",
+      idNumber: "",
+      position: "",
+      website: "",
+      address: "",
+      city: "",
+      state: "",
+      country: "",
+      postalCode: "",
+      source: "",
+      tags: "",
+      notas: "",
+      dv: "",
+      idType: "",
+      lifeCycle: "",
+    };
+
+    console.log("Datos finales de fallback:", { title, finalFallback });
+    return finalFallback;
+  };
+
   // Funciones para manejar modales
   const handleCreateContactWrapper = async (contactData: any) => {
     await handleCreateContact(contactData);
@@ -96,46 +222,50 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({ chatId, conversation }) => {
   console.log(conversation);
 
   return (
-    <div className="w-80 border-l border-gray-200 flex flex-col">
-      <AutomationsSection
-        conversationId={conversation._id}
-        contactId={conversation.participants.contact.reference}
-        userId={conversation.participants.user.reference}
-        organizationId={conversation.organization}
-      />
+    <div className="w-80 border-l border-gray-200 flex flex-col h-full">
+      {/* Contenedor con scroll para el contenido del sidebar */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+        <AutomationsSection
+          conversationId={conversation._id}
+          contactId={conversation.participants.contact.reference}
+          userId={conversation.participants.user.reference}
+          organizationId={conversation.organization}
+        />
 
-      <TagsSection
-        tags={tags}
-        newTag={newTag}
-        onNewTagChange={setNewTag}
-        onAddTag={handleAddTag}
-        onDeleteTag={handleDeleteTag}
-      />
+        <TagsSection
+          tags={tags}
+          newTag={newTag}
+          onNewTagChange={setNewTag}
+          onAddTag={handleAddTag}
+          onDeleteTag={handleDeleteTag}
+        />
 
-      <AssignmentSection
-        employees={employees}
-        assignedToId={conversation?.assignedTo?._id}
-        onEmployeeChange={handleEmployeeChange}
-      />
+        <AssignmentSection
+          employees={employees}
+          assignedToId={conversation?.assignedTo?._id}
+          onEmployeeChange={handleEmployeeChange}
+        />
 
-      <ContactInfo
-        contact={contact}
-        conversationTitle={conversation.title}
-        contactLoading={contactLoading}
-        contactError={contactError}
-        hasContactId={hasContactId}
-        onCreateContact={() => setIsCreateContactModalOpen(true)}
-      />
+        <ContactInfo
+          contact={contact}
+          conversationTitle={conversation.title}
+          contactLoading={contactLoading}
+          contactError={contactError}
+          hasContactId={hasContactId}
+          onCreateContact={() => setIsCreateContactModalOpen(true)}
+        />
 
-      <DealsSection
-        deals={deals}
-        onCreateDeal={() => setIsCreateDealModalOpen(true)}
-      />
+        <DealsSection
+          deals={deals}
+          onCreateDeal={() => setIsCreateDealModalOpen(true)}
+        />
+      </div>
 
       <CreateContactModal
         isOpen={isCreateContactModalOpen}
         onClose={() => setIsCreateContactModalOpen(false)}
         onSubmit={handleCreateContactWrapper}
+        initialData={extractContactDataFromConversation(conversation) as any}
       />
 
       <CreateDealModal
