@@ -31,6 +31,7 @@ const deleteQuote = async (id: string) =>
 const printQuote = async (id: string) =>
   await apiService.get<Blob>(`/quotations/print/${id}`, {
     responseType: "blob",
+    timeout: 60000, // 60 segundos para generación de PDF (proceso que incluye Puppeteer)
   });
 
 const sendQuote = async (form: {

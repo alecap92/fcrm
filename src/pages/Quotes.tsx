@@ -138,10 +138,18 @@ export function Quotes() {
 
   const handlePrint = async (quoteId: string) => {
     try {
-      showLoading("Generando PDF de la cotización...");
+      showLoading(
+        "Generando PDF de la cotización... Esto puede tomar hasta 30 segundos."
+      );
       const response = await quotesService.printQuote(quoteId);
 
       const blob = await response.data;
+
+      // Verificar que el blob tiene contenido
+      if (!blob || blob.size === 0) {
+        throw new Error("El PDF generado está vacío");
+      }
+
       const url = window.URL.createObjectURL(blob);
 
       const a = document.createElement("a");
@@ -149,8 +157,26 @@ export function Quotes() {
       a.download = `cotizacion_${quoteId}.pdf`;
       a.click();
       window.URL.revokeObjectURL(url);
-    } catch (error) {
+
+      toast.success("PDF generado exitosamente");
+    } catch (error: any) {
       console.error("Error generating PDF:", error);
+
+      let errorMessage = "Error al generar el PDF de la cotización";
+
+      if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+        errorMessage =
+          "La generación del PDF tomó demasiado tiempo. Por favor, intenta nuevamente.";
+      } else if (error.response?.status === 404) {
+        errorMessage = "Cotización no encontrada";
+      } else if (error.response?.status === 500) {
+        errorMessage =
+          "Error del servidor al generar el PDF. Por favor, contacta al administrador.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(errorMessage);
     } finally {
       hideLoading();
     }

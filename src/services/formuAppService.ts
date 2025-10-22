@@ -10,7 +10,7 @@ const getPDFFile = async (
   content: FormuAppApi["content"],
   apiKey: string
 ) => {
-  const apiURL = `https://formuapi2-production.up.railway.app/api/files/pdf/${formId}`;
+  const apiURL = `https://formuapi2.alecap922.site/api/files/pdf/${formId}`;
 
   const response = await axios.post(apiURL, content, {
     headers: {
@@ -24,7 +24,7 @@ const getPDFFile = async (
 
 const getFile = async (formId: string, apiKey: string) => {
   const response = await axios.get(
-    "https://formuapi2-production.up.railway.app/api/files/" + formId,
+    "https://formuapi2.alecap922.site/api/files/" + formId,
     {
       headers: {
         "x-api-key": apiKey,
@@ -37,7 +37,7 @@ const getFile = async (formId: string, apiKey: string) => {
 
 const getTemplates = async (apiKey: string) => {
   const response = await axios.get(
-    "https://formuapi2-production.up.railway.app/api/files/api",
+    "https://formuapi2.alecap922.site/api/files/",
     {
       headers: {
         "x-api-key": apiKey,

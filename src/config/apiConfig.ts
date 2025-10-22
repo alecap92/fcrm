@@ -26,7 +26,7 @@ class ApiService {
       baseURL:
         import.meta.env.VITE_API_BASE_URL ||
         import.meta.env.VITE_API_URL ||
-        "https://fusioncrmapiv3-production.up.railway.app/api/v1",
+        "https://fusion.alecap922.site/api/v1",
       timeout: Number(import.meta.env.VITE_API_TIMEOUT) || 10000,
       headers: {
         "Content-Type": "application/json",
